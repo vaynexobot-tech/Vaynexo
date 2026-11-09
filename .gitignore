@@ -7,3 +7,4 @@ frontend/dist/
 media/
 .pytest_cache/
 dump.rdb
+*.tsbuildinfo

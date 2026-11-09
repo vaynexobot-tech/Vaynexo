@@ -18,7 +18,7 @@ from app.bot.instance import get_bot
 from app.config import settings
 from app.db import SessionLocal
 from app.models import BoostOrder, DonateOrder
-from app.queue import redis_settings
+from app.queue import LITE, redis_settings
 from app.services import donate, market, p2p
 from app.services import services as svc
 from app.services.notify import Outbox
@@ -117,7 +117,7 @@ class WorkerSettings:
         cron(cron_auto_release, minute=set(range(0, 60, 5)), second=10),
         cron(cron_rescue_donates, minute=set(range(1, 60, 2)), second=20),
     ]
-    redis_settings = redis_settings()
+    redis_settings = None if LITE else redis_settings()
     on_startup = startup
     on_shutdown = shutdown
     max_jobs = 50
@@ -130,6 +130,8 @@ def main() -> None:
 
     from arq.worker import Worker
 
+    if LITE:
+        raise SystemExit("REDIS_URL bo'sh — yengil rejimda fon ishlari API ichida bajariladi, worker kerak emas.")
     asyncio.set_event_loop(asyncio.new_event_loop())
     worker = Worker(
         functions=WorkerSettings.functions, cron_jobs=WorkerSettings.cron_jobs, redis_settings=WorkerSettings.redis_settings,

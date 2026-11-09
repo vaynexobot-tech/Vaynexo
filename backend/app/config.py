@@ -21,7 +21,8 @@ class Settings(BaseSettings):
     # --- Infra ---
     database_url: str = "postgresql+asyncpg://postgres@localhost/vaynexo"
     db_null_pool: bool = False
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = "redis://localhost:6379/0"  # bo'sh bo'lsa — yengil rejim (Redis'siz, bitta jarayon)
+    frontend_dir: str = ""  # yig'ilgan frontend (frontend/dist) — berilsa API o'zi beradi
     media_dir: str = "media"
     media_url: str = "/media"
     encryption_key: str = ""  # Fernet kaliti: akkaunt parollari shifrlanadi

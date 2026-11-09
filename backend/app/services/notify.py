@@ -15,11 +15,10 @@ Sender = Callable[[int, str, dict | None], Awaitable[None]]
 
 
 async def _enqueue(chat_id: int, text: str, markup: dict | None) -> None:
-    from app.queue import get_pool
+    from app.queue import enqueue
 
     try:
-        pool = await get_pool()
-        await pool.enqueue_job("send_tg", chat_id, text, markup)
+        await enqueue("send_tg", chat_id, text, markup)
     except Exception:  # Redis ishlamasa ham asosiy amal buzilmasin
         log.exception("Xabarni navbatga qo'yib bo'lmadi chat_id=%s", chat_id)
 

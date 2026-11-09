@@ -20,13 +20,30 @@ _redis: aioredis.Redis | None = None
 
 def get_redis() -> aioredis.Redis:
     global _redis
+    if not settings.redis_url:
+        raise RuntimeError("Redis sozlanmagan (yengil rejim)")
     if _redis is None:
         _redis = aioredis.from_url(settings.redis_url, decode_responses=True)
     return _redis
 
 
+_mem_counts: dict[str, int] = {}
+
+
+def _mem_incr(k: str) -> int:
+    """Yengil rejim: jarayon xotirasidagi hisoblagich (eski oynalar tozalanadi)."""
+    if len(_mem_counts) > 50_000:
+        _mem_counts.clear()
+    _mem_counts[k] = _mem_counts.get(k, 0) + 1
+    return _mem_counts[k]
+
+
 async def rate_limit(key: str, limit: int, window: int) -> None:
     """Oddiy oyna bo'yicha cheklov. Redis ishlamasa — o'tkazib yuboradi."""
+    if not settings.redis_url:
+        if _mem_incr(f"rl:{key}:{int(time.time()) // window}") > limit:
+            raise AppError("rate_limited", "Juda ko'p so'rov. Birozdan so'ng urinib ko'ring", 429)
+        return
     try:
         r = get_redis()
         k = f"rl:{key}:{int(time.time()) // window}"

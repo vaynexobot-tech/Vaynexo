@@ -73,6 +73,26 @@ Qoidalar:
 - `REFERRAL_BONUS` — do'sti birinchi marta to'ldirganda taklif qilgan odamga bonus.
 - TG xizmatlar va boost narxlari: `backend/app/services/catalog.py`.
 
+## 5a. alwaysdata'da (serversiz sinov, yengil rejim)
+
+Redis bo'lmagan kichik hostinglar uchun **yengil rejim** bor: `REDIS_URL` bo'sh bo'lsa API, bot (webhook) va fon ishlari
+bitta jarayonda ishlaydi, frontendni ham API o'zi beradi. Sinov va kichik auditoriya uchun; foydalanuvchi ko'paysa VPS'ga o'ting.
+
+1. Admin panel → **Environment**: Python 3.12+ va Node.js 20+ ni tanlang.
+2. **Databases → PostgreSQL**: baza va foydalanuvchi (parol bilan) yarating.
+3. **Remote access → SSH**: parol bilan kirishni yoqing, Termius'da `ssh-AKKAUNT.alwaysdata.net` ga ulaning.
+4. SSH'da:
+   ```bash
+   git clone https://github.com/vaynexobot-tech/Vaynexo.git vaynexo
+   cd vaynexo && git checkout ccr-7522c3ff-d3atc7
+   bash deploy/alwaysdata-setup.sh
+   ```
+5. **Web → Sites**: `AKKAUNT.alwaysdata.net` saytini **User program** turiga o'zgartiring,
+   Command: `~/vaynexo/deploy/alwaysdata-start.sh`, Working directory: `~/vaynexo/backend`.
+6. @BotFather → Menu Button → `https://AKKAUNT.alwaysdata.net`.
+
+Yangilash: `cd ~/vaynexo && git pull && bash deploy/alwaysdata-setup.sh` (`.env` saqlab qolinadi), so'ng saytni Restart qiling.
+
 ## 6. Lokal ishlab chiqish
 
 ```bash

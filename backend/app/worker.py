@@ -1,4 +1,4 @@
-"""Fon ishlari (arq):  arq app.worker.WorkerSettings
+"""Fon ishlari (arq):  python -m app.worker
 
 * send_tg            — Telegram xabarlari (flood-limitni hisobga olib)
 * fulfil_donate      — almazni provayder orqali yetkazish
@@ -9,7 +9,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
+from aiogram.exceptions import TelegramForbiddenError, TelegramNetworkError, TelegramRetryAfter
 from arq import Retry, cron
 from sqlalchemy import select
 
@@ -33,6 +33,8 @@ async def send_tg(ctx, chat_id: int, text: str, markup: dict | None = None):
         raise Retry(defer=e.retry_after + 1) from e
     except TelegramForbiddenError:
         log.info("Foydalanuvchi botni bloklagan: %s", chat_id)
+    except TelegramNetworkError as e:  # vaqtinchalik tarmoq xatosi — keyinroq qayta urinamiz
+        raise Retry(defer=15 * ctx.get("job_try", 1)) from e
     except Exception:
         log.exception("Xabar yuborilmadi chat_id=%s", chat_id)
 
@@ -120,3 +122,21 @@ class WorkerSettings:
     on_shutdown = shutdown
     max_jobs = 50
     max_tries = 5
+
+
+def main() -> None:
+    """`python -m app.worker` — arq CLI'siz ishga tushirish (Python 3.12+ da event loop muammosisiz)."""
+    import asyncio
+
+    from arq.worker import Worker
+
+    asyncio.set_event_loop(asyncio.new_event_loop())
+    worker = Worker(
+        functions=WorkerSettings.functions, cron_jobs=WorkerSettings.cron_jobs, redis_settings=WorkerSettings.redis_settings,
+        on_startup=startup, on_shutdown=shutdown, max_jobs=WorkerSettings.max_jobs, max_tries=WorkerSettings.max_tries,
+    )
+    worker.run()
+
+
+if __name__ == "__main__":
+    main()

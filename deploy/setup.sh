@@ -4,8 +4,15 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-command -v docker >/dev/null || { echo "Docker o'rnatilmagan: curl -fsSL https://get.docker.com | sh"; exit 1; }
-command -v openssl >/dev/null || { echo "openssl kerak: apt install -y openssl"; exit 1; }
+if [ "$(id -u)" -ne 0 ]; then echo "root sifatida ishga tushiring: sudo bash deploy/setup.sh"; exit 1; fi
+if ! command -v docker >/dev/null; then
+  echo "=== Docker o'rnatilmoqda (2-3 daqiqa) ==="
+  apt-get update -qq && apt-get install -y -qq curl ca-certificates openssl git >/dev/null
+  curl -fsSL https://get.docker.com | sh
+fi
+command -v openssl >/dev/null || apt-get install -y -qq openssl >/dev/null
+# Faqat SSH va veb portlari ochiq qolsin
+if command -v ufw >/dev/null; then ufw allow OpenSSH >/dev/null; ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/dev/null; ufw --force enable >/dev/null; fi
 
 if [ -f .env ]; then
   read -rp ".env allaqachon bor. Qayta yozilsinmi? (ha/yo'q): " ans
@@ -57,6 +64,16 @@ EOF
   chmod 600 .env
   echo ".env yozildi (faqat root o'qiy oladi)."
   echo "MUHIM: .env faylining zaxira nusxasini xavfsiz joyda saqlang — ENCRYPTION_KEY yo'qolsa, saqlangan parollar o'qilmaydi."
+fi
+
+DOM=$(grep ^DOMAIN= .env | cut -d= -f2)
+MYIP=$(curl -4 -fsS https://ifconfig.me || true)
+DNSIP=$(getent ahostsv4 "$DOM" | awk 'NR==1{print $1}' || true)
+if [ -n "$MYIP" ] && [ "$MYIP" != "$DNSIP" ]; then
+  echo "DIQQAT: $DOM hozir '$DNSIP' ga qarayapti, server IP esa $MYIP."
+  echo "Domen sozlamasida IP ni $MYIP qilib qo'ying va 1-2 daqiqadan so'ng skriptni qayta ishga tushiring."
+  echo "(Aks holda HTTPS sertifikati olinmaydi.)"
+  exit 1
 fi
 
 echo "=== Frontend yig'ilmoqda ==="

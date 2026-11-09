@@ -1,0 +1,70 @@
+# Ishga tushirish:  cp .env.example .env  (to'ldiring)  &&  docker compose up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vaynexo
+      POSTGRES_USER: vaynexo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD ni .env da kiriting}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vaynexo"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment: &dbenv
+      DATABASE_URL: postgresql+asyncpg://vaynexo:${POSTGRES_PASSWORD}@db/vaynexo
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_DIR: /app/media
+    volumes: [media:/app/media]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    command: sh -c "alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 --proxy-headers"
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment: *dbenv
+    depends_on: [api]
+    command: arq app.worker.WorkerSettings
+
+  # Faqat BOT_WEBHOOK_URL bo'sh bo'lsa kerak (polling). Webhook bo'lsa bu servis o'zi to'xtaydi.
+  bot:
+    build: ./backend
+    restart: on-failure
+    env_file: .env
+    environment: *dbenv
+    depends_on: [api]
+    command: python -m app.bot
+
+  web:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN ni .env da kiriting}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./frontend/dist:/srv/app:ro
+      - media:/srv/media:ro
+      - caddydata:/data
+    depends_on: [api]
+
+volumes:
+  pgdata:
+  redisdata:
+  media:
+  caddydata:

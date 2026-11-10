@@ -49,6 +49,7 @@ export function Settings() {
           <Row icon={<Icon name="bag" />} title={t("Mening bitimlarim")} onClick={() => nav("/deals")} />
           <Row icon={<Icon name="chat" />} title={t("Chatlar")} onClick={() => nav("/chats")} />
           <Row icon={<Icon name="rocket" />} title={t("Boost buyurtmalarim")} onClick={() => nav("/boosts")} />
+          <Row icon={<Icon name="star" />} title={t("TG buyurtmalarim")} onClick={() => nav("/tg/orders")} />
           <Row icon={<span className="y"><Icon name="gift" /></span>} title={t("Do'stlarni taklif qilish")}
             sub={me.referral_bonus > 0 ? t("Har bir do'st uchun {s}", { s: som(me.referral_bonus) }) : undefined}
             right={<><span className="badge g">+ bonus</span><span className="mut"><Icon name="right" size={18} /></span></>}

@@ -37,35 +37,37 @@ async def create_tg_order(session: AsyncSession, user: User, data: dict, out: Ou
         target = user.username
     target = clean_username(target)
     details: dict = {}
+    prices = await catalog.tg_prices(session)
     if kind == "premium":
         months = int(data.get("months") or 0)
-        if months not in catalog.PREMIUM:
+        if months not in prices["premium"]:
             raise AppError("bad_months", "Muddatni tanlang")
-        price, title = catalog.PREMIUM[months], f"Telegram Premium · {months} oy"
+        price, title = prices["premium"][months], f"Telegram Premium · {months} oy"
         details["months"] = months
     elif kind == "stars":
         amount = int(data.get("stars") or 0)
         if not catalog.STARS_MIN <= amount <= catalog.STARS_MAX:
             raise AppError("bad_stars", f"Stars soni {catalog.STARS_MIN} dan kam bo'lmasin")
-        price, title = amount * settings.stars_rate, f"Telegram Stars · {amount:,}".replace(",", " ")
+        price, title = catalog.stars_total(amount, prices["star_x100"]), f"Telegram Stars · {amount:,}".replace(",", " ")
         details["stars"] = amount
     elif kind == "gift":
         code = data.get("gift")
-        if code not in catalog.GIFTS:
+        if code not in prices["gifts"]:
             raise AppError("bad_gift", "Sovg'ani tanlang")
-        name, price = catalog.GIFTS[code]
+        name, price = prices["gifts"][code]
         title = f"Telegram Gift · {name}"
         details.update(gift=code, message=(data.get("message") or "")[:200], anonymous=bool(data.get("anonymous")))
     elif kind == "nft":
         code = data.get("nft")
-        if code not in catalog.NFT:
+        if code not in prices["nft"]:
             raise AppError("bad_nft", "NFT turini tanlang")
-        name, price = catalog.NFT[code]
+        name, price = prices["nft"][code]
         title = f"Telegram NFT · {name}"
         details.update(nft=code, link=(data.get("link") or "")[:200])
     else:
         raise AppError("bad_kind", "Xizmat turini tanlang")
     details["note"] = (data.get("note") or "")[:300]
+    details["price_mode"] = prices["mode"]
     order = TgOrder(user_id=user.id, kind=kind, title=title, target_username=target, details=details, price=price)
     session.add(order)
     await session.flush()

@@ -16,8 +16,8 @@ router = APIRouter(tags=["services"])
 
 # ------------------------------------------------------------------ Telegram
 @router.get("/tg/catalog")
-async def tg_catalog(user: CurrentUser):
-    return catalog.public_catalog()
+async def tg_catalog(user: CurrentUser, session: SessionDep):
+    return await catalog.public_catalog(session)
 
 
 class TgOrderIn(BaseModel):
@@ -41,6 +41,12 @@ async def tg_order(body: TgOrderIn, user: CurrentUser, session: SessionDep):
         o = await svc.create_tg_order(session, user, body.model_dump(), out)
     await out.flush()
     return S.tg_order(o)
+
+
+@router.get("/tg/orders")
+async def tg_orders(user: CurrentUser, session: SessionDep):
+    rows = await session.scalars(select(TgOrder).where(TgOrder.user_id == user.id).order_by(TgOrder.id.desc()).limit(30))
+    return [S.tg_order(o) for o in rows]
 
 
 @router.get("/tg/orders/{order_id}")

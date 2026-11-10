@@ -106,3 +106,35 @@ async def test_boost_extras_percent_from_admin(api):
     q2 = (await api(70).post("/boost/quote", {**base_body, "express": True})).json()
     assert q2["price"] == b + b * 50 // 100
     assert (await api(70).post("/boost/quote", {**base_body, "lane": "Yo'q"})).status_code == 400
+
+
+async def test_tg_prices_fixed_and_fragment_markup(api):
+    from tests.conftest import get_balance, set_balance
+
+    u, admin = api(77), api(1)
+    await set_balance(77, 1_000_000)
+    cat = (await u.get("/tg/catalog")).json()
+    assert {p["months"]: p["price"] for p in cat["premium"]}[3] == 189_000 and cat["stars"]["rate"] == 220
+
+    # Aniq narxni o'zgartirish
+    await admin.put("/admin/settings", {"key": "premium_price_3", "value": 199_000})
+    r = await u.post("/tg/orders", {"kind": "premium", "months": 3, "target_username": "@javohir_ml"})
+    assert r.json()["price"] == 199_000
+
+    # Fragment tannarxi + 15% ustama
+    await admin.put("/admin/settings", {"key": "tg_price_mode", "value": "percent"})
+    rows = {x["key"]: x for x in (await admin.get("/admin/settings")).json()}
+    assert rows["premium_cost_3"]["show_if"] == {"key": "tg_price_mode", "value": "percent"}
+    cat = (await u.get("/tg/catalog")).json()
+    assert {p["months"]: p["price"] for p in cat["premium"]}[3] == 165_000 * 115 // 100  # 189 750
+    assert cat["stars"]["rate"] == 218.5 and cat["stars"]["preset_prices"]["50"] == 10_925
+    bal = await get_balance(77)
+    r = await u.post("/tg/orders", {"kind": "stars", "stars": 101, "target_username": "@javohir_ml"})
+    assert r.json()["price"] == 22_069  # 101 × 218.5 = 22 068.5 -> yuqoriga yaxlitlanadi
+    assert await get_balance(77) == bal - 22_069
+
+    # Gift narxi admin paneldan
+    await admin.put("/admin/settings", {"key": "gift_price_bear", "value": 17_000})
+    r = await u.post("/tg/orders", {"kind": "gift", "gift": "bear", "target_username": "@dilnoza_07"})
+    assert r.json()["price"] == 17_000
+    assert len((await u.get("/tg/orders")).json()) == 3

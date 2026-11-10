@@ -444,7 +444,7 @@ function Tournaments() {
   );
 }
 
-interface SettingRow { key: string; value: number | string; kind: "money" | "percent" | "choice"; min: number; max: number; label: string; group: string; choices: { v: string; label: string }[] }
+interface SettingRow { key: string; value: number | string; kind: "money" | "percent" | "choice"; min: number; max: number; label: string; group: string; choices: { v: string; label: string }[]; show_if?: { key: string; value: string } | null }
 
 function AppSettings() {
   const { toast, refreshMe } = useApp();
@@ -461,14 +461,14 @@ function AppSettings() {
     <Loadable state={st}>
       {(rows) => {
         const groups = [...new Set(rows.map((r) => r.group))];
-        const depType = rows.find((r) => r.key === "rent_deposit_type")?.value;
+        const val = Object.fromEntries(rows.map((r) => [r.key, r.value]));
         return (
           <>
             {groups.map((g) => (
               <div key={g} className="card col">
                 <div className="sec-title" style={{ fontSize: 15 }}>{g}</div>
                 {rows.filter((r) => r.group === g).map((r) => {
-                  if ((r.key === "rent_deposit_percent" && depType !== "percent") || (r.key === "rent_deposit_fixed" && depType !== "fixed")) return null;
+                  if (r.show_if && val[r.show_if.key] !== r.show_if.value) return null;
                   const v = draft[r.key] ?? r.value;
                   if (r.kind === "choice")
                     return (

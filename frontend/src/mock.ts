@@ -41,6 +41,11 @@ const state: Json = {
   settings: {
     referral_bonus: 1234, referral_min_topup: 10_000, vip_price_per_day: 5_000, rent_deposit_type: "percent", rent_deposit_percent: 100,
     rent_deposit_fixed: 50_000, rent_commission_percent: 10, boost_express_percent: 30, boost_hero_percent: 15, boost_lane_percent: 10,
+    tg_price_mode: "fixed", tg_markup_percent: 15, stars_cost: 190, stars_price: 220,
+    premium_cost_1: 60_000, premium_cost_3: 165_000, premium_cost_6: 300_000, premium_cost_12: 520_000,
+    premium_price_1: 69_000, premium_price_3: 189_000, premium_price_6: 349_000, premium_price_12: 599_000,
+    gift_price_heart: 15_000, gift_price_bear: 15_000, gift_price_box: 25_000, gift_price_rose: 25_000, gift_price_cup: 50_000, gift_price_diamond: 100_000,
+    nft_price_gift: 350_000, nft_price_username: 120_000, nft_price_number: 90_000,
   } as Record<string, Json>,
   favs: new Set<number>([12]),
   ledger: [
@@ -142,12 +147,21 @@ function quote(b: Json) {
   return { base: price, extras, price: price + extras.reduce((s, x) => s + x.amount, 0), stars: end - pos, days: `${days}–${days + 1}`, percents };
 }
 
-const CATALOG = {
-  premium: [{ months: 1, price: 69_000 }, { months: 3, price: 189_000 }, { months: 6, price: 349_000 }, { months: 12, price: 599_000 }],
-  stars: { presets: [50, 100, 250, 500, 1000, 2500, 5000, 10000], rate: 220, min: 50, max: 100000 },
-  gifts: [["heart", "Yurak", 15000], ["bear", "Ayiqcha", 15000], ["box", "Sovg'a qutisi", 25000], ["rose", "Gul", 25000], ["cup", "Kubok", 50000], ["diamond", "Brilliant", 100000]].map(([code, name, price]) => ({ code, name, price })),
-  nft: [["gift", "NFT sovg'a", 350000], ["username", "Username", 120000], ["number", "Anonim raqam", 90000]].map(([code, name, price]) => ({ code, name, price })),
-};
+const GIFT_NAMES: [string, string][] = [["heart", "Yurak"], ["bear", "Ayiqcha"], ["box", "Sovg'a qutisi"], ["rose", "Gul"], ["cup", "Kubok"], ["diamond", "Brilliant"]];
+const NFT_NAMES: [string, string][] = [["gift", "NFT sovg'a"], ["username", "Username"], ["number", "Anonim raqam"]];
+const PRESETS = [50, 100, 250, 500, 1000, 2500, 5000, 10000];
+function catalog() {
+  const S = state.settings;
+  const pct = S.tg_price_mode === "percent";
+  const k = 100 + S.tg_markup_percent;
+  const rate = pct ? (S.stars_cost * k) / 100 : S.stars_price;
+  return {
+    premium: [1, 3, 6, 12].map((m) => ({ months: m, price: pct ? Math.ceil((S[`premium_cost_${m}`] * k) / 100) : S[`premium_price_${m}`] })),
+    stars: { presets: PRESETS, rate, min: 50, max: 100000, preset_prices: Object.fromEntries(PRESETS.map((n) => [n, Math.ceil(n * rate)])) },
+    gifts: GIFT_NAMES.map(([code, name]) => ({ code, name, price: S[`gift_price_${code}`] })),
+    nft: NFT_NAMES.map(([code, name]) => ({ code, name, price: S[`nft_price_${code}`] })),
+  };
+}
 
 // ---------------------------------------------------------------- marshrutlar
 type H = (m: RegExpMatchArray, body: Json, q: URLSearchParams) => Json | Promise<Json>;
@@ -357,19 +371,23 @@ on("POST", "/deals/:id/:action", (m, b) => {
 });
 
 // TG, boost, arena
-on("GET", "/tg/catalog", () => CATALOG);
+on("GET", "/tg/catalog", catalog);
+on("GET", "/tg/orders", () => state.tg.filter((o: Json) => o.user_id === ME));
+on("GET", "/tg/orders/:id", (m) => state.tg.find((o: Json) => o.id === +m[1]));
 on("POST", "/tg/orders", (_m, b) => {
   const target = b.for_self ? "@" + state.me.username : "@" + String(b.target_username).replace(/^@/, "");
   if (!/^@[A-Za-z][A-Za-z0-9_]{3,31}$/.test(target)) throw new MockError("bad_username", "Telegram username noto'g'ri (masalan: @username)");
   let title = "", price = 0;
-  if (b.kind === "premium") { price = CATALOG.premium.find((p) => p.months === b.months)!.price; title = `Telegram Premium · ${b.months} oy`; }
-  if (b.kind === "stars") { if (!(b.stars >= 50)) throw new MockError("bad_stars", "Stars soni 50 dan kam bo'lmasin"); price = b.stars * 220; title = `Telegram Stars · ${fmt(b.stars)}`; }
-  if (b.kind === "gift") { const g = CATALOG.gifts.find((x) => x.code === b.gift)!; price = +g.price; title = `Telegram Gift · ${g.name}`; }
-  if (b.kind === "nft") { const n = CATALOG.nft.find((x) => x.code === b.nft)!; price = +n.price; title = `Telegram NFT · ${n.name}`; }
+  const C = catalog();
+  if (b.kind === "premium") { price = C.premium.find((p) => p.months === b.months)!.price; title = `Telegram Premium · ${b.months} oy`; }
+  if (b.kind === "stars") { if (!(b.stars >= 50)) throw new MockError("bad_stars", "Stars soni 50 dan kam bo'lmasin"); price = Math.ceil(b.stars * C.stars.rate); title = `Telegram Stars · ${fmt(b.stars)}`; }
+  if (b.kind === "gift") { const g = C.gifts.find((x) => x.code === b.gift)!; price = +g.price; title = `Telegram Gift · ${g.name}`; }
+  if (b.kind === "nft") { const n = C.nft.find((x) => x.code === b.nft)!; price = +n.price; title = `Telegram NFT · ${n.name}`; }
   money(-price, "tg_service");
   const o = { id: nid(), ref: "", kind: b.kind, title, target_username: target, details: {}, price, status: "processing", admin_note: null, user_id: ME, created_at: now() };
   o.ref = "VX-T" + o.id;
   state.tg.unshift(o);
+  later(8000, () => { if (o.status === "processing") o.status = "done"; });
   return o;
 });
 on("POST", "/boost/quote", (_m, b) => quote(b));
@@ -428,7 +446,20 @@ const SPEC: [string, string, string, string, number, number, Json?][] = [
   ["boost_hero_percent", "percent", "Qahramon tanlash ustamasi (%)", "Boost", 0, 500],
   ["boost_lane_percent", "percent", "Liniya tanlash ustamasi (%)", "Boost", 0, 500],
 ];
-const settingsRows = () => SPEC.map(([key, kind, label, group, min, max, choices]) => ({ key, kind, label, group, min, max, choices: choices ?? [], value: state.settings[key] }));
+const TGG = "Telegram: Premium va Stars", PCT = { key: "tg_price_mode", value: "percent" }, FIX = { key: "tg_price_mode", value: "fixed" };
+const SHOW: Record<string, Json> = { rent_deposit_percent: { key: "rent_deposit_type", value: "percent" }, rent_deposit_fixed: { key: "rent_deposit_type", value: "fixed" },
+  tg_markup_percent: PCT, stars_cost: PCT, stars_price: FIX };
+SPEC.push(["tg_price_mode", "choice", "Premium va Stars narxi qanday belgilanadi", TGG, 0, 0, [{ v: "fixed", label: "Aniq narx" }, { v: "percent", label: "Fragment tannarxi + foiz" }]]);
+SPEC.push(["tg_markup_percent", "percent", "Ustama: Fragment tannarxiga necha foiz qo'shiladi (%)", TGG, 0, 500]);
+SPEC.push(["stars_cost", "money", "Fragment tannarxi: 1 Star (so'm)", TGG, 1, 100000]);
+SPEC.push(["stars_price", "money", "Sotuv narxi: 1 Star (so'm)", TGG, 1, 100000]);
+for (const m of [1, 3, 6, 12]) {
+  SPEC.push([`premium_cost_${m}`, "money", `Fragment tannarxi: Premium ${m} oy (so'm)`, TGG, 1, 1e8]); SHOW[`premium_cost_${m}`] = PCT;
+  SPEC.push([`premium_price_${m}`, "money", `Sotuv narxi: Premium ${m} oy (so'm)`, TGG, 1, 1e8]); SHOW[`premium_price_${m}`] = FIX;
+}
+for (const [c, n] of GIFT_NAMES) SPEC.push([`gift_price_${c}`, "money", `Gift: ${n} (so'm)`, "Telegram: Gift va NFT", 1, 1e8]);
+for (const [c, n] of NFT_NAMES) SPEC.push([`nft_price_${c}`, "money", `NFT: ${n} (so'm)`, "Telegram: Gift va NFT", 1, 1e8]);
+const settingsRows = () => SPEC.map(([key, kind, label, group, min, max, choices]) => ({ key, kind, label, group, min, max, choices: choices ?? [], value: state.settings[key], show_if: SHOW[key] ?? null }));
 on("GET", "/admin/settings", settingsRows);
 on("PUT", "/admin/settings", (_m, b) => {
   if (typeof b.value === "number" && !(b.value >= 0)) throw new MockError("bad_setting", "Qiymat 0 dan kam bo'lmasin");

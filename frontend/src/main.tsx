@@ -14,7 +14,7 @@ import { ListingDetail, Market } from "./pages/Market";
 import { MyRentals, Rent, RentalPage, RentDetail, RentSell } from "./pages/Rent";
 import { MyListings, Sell } from "./pages/Sell";
 import { Help, History, Legal, ProfileEdit, Referral, Settings } from "./pages/Settings";
-import TgServices from "./pages/TgServices";
+import TgServices, { TgOrderPage, TgOrders } from "./pages/TgServices";
 import Wallet from "./pages/Wallet";
 import "./styles.css";
 import { initTelegram, startParam, tg } from "./tg";
@@ -91,6 +91,8 @@ function App() {
           <Route path="/rentals" element={<MyRentals />} />
           <Route path="/rental/:id" element={<RentalPage />} />
           <Route path="/tg" element={<TgServices />} />
+          <Route path="/tg/orders" element={<TgOrders />} />
+          <Route path="/tg/order/:id" element={<TgOrderPage />} />
           <Route path="/boost" element={<Boost />} />
           <Route path="/boosts" element={<BoostOrders />} />
           <Route path="/boost/:id" element={<BoostOrderPage />} />

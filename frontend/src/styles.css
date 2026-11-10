@@ -230,3 +230,14 @@ textarea.input { height: auto; min-height: 90px; padding: 12px 14px; resize: ver
 .grank { position: absolute; left: 7px; bottom: 7px; font-family: "JetBrains Mono", monospace; font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 5px; background: rgba(13, 14, 19, 0.85); color: var(--y); border: 1px solid rgba(255, 214, 10, 0.4); }
 .gbody { padding: 9px 10px 10px; display: flex; flex-direction: column; gap: 3px; }
 .sortsel { background: var(--input); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; font-weight: 600; font-size: 12px; }
+
+/* TG xizmatlar */
+.tg4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.tg4 button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 2px; border-radius: 13px; background: var(--card2); border: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--mut); }
+.tg4 button i { font-style: normal; font-size: 16px; }
+.tg4 button.on { background: rgba(255, 214, 10, 0.12); border-color: var(--y); color: var(--y); }
+.tghero { border-radius: 16px; padding: 12px 14px; background: linear-gradient(135deg, #1e3a8a 0%, #229ed9 60%, #6fd0ff 100%); color: #fff; }
+.tghero .xs { color: #e6f3ff; }
+.pkg.plan { position: relative; }
+.pkg.plan .save { position: absolute; top: -8px; right: 8px; background: var(--g); color: #062a22; font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 6px; }
+.tgava { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #229ed9, #6fd0ff); display: grid; place-items: center; font-weight: 700; flex: none; }

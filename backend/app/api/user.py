@@ -69,7 +69,8 @@ async def home(user: CurrentUser, session: SessionDep):
     return {"balance": user.balance, "tickets": user.tickets, "tournament": S.tournament(t) if t else None}
 
 
-SPEND_KINDS = ("donate", "donate_refund", "tg_service", "tg_refund", "boost", "boost_refund", "deal_pay", "deal_refund", "vip")
+SPEND_KINDS = ("donate", "donate_refund", "tg_service", "tg_refund", "boost", "boost_refund", "deal_pay", "deal_refund", "vip",
+               "rent_pay", "rent_deposit_back", "rent_refund")
 
 
 @router.get("/top")

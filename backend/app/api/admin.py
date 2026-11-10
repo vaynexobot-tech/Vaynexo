@@ -9,6 +9,7 @@ from app.api.deps import AdminUser, SessionDep
 from app.api.donate import invalidate_packages_cache
 from app.errors import AppError, BadState, NotFound
 from app.models import (
+    Rental, RentListing,
     BoostOrder, Deal, DonateOrder, DonatePackage, IncomingPayment, Listing, TgOrder, Topup, Tournament,
     TournamentEntry, User, Withdrawal,
 )
@@ -38,6 +39,8 @@ async def stats(admin: AdminUser, session: SessionDep):
         "donate_review": _count(DonateOrder, DonateOrder.status == "review"),
         "tg_pending": _count(TgOrder, TgOrder.status == "processing"),
         "boost_open": _count(BoostOrder, BoostOrder.status.in_(("searching", "disputed"))),
+        "rent_moderation": _count(RentListing, RentListing.status == "moderation"),
+        "rent_disputes": _count(Rental, Rental.status == "disputed"),
     }
     out = {k: (await session.scalar(v)) or 0 for k, v in q.items()}
     out["topups_today"] = int(await session.scalar(select(func.coalesce(func.sum(Topup.pay_amount), 0)).where(Topup.status == "paid", Topup.paid_at >= day)))
@@ -361,7 +364,7 @@ async def get_settings(admin: AdminUser, session: SessionDep):
 
 class SettingIn(BaseModel):
     key: str = Field(max_length=64)
-    value: int
+    value: int | str
 
 
 @router.put("/settings")

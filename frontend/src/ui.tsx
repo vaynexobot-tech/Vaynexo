@@ -300,6 +300,8 @@ const STATUS: Record<string, [string, string]> = {
   moderation: ["Moderatsiya", "y"], active: ["Faol", "g"], reserved: ["Band", "b"], sold: ["Sotilgan", "m"], closed: ["Yopilgan", "m"],
   searching: ["Booster qidirilmoqda", "y"], accepted: ["Booster topildi", "b"], in_progress: ["Jarayonda", "b"], finished: ["Tasdiqlang", "y"],
   open: ["Ochiq", "g"], running: ["Davom etmoqda", "b"],
+  rent_active: ["Ijarada", "b"], rent_ended: ["Tekshiruvda", "y"], rent_completed: ["Yakunlandi", "g"], rent_disputed: ["Nizo", "r"],
+  rent_refunded: ["Qaytarildi", "r"],
 };
 
 export function Status({ s }: { s: string }) {

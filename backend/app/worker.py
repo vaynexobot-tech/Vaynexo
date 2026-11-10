@@ -19,7 +19,7 @@ from app.config import settings
 from app.db import SessionLocal
 from app.models import BoostOrder, DonateOrder
 from app.queue import LITE, redis_settings
-from app.services import donate, market, p2p
+from app.services import donate, market, p2p, rental
 from app.services import services as svc
 from app.services.notify import Outbox
 
@@ -87,6 +87,8 @@ async def cron_auto_release(ctx):
         await market.auto_release(session, out)
     async with SessionLocal() as session, session.begin():
         await svc.boost_auto_confirm(session, out)
+    async with SessionLocal() as session, session.begin():
+        await rental.tick(session, out)
     await out.flush()
 
 

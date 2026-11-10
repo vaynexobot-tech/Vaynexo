@@ -5,7 +5,7 @@ import { t } from "../i18n";
 import { confirmDialog } from "../tg";
 import { Chips, Copy, dateTime, Empty, Field, Header, Loadable, money, MoneyInput, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
 
-type Tab = "stats" | "settings" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments";
+type Tab = "stats" | "settings" | "rent" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments";
 
 export default function Admin() {
   const { me } = useApp();
@@ -16,13 +16,14 @@ export default function Admin() {
       <Header title={t("Admin panel")} right={<span />} />
       <div className="page">
         <Chips value={tab} onChange={setTab} options={[
-          { v: "stats", label: "📊 Statistika" }, { v: "settings", label: "⚙️ Sozlamalar" }, { v: "incoming", label: "💳 Kirimlar" }, { v: "withdraw", label: "💸 Yechish" },
+          { v: "stats", label: "📊 Statistika" }, { v: "settings", label: "⚙️ Sozlamalar" }, { v: "rent", label: "🔑 Ijara" }, { v: "incoming", label: "💳 Kirimlar" }, { v: "withdraw", label: "💸 Yechish" },
           { v: "moderation", label: "📝 E'lonlar" }, { v: "disputes", label: "⚖️ Nizolar" }, { v: "donate", label: "💎 Donat" },
           { v: "tg", label: "⭐️ TG" }, { v: "boost", label: "🚀 Boost" }, { v: "users", label: "👥 Foydalanuvchilar" },
           { v: "packages", label: "📦 Paketlar" }, { v: "tournaments", label: "🏆 Turnirlar" },
         ]} />
         {tab === "stats" && <Stats go={setTab} />}
         {tab === "settings" && <AppSettings />}
+        {tab === "rent" && <RentAdmin />}
         {tab === "incoming" && <Incoming />}
         {tab === "withdraw" && <Withdrawals />}
         {tab === "moderation" && <Moderation />}
@@ -443,35 +444,110 @@ function Tournaments() {
   );
 }
 
-interface SettingRow { key: string; value: number; min: number; max: number; label: string }
+interface SettingRow { key: string; value: number | string; kind: "money" | "percent" | "choice"; min: number; max: number; label: string; group: string; choices: { v: string; label: string }[] }
 
 function AppSettings() {
   const { toast, refreshMe } = useApp();
   const st = useLoad(() => api.get<SettingRow[]>("/admin/settings"));
-  const [draft, setDraft] = useState<Record<string, number | "">>({});
+  const [draft, setDraft] = useState<Record<string, number | string | "">>({});
   const { busy, run } = useAction();
+  const save = (key: string, value: number | string) => run(async () => {
+    st.setData(await api.put<SettingRow[]>("/admin/settings", { key, value }));
+    setDraft((d) => { const n = { ...d }; delete n[key]; return n; });
+    toast("Saqlandi", "ok");
+    refreshMe();
+  });
   return (
     <Loadable state={st}>
-      {(rows) => (
-        <>
-          {rows.map((r) => {
-            const v = draft[r.key] ?? r.value;
-            return (
-              <div key={r.key} className="card col">
-                <div className="b">{r.label}</div>
-                <div className="mut xs">Hozirgi qiymat: <b className="y">{som(r.value)}</b></div>
-                <MoneyInput value={v} onChange={(x) => setDraft({ ...draft, [r.key]: x })} />
-                <button className="btn full" disabled={busy || v === "" || v === r.value} onClick={() => run(async () => {
-                  st.setData(await api.put<SettingRow[]>("/admin/settings", { key: r.key, value: v }));
-                  setDraft({});
-                  toast("Saqlandi", "ok");
-                  refreshMe();
-                })}>Saqlash</button>
+      {(rows) => {
+        const groups = [...new Set(rows.map((r) => r.group))];
+        const depType = rows.find((r) => r.key === "rent_deposit_type")?.value;
+        return (
+          <>
+            {groups.map((g) => (
+              <div key={g} className="card col">
+                <div className="sec-title" style={{ fontSize: 15 }}>{g}</div>
+                {rows.filter((r) => r.group === g).map((r) => {
+                  if ((r.key === "rent_deposit_percent" && depType !== "percent") || (r.key === "rent_deposit_fixed" && depType !== "fixed")) return null;
+                  const v = draft[r.key] ?? r.value;
+                  if (r.kind === "choice")
+                    return (
+                      <Field key={r.key} label={r.label}>
+                        <Seg value={String(r.value)} onChange={(x) => save(r.key, x)} options={r.choices} />
+                      </Field>
+                    );
+                  return (
+                    <Field key={r.key} label={r.label}>
+                      <div className="row">
+                        {r.kind === "percent" ? (
+                          <div className="row grow input" style={{ padding: "0 14px" }}>
+                            <input className="grow mono" inputMode="numeric" style={{ background: "none", border: 0, outline: "none", height: "100%" }}
+                              value={v} onChange={(e) => setDraft({ ...draft, [r.key]: e.target.value ? Number(e.target.value.replace(/\D/g, "").slice(0, 4)) : "" })} />
+                            <span className="mut b">%</span>
+                          </div>
+                        ) : (
+                          <div className="grow"><MoneyInput value={v as number | ""} onChange={(x) => setDraft({ ...draft, [r.key]: x })} /></div>
+                        )}
+                        <button className="btn" disabled={busy || v === "" || v === r.value} onClick={() => save(r.key, v as number)}>Saqlash</button>
+                      </div>
+                    </Field>
+                  );
+                })}
               </div>
-            );
-          })}
-        </>
-      )}
+            ))}
+          </>
+        );
+      }}
     </Loadable>
+  );
+}
+
+interface AdminRentListing { id: number; title: string; rank: string; skins: number; price_per_hour: number; description: string; media: { url: string; type: string }[]; owner: { id: number; name: string; username: string | null } }
+interface AdminRental { id: number; listing: { title: string }; price: number; deposit: number; dispute_by: string | null; dispute_reason: string | null; renter_id: number; owner_id: number; credentials: string | null }
+
+function RentAdmin() {
+  const [view, setView] = useState<"moderation" | "disputes">("moderation");
+  const mod = useLoad(() => api.get<AdminRentListing[]>("/admin/rent/listings"), [view]);
+  const dis = useLoad(() => api.get<AdminRental[]>("/admin/rentals"), [view]);
+  const { busy, run } = useAction();
+  return (
+    <>
+      <Seg value={view} onChange={setView} options={[{ v: "moderation", label: "Moderatsiya" }, { v: "disputes", label: "Nizolar" }]} />
+      {view === "moderation" ? (
+        <Loadable state={mod}>
+          {(list) => list.length === 0 ? <Empty icon="✅" text="Moderatsiyada ijara e'loni yo'q" /> : list.map((l) => (
+            <div key={l.id} className="card col">
+              {l.media.length > 0 && <div className="gallery">{l.media.map((m, i) => <img key={i} src={m.url} alt="" />)}</div>}
+              <div className="b">{l.title}</div>
+              <div className="mut xs">#{l.id} · {l.rank} · {l.skins} skin · {som(l.price_per_hour)}/soat · egasi {l.owner.username ? "@" + l.owner.username : l.owner.name} ({l.owner.id})</div>
+              <div className="pre sm mut">{l.description}</div>
+              <div className="row">
+                <button className="btn small green grow" disabled={busy} onClick={() => run(async () => { await api.post(`/admin/rent/listings/${l.id}/moderate`, { approve: true }); mod.reload(); })}>Tasdiqlash</button>
+                <button className="btn small danger" disabled={busy} onClick={() => { const reason = prompt("Rad etish sababi:"); if (reason !== null) run(async () => { await api.post(`/admin/rent/listings/${l.id}/moderate`, { approve: false, reason }); mod.reload(); }); }}>Rad etish</button>
+              </div>
+            </div>
+          ))}
+        </Loadable>
+      ) : (
+        <Loadable state={dis}>
+          {(list) => list.length === 0 ? <Empty icon="✅" text="Ochiq ijara nizolari yo'q" /> : list.map((r) => (
+            <div key={r.id} className="card col">
+              <div className="row between"><span className="b">Ijara #{r.id} · {r.listing.title}</span><span className="badge r">{r.dispute_by === "owner" ? "Egasi" : "Ijarachi"}</span></div>
+              <div className="mut xs">Narx {som(r.price)} · depozit {som(r.deposit)} · ijarachi {r.renter_id} · egasi {r.owner_id}</div>
+              <div className="card tight sm pre">{r.dispute_reason}</div>
+              {r.credentials && <div className="mut xs pre">🔐 {r.credentials}</div>}
+              <div className="col">
+                {([["owner", "Egasi haq: depozit egasiga"], ["normal", "Oddiy yakun: depozit ijarachiga"], ["renter", "Ijarachi haq: hammasi qaytariladi"]] as const).map(([d, label]) => (
+                  <button key={d} className={"btn small " + (d === "renter" ? "danger" : d === "owner" ? "green" : "ghost")} disabled={busy} onClick={() => {
+                    const note = prompt("Izoh:");
+                    if (note !== null) run(async () => { await api.post(`/admin/rentals/${r.id}/resolve`, { decision: d, note }); dis.reload(); });
+                  }}>{label}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </Loadable>
+      )}
+    </>
   );
 }

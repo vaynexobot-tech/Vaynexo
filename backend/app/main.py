@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import admin, donate, market, media, services, user, wallet
+from app.api import admin, donate, market, media, rent, services, user, wallet
 from app.config import settings
 from app.errors import AppError
 
@@ -66,7 +66,7 @@ async def validation_error(request: Request, exc: RequestValidationError):
     return JSONResponse({"error": "validation", "message": f"Ma'lumot noto'g'ri: {field}"}, status_code=422)
 
 
-for r in (user.router, wallet.router, wallet.p2p_router, donate.router, market.router, media.router, services.router, admin.router):
+for r in (user.router, wallet.router, wallet.p2p_router, donate.router, market.router, media.router, services.router, rent.router, admin.router):
     app.include_router(r, prefix="/api")
 
 

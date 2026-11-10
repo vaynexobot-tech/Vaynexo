@@ -11,6 +11,7 @@ import { DealPage, Deals } from "./pages/Deal";
 import Donate from "./pages/Donate";
 import Home from "./pages/Home";
 import { ListingDetail, Market } from "./pages/Market";
+import { MyRentals, Rent, RentalPage, RentDetail, RentSell } from "./pages/Rent";
 import { MyListings, Sell } from "./pages/Sell";
 import { Help, History, Legal, ProfileEdit, Referral, Settings } from "./pages/Settings";
 import TgServices from "./pages/TgServices";
@@ -83,6 +84,12 @@ function App() {
           <Route path="/chat/:id" element={<ChatPage />} />
           <Route path="/deals" element={<Deals />} />
           <Route path="/deal/:id" element={<DealPage />} />
+          <Route path="/rent" element={<Rent />} />
+          <Route path="/rent/new" element={<RentSell />} />
+          <Route path="/rent/edit/:id" element={<RentSell />} />
+          <Route path="/rent/:id" element={<RentDetail />} />
+          <Route path="/rentals" element={<MyRentals />} />
+          <Route path="/rental/:id" element={<RentalPage />} />
           <Route path="/tg" element={<TgServices />} />
           <Route path="/boost" element={<Boost />} />
           <Route path="/boosts" element={<BoostOrders />} />

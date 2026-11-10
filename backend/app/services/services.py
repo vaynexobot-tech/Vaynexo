@@ -96,7 +96,8 @@ async def resolve_tg_order(session: AsyncSession, order_id: int, action: str, no
 
 
 # ================================================================ Boost
-def boost_quote(data: dict) -> dict:
+def boost_quote(data: dict, pct: dict) -> dict:
+    """Narx: yulduzlar bo'yicha asosiy narx + tanlangan qo'shimchalar ustamasi (foizlar admin paneldan)."""
     cur = data.get("current_rank")
     if cur not in ("Epic", "Legend", "Mythic"):
         raise AppError("bad_rank", "Hozirgi rankni tanlang")
@@ -107,25 +108,41 @@ def boost_quote(data: dict) -> dict:
     if target not in catalog.TARGETS:
         raise AppError("bad_rank", "Maqsad rankni tanlang")
     try:
-        price, start, end = catalog.boost_price(
+        base, start, end = catalog.boost_price(
             cur, div, int(data.get("current_stars") or 0), target, int(data.get("target_stars") or 0)
         )
     except ValueError as e:
         raise AppError("bad_rank", str(e)) from e
+    extras = []
+    if data.get("express"):
+        extras.append(("express", "Express", pct["boost_express_percent"]))
+    if data.get("hero"):
+        extras.append(("hero", f"Qahramon: {str(data['hero'])[:32]}", pct["boost_hero_percent"]))
+    if data.get("lane"):
+        if data["lane"] not in catalog.LANES[1:]:
+            raise AppError("bad_lane", "Liniya noto'g'ri")
+        extras.append(("lane", f"Liniya: {data['lane']}", pct["boost_lane_percent"]))
+    lines = [{"key": k, "label": lbl, "percent": p, "amount": base * p // 100} for k, lbl, p in extras]
     stars = end - start
     days = max(1, round(stars / 15))
-    return {"price": price, "stars": stars, "days": f"{days}–{days + 1}"}
+    if data.get("express"):
+        days = max(1, days // 2)
+    return {"base": base, "extras": lines, "price": base + sum(x["amount"] for x in lines), "stars": stars,
+            "days": f"{days}–{days + 1}", "percents": pct}
 
 
 def _rank_label(rank: str, division: str, stars: int) -> str:
     return f"Mythic {stars}★" if rank == "Mythic" else f"{rank} {division}"
 
 
+async def boost_percents(session: AsyncSession) -> dict:
+    from app.services import app_settings
+
+    return await app_settings.get_many(session, "boost_express_percent", "boost_hero_percent", "boost_lane_percent")
+
+
 async def create_boost(session: AsyncSession, user: User, data: dict, out: Outbox) -> BoostOrder:
-    q = boost_quote(data)
-    lane = data.get("lane") or ""
-    if lane not in catalog.LANES:
-        raise AppError("bad_lane", "Liniya noto'g'ri")
+    q = boost_quote(data, await boost_percents(session))
     method = data.get("login_method")
     if method not in catalog.LOGIN_METHODS:
         raise AppError("bad_login", "Kirish usulini tanlang")
@@ -134,14 +151,16 @@ async def create_boost(session: AsyncSession, user: User, data: dict, out: Outbo
         raise AppError("bad_credentials", "Kirish ma'lumotlarini kiriting")
     target = data["target_rank"]
     target_stars = int(data.get("target_stars") or 0)
+    extras = ", ".join(x["label"] for x in q["extras"])
+    note = (data.get("note") or "")[:400]
     order = BoostOrder(
         user_id=user.id,
         game=data.get("game") if data.get("game") in ("ML", "MC") else "ML",
         current_rank=_rank_label(data["current_rank"], data.get("current_division") or "V", int(data.get("current_stars") or 0)),
         target_rank="Legend I" if target == "Legend" else f"{target} {target_stars}★",
         stars=q["stars"],
-        lane=lane,
-        note=(data.get("note") or "")[:500],
+        lane=(data.get("lane") or "")[:16],
+        note=(f"[{extras}] " if extras else "") + note,
         login_method=method,
         credentials_enc=encrypt(creds) if creds else None,
         price=q["price"],

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api, type Boost as BoostT } from "../api";
 import { t } from "../i18n";
 import { confirmDialog } from "../tg";
-import { BottomBar, Chips, dateTime, Empty, Field, Header, Loadable, money, Seg, Sheet, som, Status, useAction, useApp, useLoad } from "../ui";
+import { BottomBar, Chips, dateTime, Empty, Field, Header, Loadable, money, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
 
 const DIVS = ["V", "IV", "III", "II", "I"];
 const LANES = ["Gold", "Mid", "EXP", "Jungle", "Roam"];
@@ -14,6 +14,8 @@ const METHODS = [
   { v: "whatsapp", label: "WhatsApp", sub: "Booster WhatsApp orqali bog'lanadi" },
 ];
 
+interface Quote { base: number; price: number; stars: number; days: string; extras: { key: string; label: string; percent: number; amount: number }[]; percents: Record<string, number> }
+
 export function Boost() {
   const nav = useNavigate();
   const { me, refreshMe } = useApp();
@@ -23,21 +25,29 @@ export function Boost() {
   const [curStars, setCurStars] = useState(0);
   const [target, setTarget] = useState("Mythic");
   const [stars, setStars] = useState(10);
+  const [express, setExpress] = useState(false);
+  const [extra, setExtra] = useState(false);
+  const [heroOn, setHeroOn] = useState(false);
+  const [hero, setHero] = useState("");
+  const [laneOn, setLaneOn] = useState(false);
   const [lane, setLane] = useState("");
   const [note, setNote] = useState("");
   const [method, setMethod] = useState("telegram");
   const [creds, setCreds] = useState("");
-  const [quote, setQuote] = useState<{ price: number; stars: number; days: string } | null>(null);
+  const [quote, setQuote] = useState<Quote | null>(null);
   const [qErr, setQErr] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
   const { busy, run } = useAction();
 
-  const body = { game, current_rank: cur, current_division: div, current_stars: curStars, target_rank: target, target_stars: stars, lane, note, login_method: method, credentials: creds };
+  const body = {
+    game, current_rank: cur, current_division: div, current_stars: curStars, target_rank: target, target_stars: stars, express,
+    hero: extra && heroOn ? hero.trim() : "", lane: extra && laneOn ? lane : "", note, login_method: method, credentials: creds,
+  };
 
   useEffect(() => {
     const id = setTimeout(async () => {
       try {
-        setQuote(await api.post("/boost/quote", body));
+        setQuote(await api.post<Quote>("/boost/quote", body));
         setQErr(null);
       } catch (e) {
         setQuote(null);
@@ -46,12 +56,14 @@ export function Boost() {
     }, 250);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cur, div, curStars, target, stars]);
+  }, [cur, div, curStars, target, stars, express, extra, heroOn, hero, laneOn, lane]);
 
   const targets = ["Legend", "Mythic", "M. Glory"].filter((x) => !(cur === "Legend" && x === "Legend") && !(cur === "Mythic" && x === "Legend"));
   useEffect(() => { if (!targets.includes(target)) setTarget(targets[0]); }, [cur]); // eslint-disable-line react-hooks/exhaustive-deps
   const needCreds = method === "moonton" || method === "google";
   const enough = quote ? (me?.balance ?? 0) >= quote.price : false;
+  const pct = quote?.percents ?? {};
+  const extraInvalid = extra && ((heroOn && hero.trim().length < 2) || (laneOn && !lane));
 
   return (
     <>
@@ -79,20 +91,51 @@ export function Boost() {
             </Field>
           )}
         </div>
-        <Field label={t("Liniya (ixtiyoriy)")}><Chips value={lane} onChange={(v) => setLane(lane === v ? "" : v)} options={LANES.map((v) => ({ v, label: v }))} /></Field>
-        <Field label={t("Izoh booster uchun")}><textarea className="input" maxLength={500} placeholder={t("Masalan: shu qahramonda o'ynab bering")} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
+
+        <div className="card row between">
+          <div>
+            <div className="b">⚡ {t("Express boost")} {pct.boost_express_percent != null && <span className="badge y">+{pct.boost_express_percent}%</span>}</div>
+            <div className="mut xs">{t("Booster darhol boshlaydi, muddat qisqaradi")}</div>
+          </div>
+          <Toggle on={express} onChange={setExpress} />
+        </div>
+        <div className="card col">
+          <div className="row between">
+            <div>
+              <div className="b">➕ {t("Qo'shimcha")}</div>
+              <div className="mut xs">{t("Qahramon yoki liniya tanlash (alohida ustama)")}</div>
+            </div>
+            <Toggle on={extra} onChange={setExtra} />
+          </div>
+          {extra && (
+            <>
+              <div className="divider" />
+              <div className="row between">
+                <div className="b sm">{t("Qahramon tanlash")} {pct.boost_hero_percent != null && <span className="badge y">+{pct.boost_hero_percent}%</span>}</div>
+                <Toggle on={heroOn} onChange={setHeroOn} />
+              </div>
+              {heroOn && <input className="input" maxLength={32} placeholder={t("Qahramon nomi, masalan: Fanny")} value={hero} onChange={(e) => setHero(e.target.value)} />}
+              <div className="row between">
+                <div className="b sm">{t("Liniya tanlash")} {pct.boost_lane_percent != null && <span className="badge y">+{pct.boost_lane_percent}%</span>}</div>
+                <Toggle on={laneOn} onChange={setLaneOn} />
+              </div>
+              {laneOn && <Chips value={lane} onChange={setLane} options={LANES.map((v) => ({ v, label: v }))} />}
+            </>
+          )}
+        </div>
+        <Field label={t("Izoh booster uchun (ixtiyoriy)")}><textarea className="input" maxLength={400} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
         {qErr && <div className="r sm">{qErr}</div>}
         {quote && (
           <div className="card">
-            <div className="kv"><span>{t("Xizmat")}</span><span>{cur}{cur === "Mythic" ? ` ${curStars}★` : ` ${div}`} → {target}{target !== "Legend" ? ` ${stars}★` : " I"}</span></div>
-            <div className="kv"><span>{t("Yulduzlar")}</span><span>{quote.stars}</span></div>
+            <div className="kv"><span>{cur}{cur === "Mythic" ? ` ${curStars}★` : ` ${div}`} → {target}{target !== "Legend" ? ` ${stars}★` : " I"} · {quote.stars}★</span><span>{money(quote.base)}</span></div>
+            {quote.extras.map((x) => <div key={x.key} className="kv"><span>{x.label} (+{x.percent}%)</span><span>{money(x.amount)}</span></div>)}
             <div className="kv"><span>{t("Taxminiy muddat")}</span><span>{t("{d} kun", { d: quote.days })}</span></div>
           </div>
         )}
       </div>
       <BottomBar>
         <div className="grow"><div className="mut xs">{t("Jami narx")}</div><div className="y bb mono" style={{ fontSize: 18 }}>{quote ? som(quote.price) : "—"}</div></div>
-        <button className="btn" disabled={!quote} onClick={() => setConfirm(true)}>{t("Davom etish")}</button>
+        <button className="btn" disabled={!quote || !!extraInvalid} onClick={() => setConfirm(true)}>{t("Davom etish")}</button>
       </BottomBar>
       <Sheet open={confirm} onClose={() => setConfirm(false)}>
         <div className="sec-title">{t("Kirish usuli")}</div>

@@ -312,3 +312,57 @@ class Favorite(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
     listing_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("listings.id"), index=True)
+
+
+# ---------------------------------------------------------------- Account ijara
+class RentListing(TimestampMixin, Base):
+    """Ijaraga qo'yilgan akkaunt. Kirish ma'lumotlari egasidan oldindan olinadi (shifrlangan)
+    va faqat to'lagan ijarachiga, ijara davomida ko'rsatiladi."""
+
+    __tablename__ = "rent_listings"
+    __table_args__ = (Index("ix_rent_feed", "status", "price_per_hour"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    owner_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    game: Mapped[str] = mapped_column(String(8))
+    title: Mapped[str] = mapped_column(String(120))
+    rank: Mapped[str] = mapped_column(String(32))
+    server: Mapped[str] = mapped_column(String(32), default="")
+    skins: Mapped[int] = mapped_column(Integer, default=0)
+    heroes: Mapped[int] = mapped_column(Integer, default=0)
+    price_per_hour: Mapped[int] = mapped_column(BigInteger)
+    description: Mapped[str] = mapped_column(Text, default="")
+    media: Mapped[list] = mapped_column(JSONB, default=list)
+    credentials_enc: Mapped[str] = mapped_column(Text)
+    # moderation | active | rejected | closed
+    status: Mapped[str] = mapped_column(String(16), default="moderation", index=True)
+    reject_reason: Mapped[str | None] = mapped_column(String(300))
+    busy_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    owner: Mapped[User] = relationship(lazy="selectin")
+
+
+class Rental(TimestampMixin, Base):
+    """Ijara: pul va depozit garantda. active -> ended (egasi tekshiradi) -> completed | disputed -> completed."""
+
+    __tablename__ = "rentals"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    listing_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("rent_listings.id"), index=True)
+    renter_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    owner_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    hours: Mapped[int] = mapped_column(Integer)
+    price: Mapped[int] = mapped_column(BigInteger)
+    deposit: Mapped[int] = mapped_column(BigInteger)
+    commission: Mapped[int] = mapped_column(BigInteger)
+    # active | ended | completed | disputed | refunded
+    status: Mapped[str] = mapped_column(String(16), default="active", index=True)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    review_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    dispute_by: Mapped[str | None] = mapped_column(String(8))  # owner | renter
+    dispute_reason: Mapped[str | None] = mapped_column(Text)
+    resolution: Mapped[str | None] = mapped_column(String(300))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    listing: Mapped[RentListing] = relationship(lazy="selectin")

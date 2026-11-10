@@ -96,6 +96,8 @@ export default function Home() {
         <div className="grid2">
           <QuickTile icon="bag" title={t("Account savdo")} sub={t("Tayyor akkauntlar")} onClick={() => nav("/market")} />
           <QuickTile icon="rocket" title={t("Boost")} sub={t("Rank ko'tarish")} onClick={() => nav("/boost")} />
+          <QuickTile icon="user" title={t("Account ijara")} sub={t("Soatbay ijara")} onClick={() => nav("/rent")} />
+          <QuickTile icon="trophy" title={t("Top xaridorlar")} sub="Top 100" onClick={() => nav("/top")} />
           <QuickTile icon="star" title={t("TG xizmatlar")} sub="Premium · Stars" onClick={() => nav("/tg")} />
           <QuickTile icon="doc" title={t("E'lon berish")} sub={t("Akkaunt sotish")} onClick={() => nav("/sell")} />
         </div>

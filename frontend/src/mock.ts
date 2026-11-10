@@ -38,7 +38,10 @@ const state: Json = {
     referral_bonus: 1234, referral_min_topup: 10_000, ref_link: "https://t.me/VaynexoBot?startapp=ref_1001", ref_invited: 3, ref_paid: 1, ref_earned: 1234,
     commission_percent: 5,
   },
-  settings: { referral_bonus: 1234, referral_min_topup: 10_000, vip_price_per_day: 5_000 } as Record<string, number>,
+  settings: {
+    referral_bonus: 1234, referral_min_topup: 10_000, vip_price_per_day: 5_000, rent_deposit_type: "percent", rent_deposit_percent: 100,
+    rent_deposit_fixed: 50_000, rent_commission_percent: 10, boost_express_percent: 30, boost_hero_percent: 15, boost_lane_percent: 10,
+  } as Record<string, Json>,
   favs: new Set<number>([12]),
   ledger: [
     { id: 3, amount: -37_000, balance_after: 145_000, kind: "donate", note: null, created_at: ago(90) },
@@ -127,8 +130,16 @@ function quote(b: Json) {
   if (end <= pos) throw new MockError("bad_rank", "Maqsad rank hozirgisidan yuqori bo'lishi kerak");
   let price = 0;
   for (let p = pos; p < end; p++) price += STAR.filter(([s]) => p >= s).pop()![1];
-  const days = Math.max(1, Math.round((end - pos) / 15));
-  return { price, stars: end - pos, days: `${days}–${days + 1}` };
+  const S = state.settings;
+  const extras: Json[] = [];
+  if (b.express) extras.push({ key: "express", label: "Express", percent: S.boost_express_percent });
+  if (b.hero) extras.push({ key: "hero", label: `Qahramon: ${b.hero}`, percent: S.boost_hero_percent });
+  if (b.lane) extras.push({ key: "lane", label: `Liniya: ${b.lane}`, percent: S.boost_lane_percent });
+  extras.forEach((x) => (x.amount = Math.floor((price * x.percent) / 100)));
+  let days = Math.max(1, Math.round((end - pos) / 15));
+  if (b.express) days = Math.max(1, Math.floor(days / 2));
+  const percents = { boost_express_percent: S.boost_express_percent, boost_hero_percent: S.boost_hero_percent, boost_lane_percent: S.boost_lane_percent };
+  return { base: price, extras, price: price + extras.reduce((s, x) => s + x.amount, 0), stars: end - pos, days: `${days}–${days + 1}`, percents };
 }
 
 const CATALOG = {
@@ -405,14 +416,22 @@ on("GET", "/admin/stats", () => ({
   disputes: state.deals.filter((d: Json) => d.status === "disputed").length, donate_review: 0, tg_pending: state.tg.filter((o: Json) => o.status === "processing").length,
   boost_open: state.boosts.filter((b: Json) => ["searching", "disputed"].includes(b.status)).length, topups_today: 4_250_000, donate_today: 1_870_000, balances_total: 18_640_000,
 }));
-const settingsRows = () => [
-  { key: "vip_price_per_day", value: state.settings.vip_price_per_day, min: 0, max: 10_000_000, label: "VIP e'lon narxi (so'm / kun): e'lon ro'yxat tepasida turadi" },
-  { key: "referral_bonus", value: state.settings.referral_bonus, min: 0, max: 10_000_000, label: "Taklif bonusi (so'm): do'st birinchi marta to'ldirganda. 0 — o'chiq" },
-  { key: "referral_min_topup", value: state.settings.referral_min_topup, min: 1_000, max: 100_000_000, label: "Bonus uchun do'stning eng kam to'ldirishi (so'm)" },
+const SPEC: [string, string, string, string, number, number, Json?][] = [
+  ["referral_bonus", "money", "Taklif bonusi (so'm). 0 — o'chiq", "Referal", 0, 10_000_000],
+  ["referral_min_topup", "money", "Bonus uchun do'stning eng kam to'ldirishi (so'm)", "Referal", 1000, 100_000_000],
+  ["vip_price_per_day", "money", "VIP e'lon narxi (so'm / kun)", "Account savdo", 0, 10_000_000],
+  ["rent_deposit_type", "choice", "Ijara depoziti turi", "Account ijara", 0, 0, [{ v: "percent", label: "Ijara narxidan foiz" }, { v: "fixed", label: "Aniq summa" }]],
+  ["rent_deposit_percent", "percent", "Depozit: ijara narxining necha foizi (%)", "Account ijara", 0, 1000],
+  ["rent_deposit_fixed", "money", "Depozit: aniq summa (so'm)", "Account ijara", 0, 100_000_000],
+  ["rent_commission_percent", "percent", "Ijaradan platforma ulushi (%)", "Account ijara", 0, 90],
+  ["boost_express_percent", "percent", "Express boost ustamasi (%)", "Boost", 0, 500],
+  ["boost_hero_percent", "percent", "Qahramon tanlash ustamasi (%)", "Boost", 0, 500],
+  ["boost_lane_percent", "percent", "Liniya tanlash ustamasi (%)", "Boost", 0, 500],
 ];
+const settingsRows = () => SPEC.map(([key, kind, label, group, min, max, choices]) => ({ key, kind, label, group, min, max, choices: choices ?? [], value: state.settings[key] }));
 on("GET", "/admin/settings", settingsRows);
 on("PUT", "/admin/settings", (_m, b) => {
-  if (!(b.value >= 0)) throw new MockError("bad_setting", "Qiymat 0 dan kam bo'lmasin");
+  if (typeof b.value === "number" && !(b.value >= 0)) throw new MockError("bad_setting", "Qiymat 0 dan kam bo'lmasin");
   state.settings[b.key] = b.value;
   return settingsRows();
 });
@@ -491,6 +510,77 @@ on("PUT", "/admin/packages/:id", (m, b) => { const p = PKGS.find((x) => x.id ===
 on("POST", "/admin/tournaments", (_m, b) => { const t = { id: nid(), ...b, players_count: 0, joined: false }; state.tournaments.push(t); return t; });
 on("PUT", "/admin/tournaments/:id", (m, b) => { const t = state.tournaments.find((x: Json) => x.id === +m[1]); Object.assign(t, b); return t; });
 on("GET", "/admin/tournaments/:id/entries", () => [{ user_id: ME, nick: "Aziz", game_id: "84512937", server: "2104", tg_username: "@aziz_demo" }]);
+
+// ---------------------------------------------------------------- ijara
+const HOURS: Record<number, string> = { 12: "12 soat", 24: "24 soat", 72: "3 kun", 168: "1 hafta" };
+const rentListings: Json[] = [
+  { id: 201, owner_id: 2001, game: "ML", title: "Mythic Glory · 210 skin", rank: "Mythic Glory", server: "Asia", skins: 210, heroes: 118, price_per_hour: 8000, description: "Kuchli akkaunt, reytingli o'yinlar uchun.", media: [], status: "active", busy_until: null, created_at: ago(500) },
+  { id: 202, owner_id: 2002, game: "ML", title: "Mythic · 120 skin", rank: "Mythic", server: "Asia", skins: 120, heroes: 85, price_per_hour: 5000, description: "Toza akkaunt.", media: [], status: "active", busy_until: null, created_at: ago(900) },
+  { id: 203, owner_id: 2001, game: "MC", title: "Magic Chess · Master", rank: "Mythic", server: "Asia", skins: 25, heroes: 0, price_per_hour: 3000, description: "", media: [], status: "active", busy_until: new Date(Date.now() + 42 * 60000).toISOString(), created_at: ago(1500) },
+  { id: 204, owner_id: 2002, game: "ML", title: "Legend · 41 skin", rank: "Legend", server: "Asia", skins: 41, heroes: 60, price_per_hour: 3500, description: "", media: [], status: "active", busy_until: null, created_at: ago(2000) },
+  { id: 205, owner_id: ME, game: "ML", title: "Mening Mythic akkauntim", rank: "Mythic", server: "Asia", skins: 98, heroes: 80, price_per_hour: 6000, description: "", media: [], status: "active", busy_until: null, created_at: ago(3000) },
+];
+const rentals: Json[] = [
+  { id: 301, listing_id: 205, renter_id: 2002, owner_id: ME, hours: 12, price: 72_000, deposit: 72_000, commission: 7_200, status: "ended",
+    starts_at: ago(13 * 60), ends_at: ago(60), review_until: new Date(Date.now() + 23 * 3600000).toISOString(), dispute_by: null, dispute_reason: null, resolution: null },
+];
+const rl = (id: number) => { const x = rentListings.find((l) => l.id === id); if (!x) throw new MockError("not_found", "E'lon topilmadi", 404); return x; };
+const rcard = (x: Json) => ({ ...x, cover: null, reject_reason: null, owner_rating: sellers[x.owner_id]?.rating ?? null,
+  busy_until: x.busy_until && Date.parse(x.busy_until) > Date.now() ? x.busy_until : null });
+const rview = (r: Json) => ({ ...r, listing: rcard(rl(r.listing_id)), duration: HOURS[r.hours], role: r.renter_id === ME ? "renter" : "owner",
+  credentials: r.renter_id === ME && r.status === "active" ? "Moonton: rent.demo@gmail.com\nParol: Ijara-Demo-2026\n(namuna)" : null });
+const rentCfg = () => ({ durations: Object.entries(HOURS).map(([h, label]) => ({ hours: +h, label })), ...Object.fromEntries(
+  ["rent_deposit_type", "rent_deposit_percent", "rent_deposit_fixed", "rent_commission_percent"].map((k) => [k, state.settings[k]])) });
+on("GET", "/rent/config", rentCfg);
+on("GET", "/rent/listings", (_m, _b, q) => {
+  const isFree = (x: Json) => !x.busy_until || Date.parse(x.busy_until) <= Date.now();
+  let ls = rentListings.filter((x) => x.status === "active");
+  const all = ls;
+  if (q.get("free")) ls = ls.filter(isFree);
+  if (q.get("rank")) ls = ls.filter((x) => x.rank.startsWith(q.get("rank")!));
+  if (q.get("max_price")) ls = ls.filter((x) => x.price_per_hour <= +q.get("max_price")!);
+  const sort = q.get("sort");
+  ls = [...ls].sort((a, b) => (isFree(a) ? 0 : 1) - (isFree(b) ? 0 : 1) || (sort === "expensive" ? b.price_per_hour - a.price_per_hour : sort === "new" ? b.id - a.id : sort === "skins" ? b.skins - a.skins : a.price_per_hour - b.price_per_hour));
+  return { items: ls.map(rcard), has_more: false, total: ls.length, free: all.filter(isFree).length };
+});
+on("GET", "/rent/listings/:id", (m) => { const x = rl(+m[1]); return { ...rcard(x), owner: sellers[x.owner_id], is_mine: x.owner_id === ME }; });
+on("POST", "/rent/listings", (_m, b) => { const x = { id: nid(), owner_id: ME, ...b, status: "moderation", busy_until: null, created_at: now() }; delete x.credentials; rentListings.unshift(x); return rcard(x); });
+on("PUT", "/rent/listings/:id", (m, b) => { const x = rl(+m[1]); Object.assign(x, b, { status: "moderation" }); delete x.credentials; return rcard(x); });
+on("POST", "/rent/listings/:id/close", (m) => { const x = rl(+m[1]); x.status = "closed"; return rcard(x); });
+on("GET", "/my/rent-listings", () => rentListings.filter((x) => x.owner_id === ME).map(rcard));
+on("POST", "/rent/listings/:id/rent", (m, b) => {
+  const x = rl(+m[1]);
+  if (x.owner_id === ME) throw new MockError("own_listing", "O'z akkauntingizni ijaraga ololmaysiz");
+  if (x.busy_until && Date.parse(x.busy_until) > Date.now()) throw new MockError("bad_state", "Akkaunt hozir band", 409);
+  const S = state.settings;
+  const price = x.price_per_hour * b.hours;
+  const deposit = S.rent_deposit_type === "fixed" ? S.rent_deposit_fixed : Math.floor((price * S.rent_deposit_percent) / 100);
+  money(-(price + deposit), "rent_pay", `Ijara ${HOURS[b.hours]} + depozit`);
+  const r = { id: nid(), listing_id: x.id, renter_id: ME, owner_id: x.owner_id, hours: b.hours, price, deposit, commission: Math.floor((price * S.rent_commission_percent) / 100),
+    status: "active", starts_at: now(), ends_at: new Date(Date.now() + b.hours * 3600000).toISOString(), review_until: null, dispute_by: null, dispute_reason: null, resolution: null };
+  x.busy_until = r.ends_at;
+  rentals.unshift(r);
+  return rview(r);
+});
+on("GET", "/rentals", (_m, _b, q) => rentals.filter((r) => (q.get("role") === "owner" ? r.owner_id : r.renter_id) === ME).map(rview));
+on("GET", "/rentals/:id", (m) => rview(rentals.find((r) => r.id === +m[1])));
+on("POST", "/rentals/:id/confirm", (m) => {
+  const r = rentals.find((x) => x.id === +m[1]);
+  if (r.status !== "ended") throw new MockError("bad_state", "Ijara muddati hali tugamagan", 409);
+  r.status = "completed";
+  money(r.price - r.commission, "rent_payout");
+  rl(r.listing_id).busy_until = null;
+  return rview(r);
+});
+on("POST", "/rentals/:id/dispute", (m, b) => {
+  const r = rentals.find((x) => x.id === +m[1]);
+  r.status = "disputed"; r.dispute_by = r.owner_id === ME ? "owner" : "renter"; r.dispute_reason = b.reason;
+  return rview(r);
+});
+on("GET", "/admin/rent/listings", () => rentListings.filter((x) => x.status === "moderation").map((x) => ({ ...rcard(x), owner: sellers[x.owner_id] })));
+on("POST", "/admin/rent/listings/:id/moderate", (m, b) => { const x = rl(+m[1]); x.status = b.approve ? "active" : "rejected"; return rcard(x); });
+on("GET", "/admin/rentals", () => rentals.filter((r) => r.status === "disputed").map((r) => ({ ...rview(r), credentials: "Moonton: rent.demo@gmail.com" })));
+on("POST", "/admin/rentals/:id/resolve", (m, b) => { const r = rentals.find((x) => x.id === +m[1]); r.status = b.decision === "renter" ? "refunded" : "completed"; r.resolution = b.note; return rview(r); });
 
 export async function mockRequest(method: string, url: string, body: unknown): Promise<unknown> {
   await new Promise((r) => setTimeout(r, 180)); // tarmoq kechikishi taqlidi

@@ -60,14 +60,16 @@ class BoostIn(BaseModel):
     target_rank: str
     target_stars: int = Field(0, ge=0, le=1000)
     lane: str = ""
+    hero: str = Field("", max_length=32)
+    express: bool = False
     note: str = Field("", max_length=500)
     login_method: str = "telegram"
     credentials: str = Field("", max_length=500)
 
 
 @router.post("/boost/quote")
-async def boost_quote(body: BoostIn, user: CurrentUser):
-    return svc.boost_quote(body.model_dump())
+async def boost_quote(body: BoostIn, user: CurrentUser, session: SessionDep):
+    return svc.boost_quote(body.model_dump(), await svc.boost_percents(session))
 
 
 @router.post("/boost/orders")

@@ -1,7 +1,7 @@
 import { StrictMode, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
-import { api, type Me } from "./api";
+import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { api, DEMO, type Me } from "./api";
 import { setLang, t } from "./i18n";
 import Admin from "./pages/Admin";
 import { Arena, TournamentPage, Top } from "./pages/Arena";
@@ -20,6 +20,8 @@ import { initTelegram, startParam, tg } from "./tg";
 import { AppCtx, Empty, errorText, Spinner, useToastHost } from "./ui";
 
 initTelegram();
+if (DEMO) window.prompt = () => "Demo izoh"; // artifact ichida prompt() ishlamaydi
+const Router = DEMO ? MemoryRouter : BrowserRouter;
 
 /** t.me/bot?startapp=listing_15 kabi havolalar bilan to'g'ridan-to'g'ri sahifaga o'tish. */
 function DeepLink() {
@@ -66,6 +68,7 @@ function App() {
     <AppCtx.Provider value={{ me, setMe, refreshMe, toast: show, fail }}>
       <div className="app" key={me.lang}>
         {node}
+        {DEMO && <div className="demo-bar">DEMO · namuna ma'lumotlar · haqiqiy to'lov va yuborish yo'q</div>}
         <DeepLink />
         <Routes>
           <Route path="/" element={<Home />} />
@@ -103,8 +106,8 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter>
+    <Router>
       <App />
-    </BrowserRouter>
+    </Router>
   </StrictMode>,
 );

@@ -33,7 +33,18 @@ function headers(json = true): Record<string, string> {
   return h;
 }
 
+export const DEMO = import.meta.env.VITE_DEMO === "1";
+
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
+  if (DEMO) {
+    const { mockRequest, MockError } = await import("./mock");
+    try {
+      return (await mockRequest(method, url, body)) as T;
+    } catch (e) {
+      if (e instanceof MockError) throw new ApiError(e.code, e.message, e.status);
+      throw e;
+    }
+  }
   let res: Response;
   try {
     res = await fetch("/api" + url, {

@@ -49,6 +49,7 @@ export function haptic(kind: Haptic | "success" | "error" = "light") {
 export function confirmDialog(msg: string): Promise<boolean> {
   return new Promise((resolve) => {
     if (tg?.showConfirm && tg.isVersionAtLeast?.("6.2")) tg.showConfirm(msg, resolve);
+    else if (import.meta.env.VITE_DEMO === "1") resolve(true); // artifact ichida confirm() ishlamaydi
     else resolve(window.confirm(msg));
   });
 }

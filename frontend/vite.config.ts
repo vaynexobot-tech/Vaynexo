@@ -7,5 +7,10 @@ export default defineConfig({
     host: true,
     proxy: { "/api": "http://localhost:8000", "/media": "http://localhost:8000" },
   },
-  build: { target: "es2020", sourcemap: false },
+  build: {
+    target: "es2020",
+    sourcemap: false,
+    // Demo (artifact) uchun hammasi bitta faylga yig'iladi
+    rollupOptions: process.env.VITE_DEMO === "1" ? { output: { inlineDynamicImports: true } } : {},
+  },
 });

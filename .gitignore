@@ -8,3 +8,4 @@ media/
 .pytest_cache/
 dump.rdb
 *.tsbuildinfo
+frontend/dist-demo/

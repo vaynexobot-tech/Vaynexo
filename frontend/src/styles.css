@@ -15,6 +15,8 @@
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: var(--bg); color: var(--txt); }
+:root { color-scheme: dark; }
+.demo-bar { background: var(--y); color: #111; font-size: 11px; font-weight: 700; text-align: center; padding: 5px 12px; letter-spacing: .02em; }
 body { font-family: "Outfit", system-ui, sans-serif; font-size: 14px; line-height: 1.4; overscroll-behavior: none; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -41,7 +43,7 @@ img, video { display: block; max-width: 100%; }
 
 .app { max-width: 520px; margin: 0 auto; min-height: 100dvh; position: relative; }
 .hd {
-  position: sticky; top: 0; z-index: 20; height: 60px; padding: 10px 16px;
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; height: 60px; padding: 10px 16px;
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   background: rgba(13, 14, 19, 0.92); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }

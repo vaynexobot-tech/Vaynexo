@@ -49,9 +49,16 @@ def validate_init_data(init_data: str, bot_token: str, max_age: int = INIT_DATA_
 
 
 def _fernet() -> Fernet:
-    if not settings.encryption_key:
+    key = settings.encryption_key
+    if not key:
         raise RuntimeError("ENCRYPTION_KEY sozlanmagan")
-    return Fernet(settings.encryption_key.encode())
+    try:
+        return Fernet(key.encode())
+    except ValueError:
+        # Fernet formatida bo'lmagan kalit (masalan, hosting yaratgan tasodifiy qiymat) — undan barqaror kalit hosil qilamiz
+        import base64
+
+        return Fernet(base64.urlsafe_b64encode(hashlib.sha256(key.encode()).digest()))
 
 
 def encrypt(text: str) -> str:

@@ -73,6 +73,13 @@ Qoidalar:
 - `REFERRAL_BONUS` — do'sti birinchi marta to'ldirganda taklif qilgan odamga bonus.
 - TG xizmatlar va boost narxlari: `backend/app/services/catalog.py`.
 
+## 5b. Render'da (faqat brauzer orqali, bepul sinov)
+
+`render.yaml` tayyor: Render Dashboard → **New → Blueprint** → GitHub repo → branch `ccr-7522c3ff-d3atc7`.
+Render baza va ilovani o'zi yaratadi; faqat `BOT_TOKEN`, `BOT_USERNAME`, `ADMIN_IDS`, `P2P_CARD_NUMBER`, `P2P_CARD_HOLDER` ni so'raydi.
+Maxfiy kalitlar avtomatik yaratiladi, sayt manzili (`*.onrender.com`) va webhook avtomatik sozlanadi.
+Bepul tarif cheklovlari: 15 daqiqa harakatsizlikda uxlaydi, bepul baza vaqtinchalik, yuklangan rasmlar qayta ishga tushganda o'chadi.
+
 ## 5a. alwaysdata'da (serversiz sinov, yengil rejim)
 
 Redis bo'lmagan kichik hostinglar uchun **yengil rejim** bor: `REDIS_URL` bo'sh bo'lsa API, bot (webhook) va fon ishlari

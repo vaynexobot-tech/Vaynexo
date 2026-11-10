@@ -1,7 +1,9 @@
+import os
+import re
 from functools import lru_cache
 from typing import Annotated
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -63,6 +65,30 @@ class Settings(BaseSettings):
         if isinstance(v, int):
             return [v]
         return v
+
+    @field_validator("database_url", mode="after")
+    @classmethod
+    def _asyncpg_url(cls, v: str) -> str:
+        """Render/Heroku kabi xizmatlar `postgres://...` beradi — asyncpg drayveriga moslaymiz."""
+        v = re.sub(r"^postgres(ql)?://", "postgresql+asyncpg://", v)
+        return re.sub(r"[?&]sslmode=[^&]*", "", v)
+
+    @field_validator("bot_webhook_secret", mode="after")
+    @classmethod
+    def _webhook_secret(cls, v: str) -> str:
+        # Telegram faqat A-Z a-z 0-9 _ - belgilariga ruxsat beradi
+        return re.sub(r"[^A-Za-z0-9_-]", "", v)[:256] or "change-me"
+
+    @model_validator(mode="after")
+    def _platform_defaults(self):
+        # Render saytning tashqi manzilini RENDER_EXTERNAL_URL orqali beradi
+        ext = os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")
+        if ext:
+            if self.webapp_url == "https://example.com":
+                self.webapp_url = ext
+            if not self.bot_webhook_url:
+                self.bot_webhook_url = ext
+        return self
 
 
 @lru_cache

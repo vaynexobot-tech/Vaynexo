@@ -6,19 +6,18 @@ import { BottomBar, BottomNav, dateTime, Empty, Field, GameLogo, Header, Loadabl
 
 export function Arena() {
   const nav = useNavigate();
-  const { me } = useApp();
-  const [status, setStatus] = useState<"open" | "running" | "finished">("open");
+  const [status, setStatus] = useState<"open" | "running">("open");
   const st = useLoad(() => api.get<Tournament[]>(`/tournaments?status=${status}`), [status]);
   return (
     <>
-      <Header title={t("Arena")} sub={t("Turnirlar va konkurslar")} back={false} right={<span className="badge y">🎟 {me?.tickets ?? 0} {t("bilet")}</span>} />
+      <Header title={t("Arena")} sub={t("Turnirlar va konkurslar")} back={false} />
       <div className="page">
-        <Seg value={status} onChange={setStatus} options={[{ v: "open", label: t("Faol") }, { v: "running", label: t("Davom etmoqda") }, { v: "finished", label: t("Tugagan") }]} />
+        <Seg value={status} onChange={setStatus} options={[{ v: "open", label: t("Faol") }, { v: "running", label: t("Davom etmoqda") }]} />
         <Loadable state={st}>
           {(list) => list.length === 0 ? <Empty icon="🏆" text={t("Hozircha turnirlar yo'q")} /> : list.map((x) => <TourCard key={x.id} x={x} onClick={() => nav(`/arena/${x.id}`)} />)}
         </Loadable>
         <div className="card click row between" onClick={() => nav("/top")}>
-          <div><div className="b">🏅 Top 100</div><div className="mut xs">{t("Eng faol donaterlar reytingi")}</div></div>
+          <div><div className="b">🏅 Top 100</div><div className="mut xs">{t("Botda eng ko'p xarid qilganlar reytingi")}</div></div>
           <span className="y">›</span>
         </div>
       </div>
@@ -102,7 +101,7 @@ export function Top() {
   const medal = ["🥇", "🥈", "🥉"];
   return (
     <>
-      <Header title="Top 100" sub={t("Eng yaxshi donaterlar")} />
+      <Header title="Top 100" sub={t("Almaz, xizmatlar va akkauntlarga sarflangan summa bo'yicha")} />
       <div className="page">
         <Seg value={period} onChange={setPeriod} options={[{ v: "week", label: t("Haftalik") }, { v: "month", label: t("Oylik") }, { v: "all", label: t("Hammasi") }]} />
         <Loadable state={st}>

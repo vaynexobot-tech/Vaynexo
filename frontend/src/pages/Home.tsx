@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, type Tournament } from "../api";
 import { t } from "../i18n";
 import { tgPhoto } from "../tg";
-import { BalancePill, BottomNav, Icon, money, som, useApp, useLoad } from "../ui";
+import { BalancePill, BottomNav, GAME_IMG, Icon, money, som, useApp, useLoad } from "../ui";
 
 export default function Home() {
   const nav = useNavigate();
@@ -42,7 +42,7 @@ export default function Home() {
               <span className="mono y bb">{money(tour.prize_fund)} UZS</span>
             </div>
             <div className="hf bb" style={{ fontSize: 20, margin: "12px 0 4px" }}>{tour.title}</div>
-            <div className="mut sm">{t("Har bir donat va xarid uchun bonus biletlar beriladi")} · {t("Sizda {n} bilet", { n: me?.tickets ?? 0 })}</div>
+            <div className="mut sm">{t("Sovrinli turnir — ro'yxatdan o'ting va ishtirok eting")}</div>
             <div className="divider" style={{ margin: "12px 0" }} />
             <div className="row between">
               <span className="mut sm">{tour.players_count} / {tour.max_players} {t("ishtirokchi")}</span>
@@ -72,9 +72,9 @@ export default function Home() {
         <div className="grid2">
           {(["ML", "MC"] as const).map((g) => (
             <div key={g} className="card click" style={{ padding: 10 }} onClick={() => nav(`/donate/${g}`)}>
-              <div className={"game-tile glogo " + g} style={{ width: "100%", height: 100, borderRadius: 14 }}>
+              <div className="game-tile" style={{ width: "100%", height: 120, borderRadius: 14, padding: 0 }}>
+                <img src={GAME_IMG[g]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 25%" }} />
                 <span className="badge y" style={{ position: "absolute", top: 8, right: 8, background: "var(--y)", color: "#111" }}>DONAT</span>
-                <span className="big">{g}</span>
               </div>
               <div className="b" style={{ marginTop: 10 }}>{g === "ML" ? "Mobile Legends" : "Magic Chess"}</div>
               <div className="row between"><span className="g xs b">{t("Almaz")}</span><span className="y"><Icon name="right" size={16} /></span></div>
@@ -104,8 +104,8 @@ export default function Home() {
           <div className="row">
             <div className="iconbtn" style={{ width: 44, height: 44 }}><Icon name="trophy" /></div>
             <div>
-              <div className="b">{t("Top donaterlar")}</div>
-              <div className="mut xs">{t("Top 100 reytingi va yutuqlar")}</div>
+              <div className="b">{t("Top xaridorlar")}</div>
+              <div className="mut xs">{t("Botda eng ko'p xarid qilganlar reytingi")}</div>
             </div>
           </div>
           <span className="mono y b">Top 100 ›</span>

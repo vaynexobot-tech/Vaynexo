@@ -69,9 +69,12 @@ async def home(user: CurrentUser, session: SessionDep):
     return {"balance": user.balance, "tickets": user.tickets, "tournament": S.tournament(t) if t else None}
 
 
+SPEND_KINDS = ("donate", "donate_refund", "tg_service", "tg_refund", "boost", "boost_refund", "deal_pay", "deal_refund")
+
+
 @router.get("/top")
 async def top(user: CurrentUser, session: SessionDep, period: str = "week"):
-    """Top donaterlar: yakunlangan donatlar summasi bo'yicha. 5 daqiqa keshlanadi."""
+    """Top 100: botda sarflangan sof summa bo'yicha (almaz, xizmatlar, akkauntlar). 5 daqiqa keshlanadi."""
     period = period if period in ("week", "month", "all") else "week"
     cache_key = f"top:{period}"
     rows = None
@@ -81,11 +84,13 @@ async def top(user: CurrentUser, session: SessionDep, period: str = "week"):
     except Exception:
         rows = None
     if rows is None:
-        q = select(DonateOrder.user_id, func.sum(DonateOrder.price).label("total")).where(DonateOrder.status == "done")
+        # Botda sarflangan sof summa: almaz, TG xizmatlar, boost, akkaunt xaridi (qaytarilganlari ayiriladi).
+        spent = func.sum(-LedgerEntry.amount)
+        q = select(LedgerEntry.user_id, spent.label("total")).where(LedgerEntry.kind.in_(SPEND_KINDS))
         if period != "all":
             days = 7 if period == "week" else 30
-            q = q.where(DonateOrder.created_at >= datetime.now(timezone.utc) - timedelta(days=days))
-        q = q.group_by(DonateOrder.user_id).order_by(func.sum(DonateOrder.price).desc()).limit(100)
+            q = q.where(LedgerEntry.created_at >= datetime.now(timezone.utc) - timedelta(days=days))
+        q = q.group_by(LedgerEntry.user_id).having(spent > 0).order_by(spent.desc()).limit(100)
         agg = (await session.execute(q)).all()
         users = {u.id: u for u in await session.scalars(select(User).where(User.id.in_([r[0] for r in agg])))} if agg else {}
         rows = [

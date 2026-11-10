@@ -10,6 +10,7 @@ export default defineConfig({
   build: {
     target: "es2020",
     sourcemap: false,
+    assetsInlineLimit: process.env.VITE_DEMO === "1" ? 100_000 : 4096,
     // Demo (artifact) uchun hammasi bitta faylga yig'iladi
     rollupOptions: process.env.VITE_DEMO === "1" ? { output: { inlineDynamicImports: true } } : {},
   },

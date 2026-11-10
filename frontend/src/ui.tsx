@@ -2,7 +2,11 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { ApiError, type Me } from "./api";
 import { t } from "./i18n";
+import mcImg from "./assets/mc.webp";
+import mlImg from "./assets/ml.webp";
 import { haptic, tg } from "./tg";
+
+export const GAME_IMG: Record<string, string> = { ML: mlImg, MC: mcImg };
 
 // ---------------------------------------------------------------- formatlash
 export const money = (n: number) => Math.round(n).toLocaleString("ru-RU").replace(/,/g, " ");
@@ -248,6 +252,7 @@ export function Loadable<T>({ state, children }: { state: { data: T | null; erro
 }
 
 export function GameLogo({ game, size = 44 }: { game: string; size?: number }) {
+  if (GAME_IMG[game]) return <img className="glogo" src={GAME_IMG[game]} alt={game === "ML" ? "Mobile Legends" : "Magic Chess"} style={{ width: size, height: size, objectFit: "cover" }} />;
   return <div className={"glogo " + game} style={{ width: size, height: size, fontSize: size / 3 }}>{game === "UZS" ? "₴" : game}</div>;
 }
 

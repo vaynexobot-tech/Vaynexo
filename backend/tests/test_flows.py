@@ -320,3 +320,18 @@ async def test_admin_changes_referral_bonus(api, client):
     assert await get_balance(700) == 1234
     me = (await api(700).get("/me")).json()
     assert me["referral_bonus"] == 1234 and me["ref_invited"] == 1 and me["ref_paid"] == 1 and me["ref_earned"] == 1234
+
+
+async def test_top_counts_all_spending_minus_refunds(api):
+    set_provider(MockProvider())
+    pkg = await make_package(37_000)
+    await set_balance(95, 500_000)
+    await set_balance(96, 500_000)
+    u = api(95)
+    o = (await u.post("/donate/orders", {"package_id": pkg, "player_id": "84512937", "zone_id": "1"})).json()
+    await run_donate(o["id"])
+    await u.post("/tg/orders", {"kind": "premium", "months": 3, "target_username": "@javohir_ml"})  # 189 000
+    o2 = (await api(96).post("/donate/orders", {"package_id": pkg, "player_id": "01234567", "zone_id": "1"})).json()
+    await run_donate(o2["id"])  # rad etildi -> qaytarildi, reytingga kirmaydi
+    top = (await u.get("/top?period=week")).json()
+    assert [(r["user_id"], r["total"]) for r in top["items"]] == [(95, 37_000 + 189_000)]

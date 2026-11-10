@@ -13,6 +13,7 @@ from app.models import AppSetting
 # kalit: (turi, boshlang'ich qiymat, min, max, izoh)
 SCHEMA: dict[str, tuple[type, object, int, int, str]] = {
     "referral_bonus": (int, None, 0, 10_000_000, "Taklif bonusi (so'm): do'st birinchi marta to'ldirganda. 0 — o'chiq"),
+    "referral_min_topup": (int, 10_000, 1_000, 100_000_000, "Bonus uchun do'stning eng kam to'ldirishi (so'm)"),
 }
 
 

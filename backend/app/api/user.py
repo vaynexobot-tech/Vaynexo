@@ -37,6 +37,7 @@ async def me(user: CurrentUser, session: SessionDep):
         **stats,
         "active_listings": active_listings or 0,
         "referral_bonus": await app_settings.get_value(session, "referral_bonus"),
+        "referral_min_topup": await app_settings.get_value(session, "referral_min_topup"),
         **(await referral_stats(session, user.id)),
         "ref_link": f"https://t.me/{settings.bot_username}?startapp=ref_{user.id}" if settings.bot_username else None,
         "commission_percent": settings.commission_percent,

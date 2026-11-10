@@ -315,7 +315,7 @@ async def test_admin_changes_referral_bonus(api, client):
 
     await set_balance(700, 0)
     h = {"Authorization": "tma " + make_init_data({"id": 701, "first_name": "D"}, start_param="ref_700")}
-    t = (await client.post("/api/wallet/topup", json={"amount": 5_000}, headers=h)).json()
+    t = (await client.post("/api/wallet/topup", json={"amount": 15_000}, headers=h)).json()
     await client.post("/api/p2p/incoming", json={"amount": t["pay_amount"]}, headers={"X-P2P-Secret": "test-secret"})
     assert await get_balance(700) == 1234
     me = (await api(700).get("/me")).json()

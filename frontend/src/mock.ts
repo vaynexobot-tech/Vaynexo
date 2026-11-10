@@ -35,10 +35,10 @@ const state: Json = {
   me: {
     id: ME, name: "Aziz", username: "aziz_demo", rating: 4.8, rating_count: 12, balance: 145_000, tickets: 3, lang: "uz",
     phone: null, ml_id: "84512937", bio: null, is_admin: true, sales: 2, positive_percent: 97, active_listings: 1,
-    referral_bonus: 1234, ref_link: "https://t.me/VaynexoBot?startapp=ref_1001", ref_invited: 3, ref_paid: 1, ref_earned: 1234,
+    referral_bonus: 1234, referral_min_topup: 10_000, ref_link: "https://t.me/VaynexoBot?startapp=ref_1001", ref_invited: 3, ref_paid: 1, ref_earned: 1234,
     commission_percent: 5,
   },
-  settings: { referral_bonus: 1234 },
+  settings: { referral_bonus: 1234, referral_min_topup: 10_000 } as Record<string, number>,
   ledger: [
     { id: 3, amount: -37_000, balance_after: 145_000, kind: "donate", note: null, created_at: ago(90) },
     { id: 2, amount: 1_234, balance_after: 182_000, kind: "referral", note: null, created_at: ago(300) },
@@ -139,7 +139,7 @@ type H = (m: RegExpMatchArray, body: Json, q: URLSearchParams) => Json | Promise
 const routes: [string, RegExp, H][] = [];
 const on = (method: string, path: string, h: H) => routes.push([method, new RegExp("^" + path.replace(/:\w+/g, "([^/]+)") + "$"), h]);
 
-on("GET", "/me", () => ({ ...state.me, referral_bonus: state.settings.referral_bonus }));
+on("GET", "/me", () => ({ ...state.me, referral_bonus: state.settings.referral_bonus, referral_min_topup: state.settings.referral_min_topup }));
 on("PATCH", "/me", (_m, b) => {
   for (const k of ["first_name", "phone", "ml_id", "bio", "lang"]) if (k in b) state.me[k === "first_name" ? "name" : k] = b[k];
   return state.me;
@@ -383,12 +383,14 @@ on("GET", "/admin/stats", () => ({
   disputes: state.deals.filter((d: Json) => d.status === "disputed").length, donate_review: 0, tg_pending: state.tg.filter((o: Json) => o.status === "processing").length,
   boost_open: state.boosts.filter((b: Json) => ["searching", "disputed"].includes(b.status)).length, topups_today: 4_250_000, donate_today: 1_870_000, balances_total: 18_640_000,
 }));
-const settingsRows = () => [{ key: "referral_bonus", value: state.settings.referral_bonus, min: 0, max: 10_000_000, label: "Taklif bonusi (so'm): do'st birinchi marta to'ldirganda. 0 — o'chiq" }];
+const settingsRows = () => [
+  { key: "referral_bonus", value: state.settings.referral_bonus, min: 0, max: 10_000_000, label: "Taklif bonusi (so'm): do'st birinchi marta to'ldirganda. 0 — o'chiq" },
+  { key: "referral_min_topup", value: state.settings.referral_min_topup, min: 1_000, max: 100_000_000, label: "Bonus uchun do'stning eng kam to'ldirishi (so'm)" },
+];
 on("GET", "/admin/settings", settingsRows);
 on("PUT", "/admin/settings", (_m, b) => {
   if (!(b.value >= 0)) throw new MockError("bad_setting", "Qiymat 0 dan kam bo'lmasin");
-  state.settings.referral_bonus = b.value;
-  state.me.referral_bonus = b.value;
+  state.settings[b.key] = b.value;
   return settingsRows();
 });
 on("GET", "/admin/listings", () => state.listings.filter((l: Json) => l.status === "moderation").map(full));

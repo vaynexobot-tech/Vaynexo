@@ -118,7 +118,9 @@ async def _credit_topup(session: AsyncSession, topup: Topup, incoming: IncomingP
     # Referal bonusi: do'sti birinchi marta to'ldirganda.
     user = await session.get(User, topup.user_id)
     bonus = await app_settings.get_value(session, "referral_bonus")
-    if bonus > 0 and user and user.referrer_id and not user.referral_paid:
+    min_topup = await app_settings.get_value(session, "referral_min_topup")
+    # Bonus faqat /start uchun emas: do'st haqiqatan pul to'ldirgandan keyin va kamida min_topup summada.
+    if bonus > 0 and user and user.referrer_id and not user.referral_paid and topup.pay_amount >= min_topup:
         user.referral_paid = True
         await wallet.credit(session, user.referrer_id, bonus, "referral", f"ref:{user.id}", ref_type="user", ref_id=user.id)
         out.user(user.referrer_id, f"🎁 Taklif qilgan do'stingiz hamyonini to'ldirdi. Bonus: +{fmt(bonus)}")

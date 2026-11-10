@@ -91,6 +91,7 @@ export interface Me {
   positive_percent: number | null;
   active_listings: number;
   referral_bonus: number;
+  referral_min_topup: number;
   ref_link: string | null;
   ref_invited: number;
   ref_paid: number;

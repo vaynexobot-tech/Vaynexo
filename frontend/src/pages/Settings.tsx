@@ -87,7 +87,7 @@ export function Referral() {
           <div className="hf bb" style={{ fontSize: 19, margin: "10px 0 4px" }}>{t("Do'stlaringizni taklif qiling")}</div>
           <div className="sm" style={{ color: "#d6dbe8" }}>
             {me.referral_bonus > 0
-              ? <>{t("Do'stingiz birinchi marta hamyonini to'ldirsa, sizga")} <b className="y">{som(me.referral_bonus)}</b> {t("bonus tushadi.")}</>
+              ? <>{t("Do'stingiz ro'yxatdan o'tib, hamyonini kamida {m} to'ldirsa, sizga", { m: som(me.referral_min_topup) })} <b className="y">{som(me.referral_bonus)}</b> {t("bonus tushadi.")}</>
               : t("Hozircha bonus o'chirilgan.")}
           </div>
         </div>
@@ -103,9 +103,11 @@ export function Referral() {
         </div>
         <div className="card col">
           <div className="b">{t("Qanday ishlaydi")}</div>
-          {[t("Havolani do'stingizga yuboring"), t("Do'stingiz shu havola orqali VAYNEXO'ni ochadi"), t("U birinchi marta hamyonini to'ldirgach, bonus avtomatik hamyoningizga tushadi")].map((x, i) => (
+          {[t("Havolani do'stingizga yuboring"), t("Do'stingiz shu havola orqali VAYNEXO'da ro'yxatdan o'tadi"),
+            t("U hamyonini kamida {m} to'ldirgach, bonus avtomatik hamyoningizga tushadi", { m: som(me.referral_min_topup) })].map((x, i) => (
             <div key={i} className="row sm" style={{ alignItems: "flex-start" }}><span className="badge y">{i + 1}</span><span>{x}</span></div>
           ))}
+          <div className="mut xs">{t("Faqat botni ochish (/start) uchun bonus berilmaydi. Bitta do'st uchun bonus bir marta beriladi.")}</div>
         </div>
       </div>
     </>

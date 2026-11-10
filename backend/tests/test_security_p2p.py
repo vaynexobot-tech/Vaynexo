@@ -91,10 +91,16 @@ async def test_referral_bonus_once(api, client):
     await set_balance(500, 0)  # taklif qiluvchi
     raw_with_ref = make_init_data({"id": 501, "first_name": "Do'st"}, start_param="ref_500")
     h = {"Authorization": "tma " + raw_with_ref}
-    for _ in range(2):
-        t = (await client.post("/api/wallet/topup", json={"amount": 5_000}, headers=h)).json()
+    await client.get("/api/me", headers=h)  # faqat /start — bonus yo'q
+    assert await get_balance(500) == 0
+    # Minimal summadan (10 000) kam to'ldirish — bonus yo'q
+    t = (await client.post("/api/wallet/topup", json={"amount": 5_000}, headers=h)).json()
+    await client.post("/api/p2p/incoming", json={"amount": t["pay_amount"]}, headers={"X-P2P-Secret": "test-secret"})
+    assert await get_balance(500) == 0
+    for _ in range(2):  # yetarli to'ldirishlar — bonus faqat bir marta
+        t = (await client.post("/api/wallet/topup", json={"amount": 20_000}, headers=h)).json()
         await client.post("/api/p2p/incoming", json={"amount": t["pay_amount"]}, headers={"X-P2P-Secret": "test-secret"})
-    assert await get_balance(500) == 2_000  # bonus faqat bir marta
+    assert await get_balance(500) == 2_000
 
 
 async def test_withdraw_and_reject(api):

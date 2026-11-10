@@ -49,16 +49,11 @@ export function Settings() {
           <Row icon={<Icon name="bag" />} title={t("Mening bitimlarim")} onClick={() => nav("/deals")} />
           <Row icon={<Icon name="chat" />} title={t("Chatlar")} onClick={() => nav("/chats")} />
           <Row icon={<Icon name="rocket" />} title={t("Boost buyurtmalarim")} onClick={() => nav("/boosts")} />
+          <Row icon={<span className="y"><Icon name="gift" /></span>} title={t("Do'stlarni taklif qilish")}
+            sub={me.referral_bonus > 0 ? t("Har bir do'st uchun {s}", { s: som(me.referral_bonus) }) : undefined}
+            right={<><span className="badge g">+ bonus</span><span className="mut"><Icon name="right" size={18} /></span></>}
+            onClick={() => nav("/referral")} />
         </div>
-
-        {me.ref_link && (
-          <div className="card col">
-            <div className="row"><Icon name="gift" /><div className="b">{t("Do'stlarni taklif qiling")}</div></div>
-            {me.referral_bonus > 0 && <div className="mut sm">{t("Do'stingiz birinchi marta hamyonini to'ldirsa, sizga {s} bonus.", { s: som(me.referral_bonus) })}</div>}
-            <Copy value={me.ref_link} />
-            <button className="btn small ghost" onClick={() => openTg(`https://t.me/share/url?url=${encodeURIComponent(me.ref_link!)}&text=${encodeURIComponent("VAYNEXO — ML almaz, akkaunt savdo va boost 🎮")}`)}>{t("Ulashish")}</button>
-          </div>
-        )}
 
         <div className="card col">
           <div className="row"><Icon name="globe" /><div className="b">{t("Til")}</div></div>
@@ -74,6 +69,45 @@ export function Settings() {
         <div className="mut xs center" onClick={() => toast("VAYNEXO Mini App v1.0")}>VAYNEXO · v1.0</div>
       </div>
       <BottomNav />
+    </>
+  );
+}
+
+export function Referral() {
+  const { me } = useApp();
+  if (!me) return null;
+  const link = me.ref_link;
+  const share = () => link && openTg(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(t("VAYNEXO — ML almaz, akkaunt savdo va boost 🎮"))}`);
+  return (
+    <>
+      <Header title={t("Taklif qilish")} sub={t("Referal tizimi")} />
+      <div className="page">
+        <div className="hero">
+          <span className="badge g">REFERAL</span>
+          <div className="hf bb" style={{ fontSize: 19, margin: "10px 0 4px" }}>{t("Do'stlaringizni taklif qiling")}</div>
+          <div className="sm" style={{ color: "#d6dbe8" }}>
+            {me.referral_bonus > 0
+              ? <>{t("Do'stingiz birinchi marta hamyonini to'ldirsa, sizga")} <b className="y">{som(me.referral_bonus)}</b> {t("bonus tushadi.")}</>
+              : t("Hozircha bonus o'chirilgan.")}
+          </div>
+        </div>
+        <div className="card col">
+          <div className="mut xs">{t("Sizning taklif havolangiz")}</div>
+          {link ? <Copy value={link} /> : <div className="mut sm">{t("Havola tez orada paydo bo'ladi")}</div>}
+          <button className="btn full" disabled={!link} onClick={share}>{t("Telegramda ulashish")}</button>
+        </div>
+        <div className="grid3 center">
+          <div className="card tight"><div className="bb mono">{me.ref_invited}</div><div className="mut xs">{t("Taklif qilingan")}</div></div>
+          <div className="card tight"><div className="bb mono">{me.ref_paid}</div><div className="mut xs">{t("To'ldirgan")}</div></div>
+          <div className="card tight"><div className="bb mono g">{money(me.ref_earned)}</div><div className="mut xs">{t("Bonus, so'm")}</div></div>
+        </div>
+        <div className="card col">
+          <div className="b">{t("Qanday ishlaydi")}</div>
+          {[t("Havolani do'stingizga yuboring"), t("Do'stingiz shu havola orqali VAYNEXO'ni ochadi"), t("U birinchi marta hamyonini to'ldirgach, bonus avtomatik hamyoningizga tushadi")].map((x, i) => (
+            <div key={i} className="row sm" style={{ alignItems: "flex-start" }}><span className="badge y">{i + 1}</span><span>{x}</span></div>
+          ))}
+        </div>
+      </div>
     </>
   );
 }

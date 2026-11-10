@@ -300,3 +300,23 @@ async def test_admin_forbidden_and_ban(api):
     for _ in range(2):  # ikki marta bosilsa ham bir marta
         await api(1).post("/admin/users/6/balance", {"amount": 5_000, "note": "bonus", "request_id": "req-12345"})
     assert await get_balance(6) == 5_000
+
+
+async def test_admin_changes_referral_bonus(api, client):
+    from tests.test_security_p2p import make_init_data
+
+    admin = api(1)
+    rows = (await admin.get("/admin/settings")).json()
+    assert {r["key"]: r["value"] for r in rows}["referral_bonus"] == 2000  # conftest: REFERRAL_BONUS=2000
+    assert (await api(5).put("/admin/settings", {"key": "referral_bonus", "value": 1})).status_code == 403
+    assert (await admin.put("/admin/settings", {"key": "referral_bonus", "value": -5})).status_code == 400
+    r = await admin.put("/admin/settings", {"key": "referral_bonus", "value": 1234})
+    assert {x["key"]: x["value"] for x in r.json()}["referral_bonus"] == 1234
+
+    await set_balance(700, 0)
+    h = {"Authorization": "tma " + make_init_data({"id": 701, "first_name": "D"}, start_param="ref_700")}
+    t = (await client.post("/api/wallet/topup", json={"amount": 5_000}, headers=h)).json()
+    await client.post("/api/p2p/incoming", json={"amount": t["pay_amount"]}, headers={"X-P2P-Secret": "test-secret"})
+    assert await get_balance(700) == 1234
+    me = (await api(700).get("/me")).json()
+    assert me["referral_bonus"] == 1234 and me["ref_invited"] == 1 and me["ref_paid"] == 1 and me["ref_earned"] == 1234

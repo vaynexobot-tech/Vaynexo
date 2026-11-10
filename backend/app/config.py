@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     commission_percent: int = 5  # akkaunt savdosidan platforma ulushi
     withdraw_min: int = 10_000
     escrow_auto_release_hours: int = 48
-    referral_bonus: int = 0  # taklif qilgan odamga do'sti birinchi marta to'ldirganda (so'm), 0 = o'chiq
+    referral_bonus: int = 1234  # boshlang'ich qiymat; keyin admin paneldan o'zgartiriladi (0 = o'chiq)
     stars_rate: int = 220  # 1 Star narxi (so'm)
 
     # --- Donat provayder ---

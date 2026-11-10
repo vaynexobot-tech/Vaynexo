@@ -8,8 +8,20 @@ from sqlalchemy import func, select
 from app.api import schemas as S
 from app.api.deps import CurrentUser, SessionDep, get_redis
 from app.config import settings
-from app.models import BoostOrder, Deal, DonateOrder, Listing, TgOrder, Topup, Tournament, User, Withdrawal
+from app.models import BoostOrder, Deal, DonateOrder, LedgerEntry, Listing, TgOrder, Topup, Tournament, User, Withdrawal
+from app.services import app_settings
 from app.services.market import seller_stats
+
+
+async def referral_stats(session, uid: int) -> dict:
+    invited = await session.scalar(select(func.count()).select_from(User).where(User.referrer_id == uid)) or 0
+    paid = await session.scalar(
+        select(func.count()).select_from(User).where(User.referrer_id == uid, User.referral_paid.is_(True))
+    ) or 0
+    earned = await session.scalar(
+        select(func.coalesce(func.sum(LedgerEntry.amount), 0)).where(LedgerEntry.user_id == uid, LedgerEntry.kind == "referral")
+    ) or 0
+    return {"ref_invited": invited, "ref_paid": paid, "ref_earned": int(earned)}
 
 router = APIRouter(tags=["user"])
 
@@ -24,7 +36,8 @@ async def me(user: CurrentUser, session: SessionDep):
         **S.user_private(user),
         **stats,
         "active_listings": active_listings or 0,
-        "referral_bonus": settings.referral_bonus,
+        "referral_bonus": await app_settings.get_value(session, "referral_bonus"),
+        **(await referral_stats(session, user.id)),
         "ref_link": f"https://t.me/{settings.bot_username}?startapp=ref_{user.id}" if settings.bot_username else None,
         "commission_percent": settings.commission_percent,
     }

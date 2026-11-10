@@ -5,7 +5,7 @@ import { t } from "../i18n";
 import { confirmDialog } from "../tg";
 import { Chips, Copy, dateTime, Empty, Field, Header, Loadable, money, MoneyInput, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
 
-type Tab = "stats" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments";
+type Tab = "stats" | "settings" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments";
 
 export default function Admin() {
   const { me } = useApp();
@@ -16,12 +16,13 @@ export default function Admin() {
       <Header title={t("Admin panel")} right={<span />} />
       <div className="page">
         <Chips value={tab} onChange={setTab} options={[
-          { v: "stats", label: "📊 Statistika" }, { v: "incoming", label: "💳 Kirimlar" }, { v: "withdraw", label: "💸 Yechish" },
+          { v: "stats", label: "📊 Statistika" }, { v: "settings", label: "⚙️ Sozlamalar" }, { v: "incoming", label: "💳 Kirimlar" }, { v: "withdraw", label: "💸 Yechish" },
           { v: "moderation", label: "📝 E'lonlar" }, { v: "disputes", label: "⚖️ Nizolar" }, { v: "donate", label: "💎 Donat" },
           { v: "tg", label: "⭐️ TG" }, { v: "boost", label: "🚀 Boost" }, { v: "users", label: "👥 Foydalanuvchilar" },
           { v: "packages", label: "📦 Paketlar" }, { v: "tournaments", label: "🏆 Turnirlar" },
         ]} />
         {tab === "stats" && <Stats go={setTab} />}
+        {tab === "settings" && <AppSettings />}
         {tab === "incoming" && <Incoming />}
         {tab === "withdraw" && <Withdrawals />}
         {tab === "moderation" && <Moderation />}
@@ -439,5 +440,38 @@ function Tournaments() {
         {entries?.map((e, i) => <div key={e.user_id} className="listrow sm"><span className="mono">{i + 1}.</span><span className="grow"><b>{e.nick}</b> · {e.game_id} ({e.server})<br /><span className="mut xs">{e.tg_username} · user {e.user_id}</span></span></div>)}
       </Sheet>
     </>
+  );
+}
+
+interface SettingRow { key: string; value: number; min: number; max: number; label: string }
+
+function AppSettings() {
+  const { toast, refreshMe } = useApp();
+  const st = useLoad(() => api.get<SettingRow[]>("/admin/settings"));
+  const [draft, setDraft] = useState<Record<string, number | "">>({});
+  const { busy, run } = useAction();
+  return (
+    <Loadable state={st}>
+      {(rows) => (
+        <>
+          {rows.map((r) => {
+            const v = draft[r.key] ?? r.value;
+            return (
+              <div key={r.key} className="card col">
+                <div className="b">{r.label}</div>
+                <div className="mut xs">Hozirgi qiymat: <b className="y">{som(r.value)}</b></div>
+                <MoneyInput value={v} onChange={(x) => setDraft({ ...draft, [r.key]: x })} />
+                <button className="btn full" disabled={busy || v === "" || v === r.value} onClick={() => run(async () => {
+                  st.setData(await api.put<SettingRow[]>("/admin/settings", { key: r.key, value: v }));
+                  setDraft({});
+                  toast("Saqlandi", "ok");
+                  refreshMe();
+                })}>Saqlash</button>
+              </div>
+            );
+          })}
+        </>
+      )}
+    </Loadable>
   );
 }

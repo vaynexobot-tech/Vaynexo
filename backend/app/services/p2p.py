@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.errors import AppError, BadState, NotFound
 from app.models import IncomingPayment, Topup, User
-from app.services import wallet
+from app.services import app_settings, wallet
 from app.services.notify import Outbox, fmt, webapp_button
 
 P2P_LOCK_ID = 7_201_001  # pg_advisory_xact_lock uchun
@@ -117,12 +117,11 @@ async def _credit_topup(session: AsyncSession, topup: Topup, incoming: IncomingP
     out.user(topup.user_id, f"✅ Balans to'ldirildi: +{fmt(topup.pay_amount)}", webapp_button("Hamyonni ochish", "/wallet"))
     # Referal bonusi: do'sti birinchi marta to'ldirganda.
     user = await session.get(User, topup.user_id)
-    if settings.referral_bonus > 0 and user and user.referrer_id and not user.referral_paid:
+    bonus = await app_settings.get_value(session, "referral_bonus")
+    if bonus > 0 and user and user.referrer_id and not user.referral_paid:
         user.referral_paid = True
-        await wallet.credit(
-            session, user.referrer_id, settings.referral_bonus, "referral", f"ref:{user.id}", ref_type="user", ref_id=user.id
-        )
-        out.user(user.referrer_id, f"🎁 Taklif qilgan do'stingiz hamyonini to'ldirdi. Bonus: +{fmt(settings.referral_bonus)}")
+        await wallet.credit(session, user.referrer_id, bonus, "referral", f"ref:{user.id}", ref_type="user", ref_id=user.id)
+        out.user(user.referrer_id, f"🎁 Taklif qilgan do'stingiz hamyonini to'ldirdi. Bonus: +{fmt(bonus)}")
 
 
 async def register_incoming(

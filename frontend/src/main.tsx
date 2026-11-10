@@ -12,7 +12,7 @@ import Donate from "./pages/Donate";
 import Home from "./pages/Home";
 import { ListingDetail, Market } from "./pages/Market";
 import { MyListings, Sell } from "./pages/Sell";
-import { Help, History, Legal, ProfileEdit, Settings } from "./pages/Settings";
+import { Help, History, Legal, ProfileEdit, Referral, Settings } from "./pages/Settings";
 import TgServices from "./pages/TgServices";
 import Wallet from "./pages/Wallet";
 import "./styles.css";
@@ -89,6 +89,7 @@ function App() {
           <Route path="/top" element={<Top />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/profile" element={<ProfileEdit />} />
+          <Route path="/referral" element={<Referral />} />
           <Route path="/history" element={<History />} />
           <Route path="/help" element={<Help />} />
           <Route path="/legal/:doc" element={<Legal />} />

@@ -81,6 +81,9 @@ export interface Me {
   active_listings: number;
   referral_bonus: number;
   ref_link: string | null;
+  ref_invited: number;
+  ref_paid: number;
+  ref_earned: number;
   commission_percent: number;
 }
 export interface Pkg { id: number; game: Game; name: string; diamonds: number; bonus: number; price: number; is_hot: boolean; is_active?: boolean; sku?: string; sort?: number }

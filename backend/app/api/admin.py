@@ -14,7 +14,7 @@ from app.models import (
 )
 from app.queue import enqueue
 from app.services import donate as donate_svc
-from app.services import market, p2p, wallet
+from app.services import app_settings, market, p2p, wallet
 from app.services import services as svc
 from app.services.notify import Outbox
 
@@ -351,3 +351,21 @@ async def update_tournament(t_id: int, body: TournamentIn, admin: AdminUser, ses
 async def entries(t_id: int, admin: AdminUser, session: SessionDep):
     rows = await session.scalars(select(TournamentEntry).where(TournamentEntry.tournament_id == t_id).order_by(TournamentEntry.id))
     return [{"user_id": e.user_id, "nick": e.nick, "game_id": e.game_id, "server": e.server, "tg_username": e.tg_username} for e in rows]
+
+
+# ------------------------------------------------------------------ sozlamalar
+@router.get("/settings")
+async def get_settings(admin: AdminUser, session: SessionDep):
+    return await app_settings.get_all(session)
+
+
+class SettingIn(BaseModel):
+    key: str = Field(max_length=64)
+    value: int
+
+
+@router.put("/settings")
+async def put_setting(body: SettingIn, admin: AdminUser, session: SessionDep):
+    async with session.begin():
+        await app_settings.set_value(session, body.key, body.value)
+    return await app_settings.get_all(session)

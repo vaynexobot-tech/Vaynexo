@@ -2,23 +2,27 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type Tournament } from "../api";
 import { t } from "../i18n";
-import { BottomBar, BottomNav, dateTime, Empty, Field, GameLogo, Header, Loadable, money, Seg, som, Status, useAction, useApp, useLoad } from "../ui";
+import { BottomBar, BottomNav, dateTime, Empty, Field, Header, Icon, Loadable, money, Seg, som, Status, useAction, useApp, useLoad } from "../ui";
 
 export function Arena() {
   const nav = useNavigate();
   const [status, setStatus] = useState<"open" | "running">("open");
   const st = useLoad(() => api.get<Tournament[]>(`/tournaments?status=${status}`), [status]);
+  const myPlace = useLoad(() => api.get<{ items: TopRow[]; me: TopRow | null }>("/top?period=all"));
   return (
     <>
-      <Header title={t("Arena")} sub={t("Turnirlar va konkurslar")} back={false} />
+      <Header title={t("Arena")} sub={t("Turnirlar va konkurslar")} back={false} icon="arena" />
       <div className="page">
         <Seg value={status} onChange={setStatus} options={[{ v: "open", label: t("Faol") }, { v: "running", label: t("Davom etmoqda") }]} />
         <Loadable state={st}>
           {(list) => list.length === 0 ? <Empty icon="🏆" text={t("Hozircha turnirlar yo'q")} /> : list.map((x) => <TourCard key={x.id} x={x} onClick={() => nav(`/arena/${x.id}`)} />)}
         </Loadable>
         <div className="card click row between" onClick={() => nav("/top")}>
-          <div><div className="b">🏅 Top 100</div><div className="mut xs">{t("Botda eng ko'p xarid qilganlar reytingi")}</div></div>
-          <span className="y">›</span>
+          <div className="row">
+            <div className="iconbtn y" style={{ width: 44, height: 44, background: "rgba(255,214,10,.08)" }}><Icon name="trophy" /></div>
+            <div><div className="b">{t("Mening o'rnim")}</div><div className="mut xs">{t("Top 100 reytingida")}</div></div>
+          </div>
+          <div className="row"><div style={{ textAlign: "right" }}><div className="y mono bb">#{myPlace.data?.me?.place ?? "—"}</div><div className="mut xs">{t("o'rin")}</div></div><span className="mut"><Icon name="right" size={16} /></span></div>
         </div>
       </div>
       <BottomNav />
@@ -98,26 +102,47 @@ interface TopRow { place: number; user_id: number; name: string; total: number }
 export function Top() {
   const [period, setPeriod] = useState<"week" | "month" | "all">("week");
   const st = useLoad(() => api.get<{ items: TopRow[]; me: TopRow | null }>(`/top?period=${period}`), [period]);
-  const medal = ["🥇", "🥈", "🥉"];
   return (
     <>
-      <Header title="Top 100" sub={t("Almaz, xizmatlar va akkauntlarga sarflangan summa bo'yicha")} />
+      <Header title="Top 100" sub={t("Botda eng ko'p xarid qilganlar")} />
       <div className="page">
         <Seg value={period} onChange={setPeriod} options={[{ v: "week", label: t("Haftalik") }, { v: "month", label: t("Oylik") }, { v: "all", label: t("Hammasi") }]} />
         <Loadable state={st}>
           {(d) => d.items.length === 0 ? <Empty icon="🏅" text={t("Hali reyting yo'q")} /> : (
             <>
-              {d.me && <div className="card tight row between" style={{ borderColor: "rgba(255,214,10,.4)" }}><span className="b">#{d.me.place} · {t("Siz")}</span><span className="y mono b">{money(d.me.total)}</span></div>}
-              <div className="card">
-                {d.items.map((r) => (
-                  <div key={r.user_id} className="listrow">
-                    <span className="mono b" style={{ width: 34, fontSize: r.place <= 3 ? 20 : 13 }}>{medal[r.place - 1] ?? "#" + r.place}</span>
-                    <GameLogo game="UZS" size={32} />
-                    <span className="grow b ell">{r.name}</span>
-                    <span className="y mono b">{money(r.total)}</span>
-                  </div>
-                ))}
+              <div className="podium">
+                {[1, 0, 2].map((i) => {
+                  const r = d.items[i];
+                  if (!r) return <div key={i} className="pcol" />;
+                  return (
+                    <div key={i} className={"pcol p" + r.place}>
+                      <div className="pava"><Icon name="user" /></div>
+                      <div className="b sm ell" style={{ maxWidth: "100%" }}>{r.name}</div>
+                      <div className="y mono xs b">{money(r.total)}</div>
+                      <div className="pbox hf">{r.place}</div>
+                    </div>
+                  );
+                })}
               </div>
+              {d.items.length > 3 && (
+                <div className="card" style={{ padding: "4px 14px" }}>
+                  {d.items.slice(3).map((r) => (
+                    <div key={r.user_id} className="listrow">
+                      <span className="mono mut" style={{ width: 26 }}>{r.place}</span>
+                      <div className="iconbtn y" style={{ width: 34, height: 34, borderRadius: 17 }}><Icon name="user" size={16} /></div>
+                      <span className="grow b ell">{r.name}</span>
+                      <span className="y mono b">{money(r.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {d.me && (
+                <div className="mebar">
+                  <span className="y mono bb">#{d.me.place}</span>
+                  <span className="grow b">{t("Siz")}</span>
+                  <span className="y mono bb">{money(d.me.total)}</span>
+                </div>
+              )}
             </>
           )}
         </Loadable>

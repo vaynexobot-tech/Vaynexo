@@ -85,7 +85,7 @@ export function Market() {
 
   return (
     <>
-      <Header title={t("Account savdo")} sub={t("Tayyor akkauntlarni sotib oling")} back={false} />
+      <Header title={t("Account savdo")} sub={t("Tayyor akkauntlarni sotib oling")} back={false} icon="grid" />
       <div className="page">
         <div className="grid2">
           <button className="btn small" onClick={() => nav("/sell")}>+ {t("E'lon joylash")}</button>

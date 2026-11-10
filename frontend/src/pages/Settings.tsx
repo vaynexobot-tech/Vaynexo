@@ -22,7 +22,7 @@ export function Settings() {
   };
   return (
     <>
-      <Header title={t("Sozlamalar")} sub={t("Profil va ilova sozlamalari")} back={false} />
+      <Header title={t("Sozlamalar")} sub={t("Profil va ilova sozlamalari")} back={false} icon="settings" />
       <div className="page">
         <div className="card col">
           <div className="row">
@@ -35,9 +35,19 @@ export function Settings() {
             </div>
             <button className="btn small ghost" onClick={() => nav("/profile")}>{t("Tahrirlash")}</button>
           </div>
-          <div className="grid3 center">
-            <div><div className="bb y">{me.rating ?? "—"}</div><div className="mut xs">{t("{n} ta baho", { n: me.rating_count })}</div></div>
+          <div className="row between">
+            <div className="row">
+              <span className="hf bb" style={{ fontSize: 26 }}>{me.rating ?? "—"}</span>
+              <div>
+                <div className="stars">{"★★★★★".slice(0, Math.round(me.rating ?? 0)).padEnd(5, "☆")}</div>
+                <div className="mut xs">{t("{n} ta baho", { n: me.rating_count })}</div>
+              </div>
+            </div>
+            {me.sales >= 5 && <span className="pill-b g">✓ {t("Ishonchli")}</span>}
+          </div>
+          <div className="stat3">
             <div><div className="bb">{me.sales}</div><div className="mut xs">{t("Savdo")}</div></div>
+            <div><div className="bb">{me.active_listings}</div><div className="mut xs">{t("E'lon")}</div></div>
             <div><div className="bb g">{me.positive_percent != null ? me.positive_percent + "%" : "—"}</div><div className="mut xs">{t("Yaxshi baho")}</div></div>
           </div>
         </div>
@@ -45,20 +55,22 @@ export function Settings() {
         <div className="card" style={{ padding: "4px 14px" }}>
           <Row icon={<Icon name="wallet" />} title={t("Hamyon")} sub={som(me.balance)} onClick={() => nav("/wallet")} />
           <Row icon={<Icon name="list" />} title={t("Xaridlar tarixi")} onClick={() => nav("/history")} />
-          <Row icon={<Icon name="doc" />} title={t("Mening e'lonlarim")} sub={t("{n} faol", { n: me.active_listings })} onClick={() => nav("/my-listings")} />
+          <Row icon={<Icon name="doc" />} title={t("Mening e'lonlarim")} right={<><span className="pill-b g">{t("{n} faol", { n: me.active_listings })}</span><span className="mut"><Icon name="right" size={18} /></span></>} onClick={() => nav("/my-listings")} />
           <Row icon={<Icon name="bag" />} title={t("Mening bitimlarim")} onClick={() => nav("/deals")} />
           <Row icon={<Icon name="chat" />} title={t("Chatlar")} onClick={() => nav("/chats")} />
           <Row icon={<Icon name="rocket" />} title={t("Boost buyurtmalarim")} onClick={() => nav("/boosts")} />
           <Row icon={<Icon name="star" />} title={t("TG buyurtmalarim")} onClick={() => nav("/tg/orders")} />
-          <Row icon={<span className="y"><Icon name="gift" /></span>} title={t("Do'stlarni taklif qilish")}
+          <Row icon={<Icon name="gift" />} title={t("Do'stlarni taklif qilish")}
             sub={me.referral_bonus > 0 ? t("Har bir do'st uchun {s}", { s: som(me.referral_bonus) }) : undefined}
-            right={<><span className="badge g">+ bonus</span><span className="mut"><Icon name="right" size={18} /></span></>}
+            right={<><span className="pill-b g">+ bonus</span><span className="mut"><Icon name="right" size={18} /></span></>}
             onClick={() => nav("/referral")} />
         </div>
 
-        <div className="card col">
-          <div className="row"><Icon name="globe" /><div className="b">{t("Til")}</div></div>
-          <Chips value={me.lang} onChange={(v) => setLang(v)} options={[{ v: "uz", label: "O'zbekcha" }, { v: "ru", label: "Русский" }]} />
+        <div className="card" style={{ padding: "4px 14px" }}>
+          <Row icon={<Icon name="globe" />} title={t("Til")}
+            right={<><span className="mut sm">{me.lang === "ru" ? "Русский" : "O'zbekcha"}</span><span className="mut"><Icon name="right" size={18} /></span></>}
+            onClick={() => setLang(me.lang === "ru" ? "uz" : "ru")} />
+          <Row icon={<Icon name="bell" />} title={t("Bildirishnomalar")} sub={t("Buyurtma va to'lov xabarlari botga keladi")} right={<span className="switch on" />} />
         </div>
 
         <div className="card" style={{ padding: "4px 14px" }}>

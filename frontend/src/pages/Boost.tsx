@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api, type Boost as BoostT } from "../api";
 import { t } from "../i18n";
 import { confirmDialog } from "../tg";
-import { BottomBar, Chips, dateTime, Empty, Field, Header, Loadable, money, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
+import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, Header, Loadable, money, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
 
 const DIVS = ["V", "IV", "III", "II", "I"];
 const LANES = ["Gold", "Mid", "EXP", "Jungle", "Roam"];
@@ -67,7 +67,7 @@ export function Boost() {
 
   return (
     <>
-      <Header title={t("Boost xizmati")} sub={t("Rank ko'tarish xizmati")} />
+      <Header title={t("Boost xizmati")} sub={t("Rank ko'tarish xizmati")} back={false} icon="bolt" />
       <div className="page">
         <div className="row between">
           <button className="chip" onClick={() => nav("/boosts")}>{t("Mening buyurtmalarim")}</button>
@@ -132,11 +132,12 @@ export function Boost() {
             <div className="kv"><span>{t("Taxminiy muddat")}</span><span>{t("{d} kun", { d: quote.days })}</span></div>
           </div>
         )}
+        <div className="card total-card row">
+          <div className="grow"><div className="mut xs">{t("Jami narx")}</div><div className="y bb mono" style={{ fontSize: 22 }}>{quote ? som(quote.price) : "—"}</div></div>
+          <button className="btn" disabled={!quote || !!extraInvalid} onClick={() => setConfirm(true)}>{t("Buyurtma berish")}</button>
+        </div>
       </div>
-      <BottomBar>
-        <div className="grow"><div className="mut xs">{t("Jami narx")}</div><div className="y bb mono" style={{ fontSize: 18 }}>{quote ? som(quote.price) : "—"}</div></div>
-        <button className="btn" disabled={!quote || !!extraInvalid} onClick={() => setConfirm(true)}>{t("Davom etish")}</button>
-      </BottomBar>
+      <BottomNav />
       <Sheet open={confirm} onClose={() => setConfirm(false)}>
         <div className="sec-title">{t("Kirish usuli")}</div>
         <div className="col">

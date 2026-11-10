@@ -22,7 +22,6 @@ import { AppCtx, Empty, errorText, Spinner, useToastHost } from "./ui";
 
 initTelegram();
 if (DEMO) window.prompt = () => "Demo izoh"; // artifact ichida prompt() ishlamaydi
-const Router = DEMO ? MemoryRouter : BrowserRouter;
 
 /** t.me/bot?startapp=listing_15 kabi havolalar bilan to'g'ridan-to'g'ri sahifaga o'tish. */
 function DeepLink() {
@@ -115,8 +114,14 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <Router>
-      <App />
-    </Router>
+    {DEMO ? (
+      <MemoryRouter initialEntries={[location.hash.slice(1) || "/"]}>
+        <App />
+      </MemoryRouter>
+    ) : (
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    )}
   </StrictMode>,
 );

@@ -38,7 +38,7 @@ export default function Home() {
         {tour ? (
           <div className="hero">
             <div className="row between">
-              <span className="badge g">● {t("KONKURS")}</span>
+              <span className="badge g">● {t("KONKURS")} · {tour.game === "MC" ? "Magic Chess" : "Mobile Legends"}</span>
               <span className="mono y bb">{money(tour.prize_fund)} UZS</span>
             </div>
             <div className="hf bb" style={{ fontSize: 20, margin: "12px 0 4px" }}>{tour.title}</div>
@@ -60,14 +60,17 @@ export default function Home() {
         <form className="row" onSubmit={(e) => { e.preventDefault(); nav(`/market?q=${encodeURIComponent(q)}`); }}>
           <div className="row grow input" style={{ height: 52, borderRadius: 26, padding: "0 6px 0 16px" }}>
             <span className="mut"><Icon name="search" /></span>
-            <input className="grow" style={{ background: "none", border: 0, outline: "none", height: "100%" }} placeholder={t("Akkaunt qidirish...")} value={q} onChange={(e) => setQ(e.target.value)} />
+            <input className="grow" style={{ background: "none", border: 0, outline: "none", height: "100%" }} placeholder={t("Akkaunt, obuna yoki xizmat qidirish...")} value={q} onChange={(e) => setQ(e.target.value)} />
             <button type="button" className="iconbtn" style={{ borderRadius: 20 }} onClick={() => nav("/market?filter=1")} aria-label={t("Filtr")}><Icon name="filter" /></button>
           </div>
         </form>
 
-        <div>
-          <div className="sec-title">{t("Bo'limlar")}</div>
-          <div className="mut sm">{t("Donat uchun o'yinni tanlang")}</div>
+        <div className="row between" style={{ alignItems: "flex-end" }}>
+          <div>
+            <div className="sec-title">{t("Bo'limlar")}</div>
+            <div className="mut sm">{t("Donat uchun o'yinni tanlang")}</div>
+          </div>
+          <button className="linkbtn y b sm" onClick={() => nav("/market")}>{t("Barchasi")}</button>
         </div>
         <div className="grid2">
           {(["ML", "MC"] as const).map((g) => (
@@ -93,15 +96,6 @@ export default function Home() {
           <button className="btn small ghost" onClick={() => nav("/wallet")}>+ {t("To'ldirish")}</button>
         </div>
 
-        <div className="grid2">
-          <QuickTile icon="bag" title={t("Account savdo")} sub={t("Tayyor akkauntlar")} onClick={() => nav("/market")} />
-          <QuickTile icon="rocket" title={t("Boost")} sub={t("Rank ko'tarish")} onClick={() => nav("/boost")} />
-          <QuickTile icon="user" title={t("Account ijara")} sub={t("Soatbay ijara")} onClick={() => nav("/rent")} />
-          <QuickTile icon="trophy" title={t("Top xaridorlar")} sub="Top 100" onClick={() => nav("/top")} />
-          <QuickTile icon="star" title={t("TG xizmatlar")} sub="Premium · Stars" onClick={() => nav("/tg")} />
-          <QuickTile icon="doc" title={t("E'lon berish")} sub={t("Akkaunt sotish")} onClick={() => nav("/sell")} />
-        </div>
-
         <div className="card click row between" onClick={() => nav("/top")}>
           <div className="row">
             <div className="iconbtn" style={{ width: 44, height: 44 }}><Icon name="trophy" /></div>
@@ -112,18 +106,20 @@ export default function Home() {
           </div>
           <span className="mono y b">Top 100 ›</span>
         </div>
+
+        <div className="card click row between" onClick={() => nav("/sell")}>
+          <div className="row">
+            <div className="hd-ico" style={{ width: 44, height: 44 }}><Icon name="doc" /></div>
+            <div>
+              <div className="b">{t("E'lon berish")}</div>
+              <div className="mut xs">{t("Account sotish uchun e'lon joylang")}</div>
+            </div>
+          </div>
+          <span className="y"><Icon name="right" /></span>
+        </div>
       </div>
       <BottomNav />
     </>
   );
 }
 
-function QuickTile({ icon, title, sub, onClick }: { icon: string; title: string; sub: string; onClick: () => void }) {
-  return (
-    <div className="card click" onClick={onClick}>
-      <span className="y"><Icon name={icon} size={22} /></span>
-      <div className="b" style={{ marginTop: 8 }}>{title}</div>
-      <div className="mut xs">{sub}</div>
-    </div>
-  );
-}

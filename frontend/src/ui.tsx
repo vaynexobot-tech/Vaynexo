@@ -127,6 +127,12 @@ const P: Record<string, ReactNode> = {
   out: <path d="M15 12H3M7 8l-4 4 4 4M13 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" />,
   admin: <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4" />,
   upload: <path d="M12 16V4M7 9l5-5 5 5M4 20h16" />,
+  grid: <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />,
+  bolt: <path d="M13 2 4 14h7l-1 8 9-12h-7z" />,
+  bell: <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0" />,
+  lock: <><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>,
+  clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+  check: <path d="M5 12l5 5L20 7" />,
   send: <path d="M22 2 11 13M22 2l-7 20-4-9-9-4z" />,
 };
 
@@ -152,7 +158,7 @@ export function BalancePill() {
 }
 
 /** Ichki sahifa sarlavhasi. Telegram'ning tizim «Orqaga» tugmasi ham ulanadi. */
-export function Header({ title, sub, right, back = true }: { title: string; sub?: string; right?: ReactNode; back?: boolean }) {
+export function Header({ title, sub, right, back = true, icon }: { title: string; sub?: string; right?: ReactNode; back?: boolean; icon?: string }) {
   const nav = useNavigate();
   const goBack = useCallback(() => (window.history.length > 1 ? nav(-1) : nav("/")), [nav]);
   useEffect(() => {
@@ -172,6 +178,11 @@ export function Header({ title, sub, right, back = true }: { title: string; sub?
             <Icon name="back" />
           </button>
         )}
+        {icon && !back && (
+          <div className="hd-ico">
+            <Icon name={icon} />
+          </div>
+        )}
         <div className="grow">
           <div className="hd-title ell">{title}</div>
           {sub && <div className="mut xs ell">{sub}</div>}
@@ -182,11 +193,40 @@ export function Header({ title, sub, right, back = true }: { title: string; sub?
   );
 }
 
+const TRADE = ["/market", "/rent", "/boost", "/tg"];
+
 export function BottomNav() {
   const { pathname } = useLocation();
+  const trade = TRADE.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  if (trade) {
+    const items = [
+      { to: "/market", icon: "grid", label: t("Account savdo") },
+      { to: "/rent", icon: "bag", label: t("Account ijara") },
+      { to: "/boost", icon: "bolt", label: t("Boost xizmati") },
+      { to: "/tg", icon: "send", label: t("TG xizmatlar") },
+    ];
+    return (
+      <nav className="nav">
+        <div className="nav-in">
+          <NavLink to="/" className="hb" onClick={() => haptic()}>
+            <Icon name="back" />
+            {t("Bosh sahifa")}
+          </NavLink>
+          <div className="pill trade">
+            {items.map((i) => (
+              <NavLink key={i.to} to={i.to} end className={({ isActive }) => "ni" + (isActive ? " on" : "")} onClick={() => haptic()}>
+                <Icon name={i.icon} />
+                {i.label}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      </nav>
+    );
+  }
   const items = [
     { to: "/", icon: "home", label: t("Bosh sahifa") },
-    { to: "/tg", icon: "star", label: t("TG xizmat") },
+    { to: "/wallet", icon: "wallet", label: t("Hamyon") },
     { to: "/arena", icon: "arena", label: t("Arena") },
     { to: "/settings", icon: "settings", label: t("Sozlamalar") },
   ];
@@ -201,7 +241,7 @@ export function BottomNav() {
             </NavLink>
           ))}
         </div>
-        <NavLink to="/market" className={"sv" + (pathname.startsWith("/market") ? " on" : "")} onClick={() => haptic()}>
+        <NavLink to="/market" className="sv" onClick={() => haptic()}>
           <Icon name="bag" />
           {t("Savdo")}
         </NavLink>
@@ -336,7 +376,7 @@ export function Copy({ value, label }: { value: string; label?: string }) {
 export function Row({ icon, title, sub, right, onClick }: { icon?: ReactNode; title: ReactNode; sub?: ReactNode; right?: ReactNode; onClick?: () => void }) {
   return (
     <div className="listrow" onClick={onClick} style={onClick ? { cursor: "pointer" } : undefined}>
-      {icon}
+      {icon && <span className="rowico">{icon}</span>}
       <div className="grow">
         <div className="b ell">{title}</div>
         {sub && <div className="mut sm ell">{sub}</div>}

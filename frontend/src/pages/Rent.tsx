@@ -54,7 +54,7 @@ export function Rent() {
   }, [cat, sort]);
   return (
     <>
-      <Header title={t("Account ijara")} sub={t("Soatbay ijaraga oling")} />
+      <Header title={t("Account ijara")} sub={t("Soatbay ijaraga oling")} back={false} icon="bag" />
       <div className="page">
         <div className="grid2">
           <button className="btn small" onClick={() => nav("/rent/new")}>+ {t("Ijaraga berish")}</button>

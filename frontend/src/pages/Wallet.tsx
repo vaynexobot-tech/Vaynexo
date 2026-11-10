@@ -3,7 +3,7 @@ import { api, type Ledger, type Topup, type Withdrawal } from "../api";
 import { t } from "../i18n";
 import { confirmDialog } from "../tg";
 import {
-  BottomBar, Chips, Copy, dateTime, Empty, Field, Header, Loadable, money, MoneyInput, Seg, som, Status, useAction, useApp, useLoad,
+  BottomBar, BottomNav, Copy, dateTime, Empty, Field, Header, Loadable, money, MoneyInput, Seg, som, Status, useAction, useApp, useLoad,
 } from "../ui";
 
 interface WalletInfo {
@@ -26,8 +26,8 @@ export default function Wallet() {
   const w = useLoad(() => api.get<WalletInfo>("/wallet"));
   return (
     <>
-      <Header title={t("Hamyon")} sub={t("Balans va to'lovlar")} />
-      <div className="page">
+      <Header title={t("Hamyon")} sub={t("Balans va to'lovlar")} back={false} icon="wallet" />
+      <div className="page withbar">
         <div className="hero">
           <div className="mut xs mono">{t("JORIY BALANS")}</div>
           <div className="hf bb" style={{ fontSize: 30 }}>{som(w.data?.balance ?? 0)}</div>
@@ -39,13 +39,21 @@ export default function Wallet() {
           }
         </Loadable>
       </div>
+      <BottomNav />
     </>
   );
 }
 
+const APPS: [string, string, string][] = [
+  ["Click", "C", "#2f6bff"], ["Payme", "P", "#14b8c4"], ["Xazna", "X", "#1f8a5b"], ["Zoomrad", "Z", "#8bc34a"],
+  ["Paynet", "PN", "#16a34a"], ["Beepul", "B", "#f59e0b"], ["Oson", "O", "#2563eb"], ["Uzum", "U", "#7c3aed"],
+  ["Alif", "A", "#4caf50"], ["Humo", "H", "#c9a227"],
+];
+
 function TopupFlow({ info, onDone }: { info: WalletInfo; onDone: () => void }) {
   const { refreshMe, toast } = useApp();
   const [amount, setAmount] = useState<number | "">("");
+  const [app, setApp] = useState("card");
   const [topup, setTopup] = useState<Topup | null>(info.pending_topup);
   const { busy, run } = useAction();
 
@@ -88,32 +96,36 @@ function TopupFlow({ info, onDone }: { info: WalletInfo; onDone: () => void }) {
   const valid = typeof amount === "number" && amount >= info.limits.topup_min && amount <= info.limits.topup_max;
   return (
     <>
-      <div className="card col">
-        <Field label={t("Summa (so'm)")}>
-          <MoneyInput value={amount} onChange={setAmount} placeholder={money(50_000)} />
-        </Field>
-        <Chips value={amount === "" ? null : amount} onChange={setAmount}
-          options={[20_000, 50_000, 100_000, 200_000, 500_000].map((v) => ({ v, label: money(v) }))} />
-        <div className="mut xs">{t("Eng kam: {min} · Eng ko'p: {max}", { min: som(info.limits.topup_min), max: som(info.limits.topup_max) })}</div>
-      </div>
-      <div className="card col">
-        <div className="b">{t("Qanday ishlaydi")}</div>
-        {[
-          t("Summani kiriting — tizim sizga noyob summa beradi (masalan 50 034)"),
-          t("Shu ANIQ summani ko'rsatilgan kartaga o'tkazing (Payme, Click, bank ilovasi)"),
-          t("To'lov avtomatik topiladi va balans 1–3 daqiqada to'ldiriladi"),
-        ].map((s, i) => (
-          <div key={i} className="row" style={{ alignItems: "flex-start" }}>
-            <span className="badge y" style={{ flex: "none" }}>{i + 1}</span>
-            <span className="sm">{s}</span>
-          </div>
+      <div className="sec-title">{t("Summa")}</div>
+      <MoneyInput value={amount} onChange={setAmount} placeholder={`${money(info.limits.topup_min)} – ${money(info.limits.topup_max)} so'm`} />
+      <div className="qgrid">
+        {[20_000, 50_000, 100_000, 200_000].map((v) => (
+          <button key={v} className={"qchip" + (amount === v ? " on" : "")} onClick={() => setAmount(v)}>{v / 1000}k</button>
         ))}
       </div>
-      <BottomBar>
+      <div className="sec-title">{t("To'lov usuli")}</div>
+      <div className="paygrid">
+        {APPS.map(([name, l, c]) => (
+          <button key={name} className={"payopt" + (app === name ? " on" : "")} onClick={() => setApp(name)}>
+            <span className="payico" style={{ background: c }}>{l}</span>
+            <span className="grow b ell">{name}</span>
+            <span className="avto">{t("AVTO")}</span>
+          </button>
+        ))}
+        <button className={"payopt wide" + (app === "card" ? " on" : "")} onClick={() => setApp("card")}>
+          <span className="payico" style={{ background: "var(--y)", color: "#111" }}>—</span>
+          <span className="grow b ell">{t("Istalgan bank karta")}</span>
+          <span className="avto">{t("AVTO")}</span>
+        </button>
+      </div>
+      <div className="note sm">
+        🔒 {t("Istalgan ilova yoki karta orqali kartamizga o'tkazasiz — to'lov avtomatik topiladi va balans 1–3 daqiqada to'ldiriladi. Balansdagi pul faqat VAYNEXO xizmatlari uchun ishlatiladi.")}
+      </div>
+      <BottomBar aboveNav>
         <button className="btn full" disabled={!valid || busy} onClick={() => run(async () => {
           setTopup(await api.post<Topup>("/wallet/topup", { amount }));
         })}>
-          {t("Davom etish")}
+          {t("To'ldirish")}
         </button>
       </BottomBar>
     </>

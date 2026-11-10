@@ -38,7 +38,7 @@ export default function TgServices() {
 
   return (
     <>
-      <Header title={t("TG xizmatlar")} sub={t("Telegram uchun xizmatlar")} back={false} />
+      <Header title={t("TG xizmatlar")} sub={t("Telegram uchun xizmatlar")} back={false} icon="send" />
       <Loadable state={cat}>
         {(c) => {
           const monthly1 = c.premium.find((p) => p.months === 1)?.price ?? 0;

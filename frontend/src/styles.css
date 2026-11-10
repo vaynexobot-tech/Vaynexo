@@ -286,3 +286,23 @@ textarea.input { height: auto; min-height: 90px; padding: 12px 14px; resize: ver
 .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left .15s; }
 .switch.on { background: var(--y); }
 .switch.on::after { left: 23px; background: #111; }
+.balchip { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 700; color: var(--g); background: rgba(29,233,182,.1); border: 1px solid rgba(29,233,182,.3); padding: 3px 9px; border-radius: 999px; cursor: pointer; }
+.kyc-card { border-color: rgba(255, 214, 10, 0.45); background: linear-gradient(135deg, rgba(255,214,10,.08), var(--card)); }
+.pill-b.b { color: var(--b); border-color: rgba(77,163,255,.4); background: rgba(77,163,255,.08); }
+.pill-b.r { color: var(--r); border-color: rgba(255,90,110,.4); background: rgba(255,90,110,.08); }
+.radio { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); flex-shrink: 0; position: relative; }
+.radio.on { border-color: var(--y); }
+.radio.on::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--y); }
+.kycthumb { width: 64px; height: 64px; border-radius: 14px; background: var(--card2); border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; flex-shrink: 0; color: var(--mut); }
+.kycthumb img { width: 100%; height: 100%; object-fit: cover; }
+.dashed-btn { height: 54px; border-radius: 16px; border: 1.5px dashed rgba(255,214,10,.55); background: rgba(255,214,10,.04); color: var(--y); font-weight: 700; }
+.quick5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.quick5 button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 2px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.pinpad { display: flex; flex-direction: column; gap: 14px; padding: 6px 0 4px; }
+.pindots { display: flex; justify-content: center; gap: 16px; }
+.pindots span { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); }
+.pindots span.on { background: var(--y); border-color: var(--y); }
+.pinkeys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 300px; width: 100%; margin: 0 auto; }
+.pinkeys > button, .pinkeys > div > button { height: 58px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); font-size: 22px; font-weight: 700; width: 100%; }
+.pinkeys > div { display: flex; }
+.pinlock { min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; padding: 24px 20px; }

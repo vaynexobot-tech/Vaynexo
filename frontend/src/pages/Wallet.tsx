@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { api, type Ledger, type Topup, type Withdrawal } from "../api";
+import { api, type Ledger, type PayCard, type Topup, type Withdrawal } from "../api";
 import { t } from "../i18n";
 import { confirmDialog } from "../tg";
 import {
-  BottomBar, BottomNav, Copy, dateTime, Empty, Field, Header, Loadable, money, MoneyInput, Seg, som, Status, useAction, useApp, useLoad,
+  BottomBar, BottomNav, Copy, dateTime, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, som, Status, useAction, useApp, useLoad,
 } from "../ui";
 
 interface WalletInfo {
@@ -169,9 +169,16 @@ function WithdrawForm({ info, onDone }: { info: WalletInfo; onDone: () => void }
   const [card, setCard] = useState("");
   const [holder, setHolder] = useState("");
   const list = useLoad(() => api.get<Withdrawal[]>("/wallet/withdrawals"));
+  const cards = useLoad(() => api.get<PayCard[]>("/me/cards"));
+  const [cardId, setCardId] = useState<number | null>(null);
+  useEffect(() => {
+    const def = cards.data?.find((c) => c.is_default);
+    if (def && cardId === null) setCardId(def.id);
+  }, [cards.data]); // eslint-disable-line react-hooks/exhaustive-deps
   const { busy, run } = useAction();
   const digits = card.replace(/\D/g, "");
-  const valid = typeof amount === "number" && amount >= info.limits.withdraw_min && amount <= info.balance && digits.length === 16;
+  const useSaved = cardId !== null && cardId > 0;
+  const valid = typeof amount === "number" && amount >= info.limits.withdraw_min && amount <= info.balance && (useSaved || digits.length === 16);
   return (
     <>
       <div className="card col">
@@ -179,15 +186,36 @@ function WithdrawForm({ info, onDone }: { info: WalletInfo; onDone: () => void }
           <MoneyInput value={amount} onChange={setAmount} placeholder={money(info.limits.withdraw_min)} />
         </Field>
         <button className="chip" style={{ alignSelf: "flex-start" }} onClick={() => setAmount(info.balance)}>{t("Hammasi")}: {money(info.balance)}</button>
-        <Field label={t("Karta raqami (Uzcard / Humo)")}>
-          <input className="input mono" inputMode="numeric" placeholder="8600 0000 0000 0000" value={digits.replace(/(\d{4})(?=\d)/g, "$1 ")} onChange={(e) => setCard(e.target.value.replace(/\D/g, "").slice(0, 16))} />
-        </Field>
-        <Field label={t("Karta egasi")}>
-          <input className="input" placeholder="ISM FAMILIYA" value={holder} onChange={(e) => setHolder(e.target.value.toUpperCase())} maxLength={64} />
-        </Field>
+        {cards.data && cards.data.length > 0 && (
+          <Field label={t("Karta")}>
+            <div className="col">
+              {cards.data.map((c) => (
+                <button key={c.id} className={"payopt" + (cardId === c.id ? " on" : "")} onClick={() => setCardId(c.id)}>
+                  <span className="payico" style={{ background: "#2b2d45" }}><Icon name="card" size={16} /></span>
+                  <span className="grow b">{c.brand} •••• {c.last4}</span>
+                  {c.is_default && <span className="avto">{t("ASOSIY")}</span>}
+                </button>
+              ))}
+              <button className={"payopt" + (cardId === 0 ? " on" : "")} onClick={() => setCardId(0)}>
+                <span className="payico" style={{ background: "#2b2d45" }}>+</span>
+                <span className="grow b">{t("Boshqa karta")}</span>
+              </button>
+            </div>
+          </Field>
+        )}
+        {!useSaved && (
+          <>
+            <Field label={t("Karta raqami (Uzcard / Humo)")}>
+              <input className="input mono" inputMode="numeric" placeholder="8600 0000 0000 0000" value={digits.replace(/(\d{4})(?=\d)/g, "$1 ")} onChange={(e) => setCard(e.target.value.replace(/\D/g, "").slice(0, 16))} />
+            </Field>
+            <Field label={t("Karta egasi")}>
+              <input className="input" placeholder="ISM FAMILIYA" value={holder} onChange={(e) => setHolder(e.target.value.toUpperCase())} maxLength={64} />
+            </Field>
+          </>
+        )}
         <div className="mut xs">{t("Eng kam yechish: {min}. So'rov admin tomonidan 24 soat ichida bajariladi.", { min: som(info.limits.withdraw_min) })}</div>
         <button className="btn full" disabled={!valid || busy} onClick={() => run(async () => {
-          await api.post("/wallet/withdraw", { amount, card_number: digits, card_holder: holder });
+          await api.post("/wallet/withdraw", useSaved ? { amount, card_id: cardId } : { amount, card_number: digits, card_holder: holder });
           toast(t("So'rov yuborildi"), "ok");
           setAmount("");
           await refreshMe();

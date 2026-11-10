@@ -342,3 +342,25 @@ async def resolve_withdrawal(session: AsyncSession, w_id: int, action: str, note
     else:
         raise AppError("bad_action", "Noma'lum amal")
     return w
+
+
+async def tournament_reminders(session: AsyncSession, out: Outbox) -> int:
+    """Boshlanishiga 30 daqiqa qolgan turnir ishtirokchilariga eslatma (o'chirib qo'yish mumkin)."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.services.notify import webapp_button
+
+    now = datetime.now(timezone.utc)
+    tours = list(await session.scalars(
+        select(Tournament).where(
+            Tournament.reminded.is_(False), Tournament.status.in_(("open", "running")),
+            Tournament.starts_at <= now + timedelta(minutes=30), Tournament.starts_at > now - timedelta(minutes=5),
+        ).with_for_update(skip_locked=True)
+    ))
+    for t in tours:
+        t.reminded = True
+        uids = await session.scalars(select(TournamentEntry.user_id).where(TournamentEntry.tournament_id == t.id))
+        for uid in uids:
+            out.user(uid, f"⏰ «{t.title}» turniri 30 daqiqadan keyin boshlanadi. Tayyor turing!",
+                     webapp_button("Turnirni ochish", f"/arena/{t.id}"), kind="tour")
+    return len(tours)

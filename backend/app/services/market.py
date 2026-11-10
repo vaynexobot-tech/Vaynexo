@@ -142,7 +142,7 @@ async def send_message(session: AsyncSession, chat: Chat, sender_id: int | None,
     await session.flush()
     if sender_id is not None:
         to = chat.seller_id if sender_id == chat.buyer_id else chat.buyer_id
-        out.user(to, f"💬 Yangi xabar ({chat.listing.title}):\n{text[:200]}", webapp_button("Javob berish", f"/chat/{chat.id}"))
+        out.user(to, f"💬 Yangi xabar ({chat.listing.title}):\n{text[:200]}", webapp_button("Javob berish", f"/chat/{chat.id}"), kind="chat")
     return msg
 
 

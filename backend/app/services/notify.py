@@ -36,11 +36,39 @@ def webapp_button(text: str, path: str = "") -> dict:
     return {"inline_keyboard": [[{"text": text, "web_app": {"url": settings.webapp_url.rstrip("/") + path}}]]}
 
 
+# O'chirib qo'yish mumkin bo'lgan xabar turlari -> users jadvalidagi ustun
+OPTIONAL_KINDS = {"chat": "notify_chat", "tour": "notify_tour"}
+
+
+async def _muted(pairs: set[tuple[int, str]]) -> set[tuple[int, str]]:
+    """Foydalanuvchi o'chirib qo'ygan ixtiyoriy xabarlar."""
+    if not pairs:
+        return set()
+    from sqlalchemy import select
+
+    from app.db import SessionLocal
+    from app.models import User
+
+    try:
+        async with SessionLocal() as s:
+            rows = (await s.execute(
+                select(User.id, User.notify_chat, User.notify_tour).where(User.id.in_({uid for uid, _ in pairs}))
+            )).all()
+    except Exception:  # baza ishlamasa — yuboraveramiz
+        log.exception("Bildirishnoma sozlamalarini o'qib bo'lmadi")
+        return set()
+    prefs = {r.id: {"notify_chat": r.notify_chat, "notify_tour": r.notify_tour} for r in rows}
+    return {(uid, k) for uid, k in pairs if prefs.get(uid, {}).get(OPTIONAL_KINDS[k], True) is False}
+
+
 class Outbox:
     def __init__(self) -> None:
         self.items: list[tuple[int, str, dict | None]] = []
+        self.kinds: dict[int, str] = {}  # items indeksi -> ixtiyoriy tur
 
-    def user(self, chat_id: int, text: str, markup: dict | None = None) -> None:
+    def user(self, chat_id: int, text: str, markup: dict | None = None, kind: str | None = None) -> None:
+        if kind in OPTIONAL_KINDS:
+            self.kinds[len(self.items)] = kind
         self.items.append((chat_id, text, markup))
 
     def admins(self, text: str, markup: dict | None = None) -> None:
@@ -52,7 +80,11 @@ class Outbox:
 
     async def flush(self) -> None:
         items, self.items = self.items, []
-        for chat_id, text, markup in items:
+        kinds, self.kinds = self.kinds, {}
+        muted = await _muted({(items[i][0], k) for i, k in kinds.items()}) if kinds else set()
+        for i, (chat_id, text, markup) in enumerate(items):
+            if i in kinds and (chat_id, kinds[i]) in muted:
+                continue
             await _sender(chat_id, text, markup)
 
 

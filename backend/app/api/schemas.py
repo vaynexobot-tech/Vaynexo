@@ -14,6 +14,7 @@ def user_public(u: User) -> dict:
         "username": u.username,
         "rating": round(u.rating_sum / u.rating_count, 1) if u.rating_count else None,
         "rating_count": u.rating_count,
+        "verified": u.kyc_status == "verified",
     }
 
 
@@ -27,6 +28,12 @@ def user_private(u: User) -> dict:
         "ml_id": u.ml_id,
         "bio": u.bio,
         "is_admin": u.is_admin,
+        "kyc_status": u.kyc_status,
+        "kyc_note": u.kyc_note,
+        "pin_set": bool(u.pin_hash),
+        "bio_set": bool(u.bio_hash),
+        "notify_chat": u.notify_chat,
+        "notify_tour": u.notify_tour,
     }
 
 

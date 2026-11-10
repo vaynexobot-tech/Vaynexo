@@ -36,7 +36,8 @@ const state: Json = {
     id: ME, name: "Aziz", username: "aziz_demo", rating: 4.8, rating_count: 12, balance: 145_000, tickets: 3, lang: "uz",
     phone: null, ml_id: "84512937", bio: null, is_admin: true, sales: 2, positive_percent: 97, active_listings: 1,
     referral_bonus: 1234, referral_min_topup: 10_000, ref_link: "https://t.me/VaynexoBot?startapp=ref_1001", ref_invited: 3, ref_paid: 1, ref_earned: 1234,
-    commission_percent: 5,
+    commission_percent: 5, kyc_status: "none", kyc_note: null, pin_set: false, bio_set: false, notify_chat: true, notify_tour: true,
+    purchases_count: 7, rent_count: 1,
   },
   settings: {
     referral_bonus: 1234, referral_min_topup: 10_000, vip_price_per_day: 5_000, rent_deposit_type: "percent", rent_deposit_percent: 100,
@@ -170,7 +171,7 @@ const on = (method: string, path: string, h: H) => routes.push([method, new RegE
 
 on("GET", "/me", () => ({ ...state.me, referral_bonus: state.settings.referral_bonus, referral_min_topup: state.settings.referral_min_topup }));
 on("PATCH", "/me", (_m, b) => {
-  for (const k of ["first_name", "phone", "ml_id", "bio", "lang"]) if (k in b) state.me[k === "first_name" ? "name" : k] = b[k];
+  for (const k of ["first_name", "phone", "ml_id", "bio", "lang", "notify_chat", "notify_tour"]) if (k in b) state.me[k === "first_name" ? "name" : k] = b[k];
   return state.me;
 });
 on("GET", "/home", () => ({ balance: state.me.balance, tickets: state.me.tickets, tournament: state.tournaments[0] }));
@@ -222,7 +223,8 @@ on("POST", "/wallet/topup/:id/cancel", (m) => {
 on("POST", "/wallet/withdraw", (_m, b) => {
   if (state.withdrawals.some((w: Json) => w.user_id === ME && w.status === "pending")) throw new MockError("bad_state", "Oldingi so'rovingiz hali ko'rib chiqilmoqda", 409);
   money(-b.amount, "withdraw");
-  const w = { id: nid(), user_id: ME, amount: b.amount, card: b.card_number, card_holder: b.card_holder, status: "pending", admin_note: null, created_at: now() };
+  const saved = b.card_id ? cards.find((c) => c.id === b.card_id) : null;
+  const w = { id: nid(), user_id: ME, amount: b.amount, card: saved ? "000000000000" + saved.last4 : b.card_number, card_holder: saved ? saved.holder : b.card_holder, status: "pending", admin_note: null, created_at: now() };
   state.withdrawals.unshift(w);
   return { ...w, card: "•••• " + w.card.slice(-4) };
 });
@@ -612,6 +614,40 @@ on("GET", "/admin/rent/listings", () => rentListings.filter((x) => x.status === 
 on("POST", "/admin/rent/listings/:id/moderate", (m, b) => { const x = rl(+m[1]); x.status = b.approve ? "active" : "rejected"; return rcard(x); });
 on("GET", "/admin/rentals", () => rentals.filter((r) => r.status === "disputed").map((r) => ({ ...rview(r), credentials: "Moonton: rent.demo@gmail.com" })));
 on("POST", "/admin/rentals/:id/resolve", (m, b) => { const r = rentals.find((x) => x.id === +m[1]); r.status = b.decision === "renter" ? "refunded" : "completed"; r.resolution = b.note; return rview(r); });
+
+// ---------------------------------------------------------------- sozlamalar: KYC, PIN, kartalar, yordam
+const cards: Json[] = [{ id: 1, last4: "4821", brand: "Humo", holder: "AZIZ DEMO", expiry: "12/27", is_default: true }];
+let demoPin: string | null = null;
+on("POST", "/me/kyc", () => { state.me.kyc_status = "pending"; setTimeout(() => { state.me.kyc_status = "verified"; }, 8000); return { kyc_status: "pending" }; });
+on("POST", "/me/pin", (_m, b) => {
+  if (!/^\d{4}$/.test(b.pin)) throw new MockError("bad_pin", "PIN 4 ta raqamdan iborat bo'lsin");
+  if (new Set(b.pin).size === 1 || b.pin === "1234") throw new MockError("weak_pin", "Juda oson PIN. Boshqa raqamlar tanlang");
+  if (demoPin && b.old_pin !== demoPin) throw new MockError("wrong_pin", "Joriy PIN noto'g'ri", 403);
+  demoPin = b.pin; state.me.pin_set = true; state.me.bio_set = false;
+  return { pin_set: true, token: `${ME}.1.${Math.floor(Date.now() / 1000) + 43200}.demo` };
+});
+const checkPin = (pin: string) => { if (pin !== demoPin) throw new MockError("wrong_pin", "PIN noto'g'ri", 403); };
+on("POST", "/me/pin/verify", (_m, b) => { checkPin(b.pin); return { token: `${ME}.1.${Math.floor(Date.now() / 1000) + 43200}.demo` }; });
+on("POST", "/me/pin/remove", (_m, b) => { checkPin(b.pin); demoPin = null; state.me.pin_set = false; state.me.bio_set = false; return {}; });
+on("POST", "/me/pin/bio", (_m, b) => { checkPin(b.pin); state.me.bio_set = true; return { key: "demo" }; });
+on("POST", "/me/pin/bio/off", () => { state.me.bio_set = false; return {}; });
+on("GET", "/me/cards", () => cards);
+on("POST", "/me/cards", (_m, b) => {
+  const n = String(b.number);
+  const brand = n.startsWith("9860") ? "Humo" : n.startsWith("4") ? "Visa" : n.startsWith("5") && !n.startsWith("5614") ? "Mastercard" : "Uzcard";
+  const c = { id: nid(), last4: n.slice(-4), brand, holder: b.holder || "", expiry: b.expiry || "", is_default: cards.length === 0 };
+  cards.push(c);
+  return c;
+});
+on("POST", "/me/cards/:id/default", (m) => { cards.forEach((c) => (c.is_default = c.id === +m[1])); return {}; });
+on("DELETE", "/me/cards/:id", (m) => {
+  const i = cards.findIndex((c) => c.id === +m[1]);
+  const wasDef = cards[i]?.is_default;
+  cards.splice(i, 1);
+  if (wasDef && cards[0]) cards[0].is_default = true;
+  return {};
+});
+on("POST", "/support", () => ({ ok: true }));
 
 export async function mockRequest(method: string, url: string, body: unknown): Promise<unknown> {
   await new Promise((r) => setTimeout(r, 180)); // tarmoq kechikishi taqlidi

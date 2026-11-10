@@ -48,7 +48,7 @@ export function useToastHost() {
 }
 
 export function errorText(e: unknown): string {
-  if (e instanceof ApiError) return e.message;
+  if (e instanceof ApiError) return t(e.message);
   return t("Xatolik yuz berdi");
 }
 

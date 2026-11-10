@@ -11,7 +11,7 @@ from app.config import settings
 from app.db import get_session
 from app.errors import AppError, Forbidden
 from app.models import User
-from app.security import validate_init_data
+from app.security import check_pin_token, validate_init_data
 
 log = logging.getLogger(__name__)
 
@@ -75,6 +75,7 @@ async def current_user(
     session: SessionDep,
     authorization: Annotated[str | None, Header()] = None,
     x_dev_user: Annotated[str | None, Header()] = None,
+    x_pin_token: Annotated[str | None, Header()] = None,
 ) -> User:
     tg: dict | None = None
     if authorization and authorization.startswith("tma "):
@@ -112,7 +113,20 @@ async def current_user(
         await session.commit()
     if user.is_banned:
         raise Forbidden("Hisobingiz bloklangan. Yordam: @vaynexo_support")
+    # PIN o'rnatilgan bo'lsa: pul va ma'lumot o'zgartiradigan har bir so'rov PIN tokenini talab qiladi
+    if user.pin_hash and request.method != "GET" and not _pin_exempt(request) and not check_pin_token(x_pin_token, user.id, user.pin_ver):
+        raise AppError("pin_required", "PIN-kodni kiriting", 403)
     return user
+
+
+_PIN_EXEMPT = ("/api/me/pin", "/api/media", "/api/support")
+
+
+def _pin_exempt(request: Request) -> bool:
+    path = request.url.path
+    if request.method == "PATCH" and path == "/api/me":  # til, profil, bildirishnomalar
+        return True
+    return any(path.startswith(p) for p in _PIN_EXEMPT)
 
 
 CurrentUser = Annotated[User, Depends(current_user)]

@@ -3,12 +3,12 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from app.api import schemas as S
 from app.api.deps import CurrentUser, SessionDep, get_redis
 from app.config import settings
-from app.models import BoostOrder, Deal, DonateOrder, LedgerEntry, Listing, TgOrder, Topup, Tournament, User, Withdrawal
+from app.models import BoostOrder, Deal, DonateOrder, LedgerEntry, Listing, Rental, TgOrder, Topup, Tournament, User, Withdrawal
 from app.services import app_settings
 from app.services.market import seller_stats
 
@@ -41,6 +41,16 @@ async def me(user: CurrentUser, session: SessionDep):
         **(await referral_stats(session, user.id)),
         "ref_link": f"https://t.me/{settings.bot_username}?startapp=ref_{user.id}" if settings.bot_username else None,
         "commission_percent": settings.commission_percent,
+        "purchases_count": await session.scalar(
+            select(func.count()).select_from(LedgerEntry).where(
+                LedgerEntry.user_id == user.id, LedgerEntry.amount < 0, LedgerEntry.kind.in_(SPEND_KINDS)
+            )
+        ) or 0,
+        "rent_count": await session.scalar(
+            select(func.count()).select_from(Rental).where(
+                or_(Rental.owner_id == user.id, Rental.renter_id == user.id), Rental.status == "completed"
+            )
+        ) or 0,
     }
 
 
@@ -49,7 +59,9 @@ class ProfileIn(BaseModel):
     phone: str | None = Field(None, max_length=32)
     ml_id: str | None = Field(None, max_length=32)
     bio: str | None = Field(None, max_length=300)
-    lang: str | None = Field(None, pattern="^(uz|ru)$")
+    lang: str | None = Field(None, pattern="^(uz|ru|en)$")
+    notify_chat: bool | None = None
+    notify_tour: bool | None = None
 
 
 @router.patch("/me")
@@ -57,6 +69,9 @@ async def update_me(body: ProfileIn, user: CurrentUser, session: SessionDep):
     async with session.begin():
         u = await session.get(User, user.id)
         for k, v in body.model_dump(exclude_unset=True).items():
+            if isinstance(v, bool):
+                setattr(u, k, v)
+                continue
             setattr(u, k, (v.strip() if isinstance(v, str) else v) or (None if k != "first_name" else u.first_name))
     return S.user_private(u)
 

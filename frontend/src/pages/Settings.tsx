@@ -2,89 +2,10 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type HistoryItem, type Me } from "../api";
 import { t } from "../i18n";
-import { openTg, tgPhoto } from "../tg";
-import { BottomBar, BottomNav, Chips, Copy, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Row, som, Status, useAction, useApp, useLoad } from "../ui";
+import { openTg } from "../tg";
+import { BottomBar, Chips, Copy, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, som, Status, useAction, useApp, useLoad } from "../ui";
 
 export const SUPPORT = "vaynexo_support";
-
-export function Settings() {
-  const nav = useNavigate();
-  const { me, setMe, toast, fail } = useApp();
-  if (!me) return null;
-  const photo = tgPhoto();
-  const setLang = async (lang: "uz" | "ru") => {
-    try {
-      const u = await api.patch<Me>("/me", { lang });
-      setMe({ ...me, ...u });
-    } catch (e) {
-      fail(e);
-    }
-  };
-  return (
-    <>
-      <Header title={t("Sozlamalar")} sub={t("Profil va ilova sozlamalari")} back={false} icon="settings" />
-      <div className="page">
-        <div className="card col">
-          <div className="row">
-            <div style={{ width: 56, height: 56, borderRadius: "50%", padding: 2, background: "linear-gradient(135deg,#ffd60a,#1de9b6)", flex: "none" }}>
-              {photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", borderRadius: "50%" }} /> : <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "linear-gradient(135deg,#3a2f6b,#e7a84a)" }} />}
-            </div>
-            <div className="grow">
-              <div className="bb" style={{ fontSize: 17 }}>{me.name || "—"}</div>
-              <div className="mut xs mono">ID: {me.id}{me.username ? ` · @${me.username}` : ""}</div>
-            </div>
-            <button className="btn small ghost" onClick={() => nav("/profile")}>{t("Tahrirlash")}</button>
-          </div>
-          <div className="row between">
-            <div className="row">
-              <span className="hf bb" style={{ fontSize: 26 }}>{me.rating ?? "—"}</span>
-              <div>
-                <div className="stars">{"★★★★★".slice(0, Math.round(me.rating ?? 0)).padEnd(5, "☆")}</div>
-                <div className="mut xs">{t("{n} ta baho", { n: me.rating_count })}</div>
-              </div>
-            </div>
-            {me.sales >= 5 && <span className="pill-b g">✓ {t("Ishonchli")}</span>}
-          </div>
-          <div className="stat3">
-            <div><div className="bb">{me.sales}</div><div className="mut xs">{t("Savdo")}</div></div>
-            <div><div className="bb">{me.active_listings}</div><div className="mut xs">{t("E'lon")}</div></div>
-            <div><div className="bb g">{me.positive_percent != null ? me.positive_percent + "%" : "—"}</div><div className="mut xs">{t("Yaxshi baho")}</div></div>
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: "4px 14px" }}>
-          <Row icon={<Icon name="wallet" />} title={t("Hamyon")} sub={som(me.balance)} onClick={() => nav("/wallet")} />
-          <Row icon={<Icon name="list" />} title={t("Xaridlar tarixi")} onClick={() => nav("/history")} />
-          <Row icon={<Icon name="doc" />} title={t("Mening e'lonlarim")} right={<><span className="pill-b g">{t("{n} faol", { n: me.active_listings })}</span><span className="mut"><Icon name="right" size={18} /></span></>} onClick={() => nav("/my-listings")} />
-          <Row icon={<Icon name="bag" />} title={t("Mening bitimlarim")} onClick={() => nav("/deals")} />
-          <Row icon={<Icon name="chat" />} title={t("Chatlar")} onClick={() => nav("/chats")} />
-          <Row icon={<Icon name="rocket" />} title={t("Boost buyurtmalarim")} onClick={() => nav("/boosts")} />
-          <Row icon={<Icon name="star" />} title={t("TG buyurtmalarim")} onClick={() => nav("/tg/orders")} />
-          <Row icon={<Icon name="gift" />} title={t("Do'stlarni taklif qilish")}
-            sub={me.referral_bonus > 0 ? t("Har bir do'st uchun {s}", { s: som(me.referral_bonus) }) : undefined}
-            right={<><span className="pill-b g">+ bonus</span><span className="mut"><Icon name="right" size={18} /></span></>}
-            onClick={() => nav("/referral")} />
-        </div>
-
-        <div className="card" style={{ padding: "4px 14px" }}>
-          <Row icon={<Icon name="globe" />} title={t("Til")}
-            right={<><span className="mut sm">{me.lang === "ru" ? "Русский" : "O'zbekcha"}</span><span className="mut"><Icon name="right" size={18} /></span></>}
-            onClick={() => setLang(me.lang === "ru" ? "uz" : "ru")} />
-          <Row icon={<Icon name="bell" />} title={t("Bildirishnomalar")} sub={t("Buyurtma va to'lov xabarlari botga keladi")} right={<span className="switch on" />} />
-        </div>
-
-        <div className="card" style={{ padding: "4px 14px" }}>
-          <Row icon={<Icon name="help" />} title={t("Yordam")} sub={"@" + SUPPORT + " · 24/7"} onClick={() => nav("/help")} />
-          <Row icon={<Icon name="shield" />} title={t("Foydalanuvchi kelishuvi")} onClick={() => nav("/legal/terms")} />
-          <Row icon={<Icon name="doc" />} title={t("Maxfiylik siyosati")} onClick={() => nav("/legal/privacy")} />
-          {me.is_admin && <Row icon={<span className="y"><Icon name="admin" /></span>} title={<span className="y">{t("Admin panel")}</span>} onClick={() => nav("/admin")} />}
-        </div>
-        <div className="mut xs center" onClick={() => toast("VAYNEXO Mini App v1.0")}>VAYNEXO · v1.0</div>
-      </div>
-      <BottomNav />
-    </>
-  );
-}
 
 export function Referral() {
   const { me } = useApp();
@@ -166,6 +87,14 @@ export function History() {
     <>
       <Header title={t("Xaridlar tarixi")} sub={t("Barcha xaridlaringiz")} />
       <div className="page">
+        <div className="quick5">
+          {[
+            ["bag", t("Bitimlar"), "/deals"], ["chat", t("Chatlar"), "/chats"], ["rocket", "Boost", "/boosts"],
+            ["send", "Telegram", "/tg/orders"], ["clock", t("Ijaralar"), "/rentals"],
+          ].map(([ic, label, to]) => (
+            <button key={to} onClick={() => nav(to)}><span className="rowico y"><Icon name={ic} /></span><span className="xs b">{label}</span></button>
+          ))}
+        </div>
         <Chips value={type} onChange={setType} options={[
           { v: "all", label: t("Hammasi") }, { v: "donate", label: t("Donat") }, { v: "account", label: t("Akkaunt") },
           { v: "boost", label: "Boost" }, { v: "telegram", label: "Telegram" }, { v: "wallet", label: t("Hamyon") },
@@ -208,10 +137,13 @@ const FAQ: [string, string][] = [
 
 export function Help() {
   const [open, setOpen] = useState<number | null>(0);
+  const [text, setText] = useState("");
+  const { toast } = useApp();
+  const { busy, run } = useAction();
   return (
     <>
-      <Header title={t("Yordam")} sub={t("Savollar va qo'llab-quvvatlash")} />
-      <div className="page">
+      <Header title={t("Yordam va aloqa")} sub={t("Savollar va qo'llab-quvvatlash")} />
+      <div className="page withbar">
         <button className="card click row" style={{ color: "inherit", textAlign: "left" }} onClick={() => openTg(`https://t.me/${SUPPORT}`)}>
           <span className="y"><Icon name="chat" size={24} /></span>
           <div className="grow"><div className="b">{t("Operator bilan chat")}</div><div className="mut xs">@{SUPPORT} · 24/7</div></div>
@@ -224,7 +156,17 @@ export function Help() {
             {open === i && <div className="mut sm" style={{ marginTop: 8 }}>{t(a)}</div>}
           </div>
         ))}
+        <Field label={t("Muammoni yozing")}>
+          <textarea className="input" rows={4} maxLength={1500} placeholder={t("Savolingizni batafsil yozing...")} value={text} onChange={(e) => setText(e.target.value)} />
+        </Field>
       </div>
+      <BottomBar>
+        <button className="btn full" disabled={text.trim().length < 5 || busy} onClick={() => run(async () => {
+          await api.post("/support", { text });
+          setText("");
+          toast(t("Xabaringiz yuborildi. Operator tez orada botda javob beradi."), "ok");
+        })}>{t("Yuborish")}</button>
+      </BottomBar>
     </>
   );
 }
@@ -269,12 +211,17 @@ Ma'lumotlar uchinchi shaxslarga sotilmaydi. Faqat buyurtmani bajarish uchun zaru
 Savollar bo'yicha: @vaynexo_support`;
 
 export function Legal() {
+  const nav = useNavigate();
   const doc = useParams().doc;
   const isTerms = doc !== "privacy";
   return (
     <>
-      <Header title={isTerms ? t("Foydalanuvchi kelishuvi") : t("Maxfiylik siyosati")} right={<span />} />
-      <div className="page"><div className="card pre sm" style={{ lineHeight: 1.6 }}>{isTerms ? TERMS : PRIVACY}</div></div>
+      <Header title={t("Qoidalar va shartlar")} right={<span />} />
+      <div className="page">
+        <Seg value={isTerms ? "terms" : "privacy"} onChange={(v) => nav(`/legal/${v}`, { replace: true })}
+          options={[{ v: "terms", label: t("Foydalanuvchi kelishuvi") }, { v: "privacy", label: t("Maxfiylik siyosati") }]} />
+        <div className="card pre sm" style={{ lineHeight: 1.6 }}>{isTerms ? TERMS : PRIVACY}</div>
+      </div>
     </>
   );
 }

@@ -8,7 +8,8 @@ from app.api import schemas as S
 from app.api.deps import CurrentUser, SessionDep, rate_limit
 from app.config import settings
 from app.errors import AppError, NotFound
-from app.models import LedgerEntry, Topup, User, Withdrawal
+from app.models import LedgerEntry, PaymentCard, Topup, User, Withdrawal
+from app.security import decrypt
 from app.services import p2p
 from app.services.notify import Outbox
 from app.services.services import create_withdrawal
@@ -67,15 +68,23 @@ async def cancel_topup(topup_id: int, user: CurrentUser, session: SessionDep):
 
 class WithdrawIn(BaseModel):
     amount: int = Field(gt=0)
-    card_number: str = Field(max_length=32)
+    card_number: str = Field("", max_length=32)
     card_holder: str = Field("", max_length=64)
+    card_id: int | None = None  # saqlangan karta
 
 
 @router.post("/withdraw")
 async def withdraw(body: WithdrawIn, user: CurrentUser, session: SessionDep):
     out = Outbox()
+    number, holder = body.card_number, body.card_holder
+    if body.card_id:
+        card = await session.get(PaymentCard, body.card_id)
+        if not card or card.user_id != user.id:
+            raise AppError("not_found", "Karta topilmadi", 404)
+        number, holder = decrypt(card.number_enc) or "", card.holder
+        await session.commit()
     async with session.begin():
-        w = await create_withdrawal(session, user.id, body.amount, body.card_number, body.card_holder, out)
+        w = await create_withdrawal(session, user.id, body.amount, number, holder, out)
     await out.flush()
     return S.withdrawal(w)
 

@@ -89,6 +89,8 @@ async def cron_auto_release(ctx):
         await svc.boost_auto_confirm(session, out)
     async with SessionLocal() as session, session.begin():
         await rental.tick(session, out)
+    async with SessionLocal() as session, session.begin():
+        await svc.tournament_reminders(session, out)
     await out.flush()
 
 

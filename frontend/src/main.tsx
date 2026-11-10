@@ -1,7 +1,7 @@
 import { StrictMode, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
-import { api, DEMO, type Me } from "./api";
+import { api, DEMO, pinToken, type Me } from "./api";
 import { setLang, t } from "./i18n";
 import Admin from "./pages/Admin";
 import { Arena, TournamentPage, Top } from "./pages/Arena";
@@ -13,7 +13,8 @@ import Home from "./pages/Home";
 import { ListingDetail, Market } from "./pages/Market";
 import { MyRentals, Rent, RentalPage, RentDetail, RentSell } from "./pages/Rent";
 import { MyListings, Sell } from "./pages/Sell";
-import { Help, History, Legal, ProfileEdit, Referral, Settings } from "./pages/Settings";
+import { Help, History, Legal, ProfileEdit, Referral } from "./pages/Settings";
+import { Kyc, PaymentMethods, PinLock, Security, Settings } from "./pages/Account";
 import TgServices, { TgOrderPage, TgOrders } from "./pages/TgServices";
 import Wallet from "./pages/Wallet";
 import "./styles.css";
@@ -49,6 +50,15 @@ function App() {
     setMe(await api.get<Me>("/me"));
   }, [setMe]);
   const fail = useCallback((e: unknown) => show(errorText(e), "err"), [show]);
+  const [locked, setLocked] = useState(false);
+  useEffect(() => {
+    const onReq = () => setLocked(true);
+    window.addEventListener("vx:pin-required", onReq);
+    return () => window.removeEventListener("vx:pin-required", onReq);
+  }, []);
+  useEffect(() => {
+    if (me?.pin_set && !pinToken()) setLocked(true);
+  }, [me?.pin_set]);
 
   useEffect(() => {
     refreshMe().catch((e) => setFatal(errorText(e)));
@@ -63,6 +73,13 @@ function App() {
       </div>
     );
   if (!me) return <Spinner />;
+  if (locked && me.pin_set)
+    return (
+      <div className="app">
+        {node}
+        <PinLock bio={me.bio_set} onUnlock={() => setLocked(false)} />
+      </div>
+    );
 
   return (
     <AppCtx.Provider value={{ me, setMe, refreshMe, toast: show, fail }}>
@@ -101,6 +118,9 @@ function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/profile" element={<ProfileEdit />} />
           <Route path="/referral" element={<Referral />} />
+          <Route path="/kyc" element={<Kyc />} />
+          <Route path="/payment-methods" element={<PaymentMethods />} />
+          <Route path="/security" element={<Security />} />
           <Route path="/history" element={<History />} />
           <Route path="/help" element={<Help />} />
           <Route path="/legal/:doc" element={<Legal />} />

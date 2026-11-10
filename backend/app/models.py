@@ -48,6 +48,16 @@ class User(TimestampMixin, Base):
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
     referrer_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))
     referral_paid: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Identifikatsiya: none | pending | verified | rejected
+    kyc_status: Mapped[str] = mapped_column(String(16), default="none", server_default="none")
+    kyc_note: Mapped[str | None] = mapped_column(String(300))
+    kyc_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Xavfsizlik: PIN (scrypt xeshi), pin_ver o'zgarsa eski tokenlar bekor bo'ladi; biometrik kalit xeshi
+    pin_hash: Mapped[str | None] = mapped_column(String(200))
+    pin_ver: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    bio_hash: Mapped[str | None] = mapped_column(String(128))
+    notify_chat: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    notify_tour: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
 
 class LedgerEntry(TimestampMixin, Base):
@@ -281,6 +291,7 @@ class Tournament(TimestampMixin, Base):
     rules: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(16), default="open", index=True)  # open | running | finished
     players_count: Mapped[int] = mapped_column(Integer, default=0)
+    reminded: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # 30 daqiqa oldin eslatma
 
 
 class TournamentEntry(TimestampMixin, Base):
@@ -366,3 +377,18 @@ class Rental(TimestampMixin, Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     listing: Mapped[RentListing] = relationship(lazy="selectin")
+
+
+class PaymentCard(TimestampMixin, Base):
+    """Pul yechish uchun saqlangan kartalar. Raqam shifrlangan holda saqlanadi."""
+
+    __tablename__ = "payment_cards"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    number_enc: Mapped[str] = mapped_column(Text)
+    last4: Mapped[str] = mapped_column(String(4))
+    brand: Mapped[str] = mapped_column(String(16))
+    holder: Mapped[str] = mapped_column(String(64), default="")
+    expiry: Mapped[str] = mapped_column(String(5), default="")
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)

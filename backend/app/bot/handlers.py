@@ -15,7 +15,7 @@ from app.errors import AppError
 from app.models import BoostOrder, User
 from app.queue import enqueue
 from app.security import decrypt
-from app.services import p2p
+from app.services import account, p2p
 from app.services import services as svc
 from app.services.notify import Outbox, fmt
 
@@ -183,3 +183,25 @@ async def boost_callback(cb: CallbackQuery):
         except Exception:
             pass
     await enqueue("update_boost_post", order_id)
+
+
+@router.callback_query(F.data.startswith("kyc:"))
+async def kyc_callback(cb: CallbackQuery):
+    """Admin identifikatsiya so'rovini tasdiqlaydi yoki rad etadi."""
+    if cb.from_user.id not in settings.admin_ids:
+        await cb.answer("Faqat admin uchun", show_alert=True)
+        return
+    _, action, uid = cb.data.split(":")
+    out = Outbox()
+    try:
+        async with SessionLocal() as session:
+            await account.kyc_resolve(session, int(uid), action == "ok", None, out)
+    except AppError as e:
+        await cb.answer(e.message, show_alert=True)
+        return
+    await out.flush()
+    await cb.answer("Tasdiqlandi ✅" if action == "ok" else "Rad etildi")
+    try:
+        await cb.message.edit_text(cb.message.text + ("\n\n✅ Tasdiqlandi" if action == "ok" else "\n\n❌ Rad etildi"))
+    except Exception:
+        pass

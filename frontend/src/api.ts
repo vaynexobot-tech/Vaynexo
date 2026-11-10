@@ -25,8 +25,34 @@ function localStorageSet(k: string, v: string) {
   }
 }
 
+const PIN_KEY = "vx_pin_token";
+
+/** PIN token: "uid.ver.exp.sig". Muddati o'tgan bo'lsa yo'q deb hisoblanadi. */
+export function pinToken(): string | null {
+  let v: string | null = null;
+  try {
+    v = localStorage.getItem(PIN_KEY);
+  } catch {
+    /* yo'q */
+  }
+  if (!v) return null;
+  const exp = Number(v.split(".")[2]);
+  return exp * 1000 > Date.now() + 60_000 ? v : null;
+}
+
+export function setPinToken(v: string | null) {
+  try {
+    if (v) localStorage.setItem(PIN_KEY, v);
+    else localStorage.removeItem(PIN_KEY);
+  } catch {
+    /* yo'q */
+  }
+}
+
 function headers(json = true): Record<string, string> {
   const h: Record<string, string> = {};
+  const pin = pinToken();
+  if (pin) h["X-Pin-Token"] = pin;
   if (json) h["Content-Type"] = "application/json";
   if (tg?.initData) h["Authorization"] = "tma " + tg.initData;
   else if (devUser) h["X-Dev-User"] = devUser;
@@ -56,7 +82,13 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
     throw new ApiError("network", "Internet aloqasini tekshiring", 0);
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(data.error || "error", data.message || "Xatolik yuz berdi", res.status);
+  if (!res.ok) {
+    if (data.error === "pin_required") {
+      setPinToken(null);
+      window.dispatchEvent(new Event("vx:pin-required"));
+    }
+    throw new ApiError(data.error || "error", data.message || "Xatolik yuz berdi", res.status);
+  }
   return data as T;
 }
 
@@ -65,6 +97,8 @@ export const api = {
   post: <T>(url: string, body: unknown = {}) => request<T>("POST", url, body),
   put: <T>(url: string, body: unknown) => request<T>("PUT", url, body),
   patch: <T>(url: string, body: unknown) => request<T>("PATCH", url, body),
+  del: <T>(url: string) => request<T>("DELETE", url),
+  form: <T>(url: string, fd: FormData) => request<T>("POST", url, fd),
   upload: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
@@ -82,7 +116,7 @@ export interface Me {
   rating_count: number;
   balance: number;
   tickets: number;
-  lang: "uz" | "ru";
+  lang: Lang;
   phone: string | null;
   ml_id: string | null;
   bio: string | null;
@@ -97,7 +131,17 @@ export interface Me {
   ref_paid: number;
   ref_earned: number;
   commission_percent: number;
+  kyc_status: "none" | "pending" | "verified" | "rejected";
+  kyc_note: string | null;
+  pin_set: boolean;
+  bio_set: boolean;
+  notify_chat: boolean;
+  notify_tour: boolean;
+  purchases_count: number;
+  rent_count: number;
 }
+export type Lang = "uz" | "ru" | "en";
+export interface PayCard { id: number; last4: string; brand: string; holder: string; expiry: string; is_default: boolean }
 export interface Pkg { id: number; game: Game; name: string; diamonds: number; bonus: number; price: number; is_hot: boolean; is_active?: boolean; sku?: string; sort?: number }
 export interface DonateOrder { id: number; ref: string; game: Game; title: string; player_id: string; zone_id: string; price: number; status: string; error: string | null; created_at: string; user_id?: number; attempts?: number; provider_ref?: string }
 export interface ListingCard {

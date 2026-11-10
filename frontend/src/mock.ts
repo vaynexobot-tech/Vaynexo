@@ -38,7 +38,8 @@ const state: Json = {
     referral_bonus: 1234, referral_min_topup: 10_000, ref_link: "https://t.me/VaynexoBot?startapp=ref_1001", ref_invited: 3, ref_paid: 1, ref_earned: 1234,
     commission_percent: 5,
   },
-  settings: { referral_bonus: 1234, referral_min_topup: 10_000 } as Record<string, number>,
+  settings: { referral_bonus: 1234, referral_min_topup: 10_000, vip_price_per_day: 5_000 } as Record<string, number>,
+  favs: new Set<number>([12]),
   ledger: [
     { id: 3, amount: -37_000, balance_after: 145_000, kind: "donate", note: null, created_at: ago(90) },
     { id: 2, amount: 1_234, balance_after: 182_000, kind: "referral", note: null, created_at: ago(300) },
@@ -48,6 +49,7 @@ const state: Json = {
   withdrawals: [] as Json[],
   orders: [{ id: 41, ref: "VX-D41", game: "ML", title: "172 almaz", player_id: "84512937", zone_id: "2104", price: 37_000, status: "done", error: null, created_at: ago(90), finished_at: ago(89) }],
   listings: [
+    { id: 10, seller_id: 2001, game: "ML", title: "Mythic Glory · 210 skin", rank: "Mythic Glory", server: "Asia", collection_level: "World Collector", skins: 210, heroes: 118, price: 2_900_000, description: "Eng kuchli akkaunt: 210 skin, 12 ta Collector skin, barcha qahramonlar ochiq.", media: [], status: "active", views: 512, created_at: ago(3000), vip_until: new Date(Date.now() + 3 * 86400000).toISOString() },
     { id: 11, seller_id: 2001, game: "ML", title: "Mythic akkaunt · 120 skin", rank: "Mythic", server: "Asia", collection_level: "Mega Collector", skins: 120, heroes: 85, price: 1_250_000, description: "Moonton bog'langan, 120 skin, 6 ta Legend skin. Pochta va parol to'liq beriladi.", media: [], status: "active", views: 214, created_at: ago(30) },
     { id: 12, seller_id: 2002, game: "ML", title: "Legend akkaunt · 41 skin", rank: "Legend", server: "Asia", collection_level: "Exalted Collector", skins: 41, heroes: 60, price: 540_000, description: "Toza akkaunt, hech qachon bloklanmagan.", media: [], status: "active", views: 88, created_at: ago(120) },
     { id: 13, seller_id: 2001, game: "ML", title: "Epic akkaunt · 18 skin", rank: "Epic", server: "Asia", collection_level: "Senior Collector", skins: 18, heroes: 32, price: 150_000, description: "Boshlash uchun arzon akkaunt.", media: [], status: "active", views: 45, created_at: ago(400) },
@@ -89,6 +91,8 @@ const card = (l: Json) => ({
   id: l.id, game: l.game, title: l.title, rank: l.rank, server: l.server, collection_level: l.collection_level, skins: l.skins,
   heroes: l.heroes, price: l.price, cover: l.media.find((m: Json) => m.type === "image")?.url ?? null, status: l.status,
   created_at: l.created_at, views: l.views, reject_reason: l.reject_reason ?? null,
+  vip: !!l.vip_until && Date.parse(l.vip_until) > Date.now(), vip_until: l.vip_until ?? null, is_fav: state.favs.has(l.id),
+  seller_rating: sellers[l.seller_id]?.rating ?? null,
 });
 const full = (l: Json) => ({ ...card(l), description: l.description, media: l.media, views: l.views, reject_reason: null, seller: sellers[l.seller_id] });
 const listing = (id: number) => {
@@ -234,13 +238,31 @@ on("GET", "/listings", (_m, _b, q) => {
   if (q.get("min_price")) ls = ls.filter((l: Json) => l.price >= +q.get("min_price")!);
   if (q.get("max_price")) ls = ls.filter((l: Json) => l.price <= +q.get("max_price")!);
   if (q.get("min_skins")) ls = ls.filter((l: Json) => l.skins >= +q.get("min_skins")!);
+  if (q.get("favorites") === "true") ls = ls.filter((l: Json) => state.favs.has(l.id));
   const sort = q.get("sort");
-  ls = [...ls].sort((a: Json, b: Json) => (sort === "cheap" ? a.price - b.price : sort === "expensive" ? b.price - a.price : sort === "skins" ? b.skins - a.skins : b.id - a.id));
-  return { items: ls.map(card), has_more: false };
+  const vip = (l: Json) => (l.vip_until && Date.parse(l.vip_until) > Date.now() ? 0 : 1);
+  ls = [...ls].sort((a: Json, b: Json) => vip(a) - vip(b) || (sort === "cheap" ? a.price - b.price : sort === "expensive" ? b.price - a.price : sort === "skins" ? b.skins - a.skins : b.id - a.id));
+  return { items: ls.map(card), has_more: false, total: ls.length };
+});
+on("POST", "/listings/:id/favorite", (m) => {
+  const id = +m[1];
+  if (state.favs.has(id)) state.favs.delete(id);
+  else state.favs.add(id);
+  return { is_fav: state.favs.has(id) };
+});
+on("GET", "/vip/price", () => ({ price_per_day: state.settings.vip_price_per_day }));
+on("POST", "/listings/:id/vip", (m, b) => {
+  const l = listing(+m[1]);
+  if (l.seller_id !== ME) throw new MockError("not_found", "E'lon topilmadi", 404);
+  if (l.status !== "active") throw new MockError("bad_state", "VIP faqat faol (tasdiqlangan) e'longa qo'yiladi", 409);
+  money(-state.settings.vip_price_per_day * b.days, "vip", `VIP ${b.days} kun`);
+  const start = l.vip_until && Date.parse(l.vip_until) > Date.now() ? Date.parse(l.vip_until) : Date.now();
+  l.vip_until = new Date(start + b.days * 86400000).toISOString();
+  return card(l);
 });
 on("GET", "/listings/:id", (m) => {
   const l = listing(+m[1]);
-  return { ...full(l), seller_stats: { sales: 12, positive_percent: 97 }, chat_id: state.chats.find((c: Json) => c.listing_id === l.id && c.buyer_id === ME)?.id ?? null, is_mine: l.seller_id === ME };
+  return { ...full(l), seller_stats: { sales: 12, positive_percent: 97 }, seller_verified: l.seller_id === 2001, chat_id: state.chats.find((c: Json) => c.listing_id === l.id && c.buyer_id === ME)?.id ?? null, is_mine: l.seller_id === ME };
 });
 on("POST", "/listings", (_m, b) => {
   const l = { id: nid(), seller_id: ME, ...b, status: "moderation", views: 0, created_at: now() };
@@ -384,6 +406,7 @@ on("GET", "/admin/stats", () => ({
   boost_open: state.boosts.filter((b: Json) => ["searching", "disputed"].includes(b.status)).length, topups_today: 4_250_000, donate_today: 1_870_000, balances_total: 18_640_000,
 }));
 const settingsRows = () => [
+  { key: "vip_price_per_day", value: state.settings.vip_price_per_day, min: 0, max: 10_000_000, label: "VIP e'lon narxi (so'm / kun): e'lon ro'yxat tepasida turadi" },
   { key: "referral_bonus", value: state.settings.referral_bonus, min: 0, max: 10_000_000, label: "Taklif bonusi (so'm): do'st birinchi marta to'ldirganda. 0 — o'chiq" },
   { key: "referral_min_topup", value: state.settings.referral_min_topup, min: 1_000, max: 100_000_000, label: "Bonus uchun do'stning eng kam to'ldirishi (so'm)" },
 ];

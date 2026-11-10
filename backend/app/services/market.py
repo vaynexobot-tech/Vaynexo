@@ -20,7 +20,8 @@ from app.security import decrypt, encrypt
 from app.services import wallet
 from app.services.notify import Outbox, fmt, webapp_button
 
-SELLER_DELIVER_HOURS = 12  # sotuvchi shu vaqtda ma'lumot bermasa, xaridor bitimni bekor qila oladi
+SELLER_DELIVER_HOURS = 12
+VERIFIED_SALES = 5  # shuncha muvaffaqiyatli savdodan keyin "Tasdiqlangan sotuvchi"  # sotuvchi shu vaqtda ma'lumot bermasa, xaridor bitimni bekor qila oladi
 MAX_MEDIA = 6
 GAMES = ("ML", "MC")
 
@@ -353,3 +354,23 @@ async def seller_stats(session: AsyncSession, user_id: int) -> dict:
     ) or 0
     total = await session.scalar(select(func.count()).select_from(Review).where(Review.to_id == user_id)) or 0
     return {"sales": sales, "positive_percent": round(positive * 100 / total) if total else None}
+
+
+# ------------------------------------------------------------------ VIP e'lon
+async def buy_vip(session: AsyncSession, seller_id: int, listing_id: int, days: int) -> Listing:
+    from app.services import app_settings
+
+    listing = await session.scalar(select(Listing).where(Listing.id == listing_id).with_for_update().execution_options(populate_existing=True))
+    if listing is None or listing.seller_id != seller_id:
+        raise NotFound("E'lon")
+    if listing.status != "active":
+        raise BadState("VIP faqat faol (tasdiqlangan) e'longa qo'yiladi")
+    if not 1 <= days <= 30:
+        raise AppError("bad_days", "1 dan 30 kungacha")
+    price = await app_settings.get_value(session, "vip_price_per_day") * days
+    if price > 0:
+        await wallet.debit(session, seller_id, price, "vip", f"vip:{listing_id}:{_now().timestamp()}", ref_type="listing", ref_id=listing_id,
+                           note=f"VIP {days} kun")
+    start = listing.vip_until if listing.vip_until and listing.vip_until > _now() else _now()
+    listing.vip_until = start + timedelta(days=days)
+    return listing

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api, type ListingCard, type ListingFull, type Media } from "../api";
 import { t } from "../i18n";
 import { confirmDialog } from "../tg";
-import { BottomBar, Chips, Empty, Field, Header, Icon, Loadable, MoneyInput, Seg, Spinner, useAction, useApp, useLoad } from "../ui";
+import { BottomBar, Chips, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Spinner, useAction, useApp, useLoad } from "../ui";
 import { ListingRow } from "./Market";
 
 const RANKS = ["Epic", "Legend", "Mythic", "Mythic Honor", "Mythic Glory", "Mythic Immortal"];
@@ -127,9 +127,35 @@ export function Sell() {
   );
 }
 
+function VipSheet({ x, onClose, onDone }: { x: ListingCard | null; onClose: () => void; onDone: () => void }) {
+  const { me, refreshMe, toast } = useApp();
+  const price = useLoad(() => api.get<{ price_per_day: number }>("/vip/price"));
+  const [days, setDays] = useState(3);
+  const { busy, run } = useAction();
+  const total = (price.data?.price_per_day ?? 0) * days;
+  return (
+    <Sheet open={!!x} onClose={onClose}>
+      <div className="sec-title">⭐ {t("VIP e'lon")}</div>
+      <div className="mut sm">{t("VIP e'lon Account savdo ro'yxatining eng tepasida, sariq ramka bilan turadi. Ko'proq odam ko'radi va tezroq sotiladi.")}</div>
+      {x?.vip && x.vip_until && <div className="card tight sm">{t("Hozir VIP: {d} gacha. Sotib olsangiz muddat uzayadi.", { d: new Date(x.vip_until).toLocaleDateString("ru-RU") })}</div>}
+      <Chips value={days} onChange={setDays} options={[1, 3, 7, 14].map((d) => ({ v: d, label: t("{n} kun", { n: d }) }))} />
+      <div className="kv"><span>{t("Narx")}</span><span>{som(price.data?.price_per_day ?? 0)} × {days}</span></div>
+      <div className="kv"><span>{t("Jami")}</span><span className="y">{som(total)}</span></div>
+      <div className="kv"><span>{t("Balans")}</span><span className={(me?.balance ?? 0) >= total ? "" : "r"}>{som(me?.balance ?? 0)}</span></div>
+      <button className="btn full" disabled={busy || !x || !price.data} onClick={() => run(async () => {
+        await api.post(`/listings/${x!.id}/vip`, { days });
+        toast(t("E'lon VIP qilindi"), "ok");
+        await refreshMe();
+        onDone();
+      })}>{t("VIP qilish")} · {money(total)}</button>
+    </Sheet>
+  );
+}
+
 export function MyListings() {
   const nav = useNavigate();
   const st = useLoad(() => api.get<ListingCard[]>("/my/listings"));
+  const [vipFor, setVipFor] = useState<ListingCard | null>(null);
   const [tab, setTab] = useState<"active" | "moderation" | "sold">("active");
   const { run } = useAction();
   const groups: Record<string, string[]> = { active: ["active", "reserved"], moderation: ["moderation", "rejected"], sold: ["sold", "closed"] };
@@ -157,6 +183,7 @@ export function MyListings() {
                         <span className="mut xs">👁 {x.views} · 💬 {x.chats}</span>
                         {["active", "moderation", "rejected", "closed"].includes(x.status) && (
                           <div className="row" onClick={(e) => e.stopPropagation()}>
+                            {x.status === "active" && <button className="btn small" style={{ background: "#ffb020" }} onClick={() => setVipFor(x)}>⭐ {x.vip ? t("VIP uzaytirish") : t("VIP qilish")}</button>}
                             <button className="btn small ghost" onClick={() => nav(`/sell/${x.id}`)}>{x.status === "closed" ? t("Qayta joylash") : t("Tahrirlash")}</button>
                             {x.status !== "closed" && (
                               <button className="btn small danger" onClick={async () => {
@@ -174,6 +201,7 @@ export function MyListings() {
           }}
         </Loadable>
       </div>
+      <VipSheet x={vipFor} onClose={() => setVipFor(null)} onDone={() => { setVipFor(null); st.reload(); }} />
     </>
   );
 }

@@ -103,12 +103,13 @@ export interface DonateOrder { id: number; ref: string; game: Game; title: strin
 export interface ListingCard {
   id: number; game: Game; title: string; rank: string; server: string; collection_level: string; skins: number; heroes: number;
   price: number; cover: string | null; status: string; created_at: string; views?: number; chats?: number; reject_reason?: string | null;
+  vip?: boolean; vip_until?: string | null; is_fav?: boolean; seller_rating?: number | null;
 }
 export interface Media { type: "image" | "video"; url: string }
 export interface UserPublic { id: number; name: string; username: string | null; rating: number | null; rating_count: number }
 export interface ListingFull extends ListingCard {
   description: string; media: Media[]; views: number; reject_reason: string | null; seller: UserPublic;
-  seller_stats?: { sales: number; positive_percent: number | null }; chat_id?: number | null; is_mine?: boolean;
+  seller_stats?: { sales: number; positive_percent: number | null }; chat_id?: number | null; is_mine?: boolean; seller_verified?: boolean;
 }
 export interface Deal {
   id: number; listing: ListingCard; price: number; commission: number; status: string; role: "buyer" | "seller" | "admin";

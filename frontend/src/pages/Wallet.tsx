@@ -17,7 +17,7 @@ const KIND: Record<string, string> = {
   topup: "Hamyon to'ldirildi", donate: "Almaz donat", donate_refund: "Donat qaytarildi", deal_pay: "Akkaunt xaridi",
   deal_payout: "Akkaunt sotuvi", deal_refund: "Bitim qaytarildi", withdraw: "Pul yechish", withdraw_refund: "Yechish qaytarildi",
   tg_service: "Telegram xizmat", tg_refund: "TG xizmat qaytarildi", boost: "Boost", boost_refund: "Boost qaytarildi",
-  boost_payout: "Boost daromadi", tournament_fee: "Turnir to'lovi", referral: "Taklif bonusi", admin_adjust: "Admin tuzatishi",
+  boost_payout: "Boost daromadi", vip: "VIP e'lon", tournament_fee: "Turnir to'lovi", referral: "Taklif bonusi", admin_adjust: "Admin tuzatishi",
 };
 
 export default function Wallet() {

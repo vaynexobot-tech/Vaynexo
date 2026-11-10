@@ -2,13 +2,14 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, type Deal, type ListingCard, type ListingFull } from "../api";
 import { t } from "../i18n";
+import { haptic } from "../tg";
 import {
-  BottomBar, BottomNav, Chips, Empty, Field, GameLogo, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Spinner, Status,
+  BottomBar, BottomNav, Chips, Empty, Field, GAME_IMG, GameLogo, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Spinner, Status,
   useAction, useApp, useLoad,
 } from "../ui";
 
 const LEVELS = ["Amateur", "Junior", "Senior", "Expert", "Renowned", "Exalted", "Mega", "World"];
-type Cat = "all" | "cheap" | "mid" | "high" | "mythic";
+type Cat = "all" | "fav" | "mythic" | "legend" | "epic" | "cheap" | "skins";
 
 interface Filters {
   game: "" | "ML" | "MC";
@@ -31,7 +32,17 @@ export function Market() {
   const [items, setItems] = useState<ListingCard[] | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [total, setTotal] = useState(0);
   const { fail } = useApp();
+  const toggleFav = async (x: ListingCard) => {
+    haptic();
+    setItems((p) => p && (cat === "fav" ? p.filter((i) => i.id !== x.id) : p.map((i) => (i.id === x.id ? { ...i, is_fav: !i.is_fav } : i))));
+    try {
+      await api.post(`/listings/${x.id}/favorite`);
+    } catch (e) {
+      fail(e);
+    }
+  };
 
   const params = (offset: number) => {
     const p = new URLSearchParams({ sort: f.sort, offset: String(offset), limit: "20" });
@@ -39,10 +50,12 @@ export function Market() {
     if (f.game) p.set("game", f.game);
     if (f.level) p.set("level", f.level);
     let min = f.min_price, max = f.max_price;
-    if (cat === "cheap") max = 200_000;
-    if (cat === "mid") { min = 200_000; max = 1_000_000; }
-    if (cat === "high") min = 1_000_000;
+    if (cat === "cheap") max = 500_000;
     if (cat === "mythic") p.set("rank", "Mythic");
+    if (cat === "legend") p.set("rank", "Legend");
+    if (cat === "epic") p.set("rank", "Epic");
+    if (cat === "skins") p.set("min_skins", "100");
+    if (cat === "fav") p.set("favorites", "true");
     if (min) p.set("min_price", String(min));
     if (max) p.set("max_price", String(max));
     if (f.min_skins) p.set("min_skins", String(f.min_skins));
@@ -52,9 +65,10 @@ export function Market() {
   const load = async (offset = 0) => {
     try {
       if (offset) setLoadingMore(true);
-      const r = await api.get<{ items: ListingCard[]; has_more: boolean }>("/listings?" + params(offset));
+      const r = await api.get<{ items: ListingCard[]; has_more: boolean; total: number }>("/listings?" + params(offset));
       setItems((prev) => (offset ? [...(prev ?? []), ...r.items] : r.items));
       setHasMore(r.has_more);
+      setTotal(r.total);
     } catch (e) {
       fail(e);
       setItems((p) => p ?? []);
@@ -85,17 +99,28 @@ export function Market() {
           <button type="button" className="iconbtn" style={{ width: 48, height: 48 }} onClick={() => setShowFilter(true)} aria-label={t("Filtr")}><Icon name="filter" /></button>
         </form>
         <Chips value={cat} onChange={setCat} options={[
-          { v: "all", label: t("Barchasi") }, { v: "cheap", label: t("Arzon (200k gacha)") }, { v: "mid", label: t("O'rta byudjet") },
-          { v: "high", label: t("Yuqori byudjet") }, { v: "mythic", label: t("Mythic akkauntlar") },
+          { v: "all", label: t("Hammasi") }, { v: "fav", label: "❤️ " + t("Sevimlilar") }, { v: "mythic", label: "Mythic" },
+          { v: "legend", label: "Legend" }, { v: "epic", label: "Epic" }, { v: "cheap", label: t("500k gacha") }, { v: "skins", label: t("100+ skin") },
         ]} />
+        <div className="row between sm">
+          <span className="mut">{t("{n} ta e'lon", { n: total })}</span>
+          <select className="sortsel" aria-label={t("Saralash")} value={f.sort} onChange={(e) => setF({ ...f, sort: e.target.value as Filters["sort"] })}>
+            <option value="new">{t("Eng yangi")}</option>
+            <option value="cheap">{t("Eng arzon")}</option>
+            <option value="expensive">{t("Eng qimmat")}</option>
+            <option value="skins">{t("Eng ko'p skin")}</option>
+          </select>
+        </div>
 
         {items === null ? <Spinner /> : items.length === 0 ? (
-          <Empty icon="🔍" text={t("Hech narsa topilmadi")}>
+          <Empty icon={cat === "fav" ? "❤️" : "🔍"} text={cat === "fav" ? t("Sevimlilar bo'sh. Yoqqan e'londagi ❤️ ni bosing") : t("Hech narsa topilmadi")}>
             <button className="btn small ghost" onClick={() => { setF(EMPTY); setCat("all"); setQ(""); setQuery(""); }}>{t("Filtrni tozalash")}</button>
           </Empty>
         ) : (
           <>
-            {items.map((x) => <ListingRow key={x.id} x={x} onClick={() => nav(`/listing/${x.id}`)} />)}
+            <div className="mgrid">
+              {items.map((x) => <GridCard key={x.id} x={x} onClick={() => nav(`/listing/${x.id}`)} onFav={() => toggleFav(x)} />)}
+            </div>
             {hasMore && <button className="btn ghost full" disabled={loadingMore} onClick={() => load(items.length)}>{loadingMore ? "..." : t("Ko'proq ko'rsatish")}</button>}
           </>
         )}
@@ -106,11 +131,34 @@ export function Market() {
   );
 }
 
+const isNew = (iso: string) => Date.now() - Date.parse(iso) < 24 * 3600 * 1000;
+
+export function GridCard({ x, onClick, onFav }: { x: ListingCard; onClick: () => void; onFav: () => void }) {
+  return (
+    <div className={"gcard" + (x.vip ? " vip" : "")} onClick={onClick}>
+      <div className="gcov">
+        <img src={x.cover ?? GAME_IMG[x.game]} alt="" loading="lazy" />
+        {x.vip ? <span className="gflag vip">VIP</span> : isNew(x.created_at) ? <span className="gflag new">{t("YANGI")}</span> : null}
+        <button className={"gheart" + (x.is_fav ? " on" : "")} aria-label={t("Sevimlilar")} onClick={(e) => { e.stopPropagation(); onFav(); }}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" /></svg>
+        </button>
+        {x.rank && <span className="grank">{x.rank.toUpperCase()}</span>}
+      </div>
+      <div className="gbody">
+        <div className="b ell sm">{x.title}</div>
+        <div className="mut xs ell">{x.skins} skin{x.heroes ? ` · ${x.heroes} ${t("qahr.")}` : ""}{x.game === "MC" ? " · Magic Chess" : ""}</div>
+        <div className="y bb mono" style={{ fontSize: 14 }}>{money(x.price)} <span className="mut xs">{t("so'm")}</span></div>
+        <div className="row between xs"><span className="mut">{x.seller_rating ? `★ ${x.seller_rating}` : t("Yangi sotuvchi")}</span><span className="g">🔒 {t("Garant")}</span></div>
+      </div>
+    </div>
+  );
+}
+
 export function ListingRow({ x, onClick, extra }: { x: ListingCard; onClick?: () => void; extra?: ReactNode }) {
   return (
     <div className="card click" onClick={onClick} style={{ padding: 10 }}>
       <div className="row" style={{ alignItems: "stretch", gap: 12 }}>
-        {x.cover ? <img className="thumb" src={x.cover} alt="" loading="lazy" /> : <div className={"thumb glogo " + x.game} style={{ fontSize: 22 }}>{x.game}</div>}
+        <img className="thumb" src={x.cover ?? GAME_IMG[x.game]} alt="" loading="lazy" />
         <div className="grow col" style={{ gap: 3 }}>
           <div className="row" style={{ gap: 6 }}>
             {x.rank && <span className="badge y">{x.rank.toUpperCase()}</span>}
@@ -162,6 +210,11 @@ export function ListingDetail() {
   const st = useLoad(() => api.get<ListingFull>(`/listings/${id}`), [id]);
   const [buyOpen, setBuyOpen] = useState(false);
   const { busy, run } = useAction();
+  const toggleFav = (l: ListingFull) => run(async () => {
+    haptic();
+    const r = await api.post<{ is_fav: boolean }>(`/listings/${l.id}/favorite`);
+    st.setData({ ...l, is_fav: r.is_fav });
+  });
 
   const openChat = (l: ListingFull) =>
     run(async () => {
@@ -184,10 +237,17 @@ export function ListingDetail() {
                       ? <video key={i} src={m.url} controls playsInline preload="metadata" />
                       : <img key={i} src={m.url} alt="" />)}
                   </div>
-                ) : <div className={"cover glogo " + l.game} style={{ fontSize: 48 }}>{l.game}</div>}
+                ) : <img className="cover" src={GAME_IMG[l.game]} alt="" style={{ objectPosition: "center 25%" }} />}
                 <div className="row" style={{ gap: 6 }}>
+                  {l.vip && <span className="badge" style={{ background: "#ffb020", color: "#111" }}>VIP</span>}
                   {l.rank && <span className="badge y">{l.rank.toUpperCase()}</span>}
                   <span className="badge m mono">#VX-{l.id}</span>
+                  {!l.is_mine && (
+                    <button className={"gheart" + (l.is_fav ? " on" : "")} style={{ position: "static", marginLeft: "auto", background: "var(--card)", border: "1px solid var(--line)" }}
+                      aria-label={t("Sevimlilar")} disabled={busy} onClick={() => toggleFav(l)}>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" /></svg>
+                    </button>
+                  )}
                   {l.status !== "active" && <Status s={l.status} />}
                 </div>
                 <div>
@@ -210,7 +270,7 @@ export function ListingDetail() {
                       {l.seller.rating ? `★ ${l.seller.rating} (${l.seller.rating_count})` : t("Hali baho yo'q")} · {t("{n} ta savdo", { n: l.seller_stats?.sales ?? 0 })}
                     </div>
                   </div>
-                  <span className="badge g">GARANT</span>
+                  {l.seller_verified ? <span className="badge g">✔ {t("Tasdiqlangan")}</span> : <span className="badge g">GARANT</span>}
                 </div>
                 <div className="card tight sm mut">
                   🔒 {t("Garant: to'lov VAYNEXO'da saqlanadi va siz akkauntni tekshirib tasdiqlaganingizdan keyin sotuvchiga o'tkaziladi.")}

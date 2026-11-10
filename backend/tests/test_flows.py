@@ -335,3 +335,33 @@ async def test_top_counts_all_spending_minus_refunds(api):
     await run_donate(o2["id"])  # rad etildi -> qaytarildi, reytingga kirmaydi
     top = (await u.get("/top?period=week")).json()
     assert [(r["user_id"], r["total"]) for r in top["items"]] == [(95, 37_000 + 189_000)]
+
+
+async def test_market_grid_favorites_vip(api):
+    lid = await _active_listing(api)  # sotuvchi 40, 420 000
+    lid2 = (await api(40).post("/listings", {**LISTING, "title": "Legend · 41 skin", "price": 300_000})).json()["id"]
+    await api(1).post(f"/admin/listings/{lid2}/moderate", {"approve": True})
+    buyer, seller = api(41), api(40)
+
+    feed = (await buyer.get("/listings")).json()
+    assert feed["total"] == 2 and [x["id"] for x in feed["items"]] == [lid2, lid]  # eng yangisi birinchi
+
+    # Sevimlilar: toggle
+    assert (await buyer.post(f"/listings/{lid}/favorite")).json()["is_fav"] is True
+    favs = (await buyer.get("/listings?favorites=true")).json()
+    assert [x["id"] for x in favs["items"]] == [lid] and favs["items"][0]["is_fav"] is True
+    assert (await buyer.post(f"/listings/{lid}/favorite")).json()["is_fav"] is False
+    assert (await buyer.get("/listings?favorites=true")).json()["total"] == 0
+
+    # VIP: pul yechiladi va e'lon tepaga chiqadi
+    assert (await seller.get("/vip/price")).json()["price_per_day"] == 5_000
+    assert (await seller.post(f"/listings/{lid}/vip", {"days": 3})).status_code == 402  # balans 0
+    await set_balance(40, 20_000)
+    r = await seller.post(f"/listings/{lid}/vip", {"days": 3})
+    assert r.status_code == 200 and r.json()["vip"] is True
+    assert await get_balance(40) == 5_000
+    assert (await buyer.post(f"/listings/{lid}/vip", {"days": 1})).status_code == 404  # boshqaning e'loni
+    feed = (await buyer.get("/listings")).json()
+    assert [x["id"] for x in feed["items"]] == [lid, lid2] and feed["items"][0]["vip"] is True
+    d = (await buyer.get(f"/listings/{lid}")).json()
+    assert d["seller_verified"] is False and d["is_fav"] is False

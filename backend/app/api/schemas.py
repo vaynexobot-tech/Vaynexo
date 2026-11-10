@@ -41,12 +41,21 @@ def donate_order(o: DonateOrder) -> dict:
             "created_at": iso(o.created_at), "finished_at": iso(o.finished_at)}
 
 
-def listing_card(item: Listing) -> dict:
+def is_vip(item: Listing) -> bool:
+    from datetime import datetime, timezone
+
+    return bool(item.vip_until and item.vip_until > datetime.now(timezone.utc))
+
+
+def listing_card(item: Listing, fav: bool = False) -> dict:
+    seller = item.__dict__.get("seller")  # yuklangan bo'lsa (selectin)
     return {
         "id": item.id, "game": item.game, "title": item.title, "rank": item.rank, "server": item.server,
         "collection_level": item.collection_level, "skins": item.skins, "heroes": item.heroes, "price": item.price,
         "cover": next((m["url"] for m in item.media if m.get("type") == "image"), None),
         "status": item.status, "created_at": iso(item.created_at),
+        "vip": is_vip(item), "vip_until": iso(item.vip_until), "is_fav": fav,
+        "seller_rating": round(seller.rating_sum / seller.rating_count, 1) if seller and seller.rating_count else None,
     }
 
 

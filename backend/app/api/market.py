@@ -1,11 +1,11 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import case, func, or_, select, update
 
 from app.api import schemas as S
 from app.api.deps import CurrentUser, SessionDep, page_params
 from app.errors import NotFound
-from app.models import Chat, Deal, Listing, Message, Review
+from app.models import Chat, Deal, Favorite, Listing, Message, Review
 from app.services import market as svc
 from app.services.notify import Outbox
 
@@ -20,6 +20,7 @@ async def listings(
     session: SessionDep,
     game: str | None = None,
     q: str | None = None,
+    favorites: bool = False,
     min_price: int | None = None,
     max_price: int | None = None,
     min_skins: int | None = None,
@@ -46,10 +47,52 @@ async def listings(
         stmt = stmt.where(Listing.collection_level.ilike(f"{level[:20]}%"))
     if rank:
         stmt = stmt.where(Listing.rank.ilike(f"{rank[:20]}%"))
+    if favorites:
+        stmt = stmt.where(Listing.id.in_(select(Favorite.listing_id).where(Favorite.user_id == user.id)))
+    total = await session.scalar(select(func.count()).select_from(stmt.subquery()))
     order = {"cheap": Listing.price.asc(), "skins": Listing.skins.desc(), "expensive": Listing.price.desc()}.get(sort, Listing.id.desc())
-    rows = await session.scalars(stmt.order_by(order, Listing.id.desc()).offset(offset).limit(limit + 1))
-    rows = list(rows)
-    return {"items": [S.listing_card(x) for x in rows[:limit]], "has_more": len(rows) > limit}
+    vip_first = case((Listing.vip_until > func.now(), 0), else_=1)  # VIP e'lonlar har doim tepada
+    rows = list(await session.scalars(stmt.order_by(vip_first, order, Listing.id.desc()).offset(offset).limit(limit + 1)))
+    favs = await _fav_ids(session, user.id, [x.id for x in rows])
+    return {"items": [S.listing_card(x, x.id in favs) for x in rows[:limit]], "has_more": len(rows) > limit, "total": total or 0}
+
+
+async def _fav_ids(session, uid: int, ids: list[int]) -> set[int]:
+    if not ids:
+        return set()
+    return set(await session.scalars(select(Favorite.listing_id).where(Favorite.user_id == uid, Favorite.listing_id.in_(ids))))
+
+
+@router.post("/listings/{listing_id}/favorite")
+async def favorite(listing_id: int, user: CurrentUser, session: SessionDep):
+    """Sevimlilarga qo'shish / olib tashlash (toggle)."""
+    async with session.begin():
+        if await session.get(Listing, listing_id) is None:
+            raise NotFound("E'lon")
+        fav = await session.scalar(select(Favorite).where(Favorite.user_id == user.id, Favorite.listing_id == listing_id))
+        if fav:
+            await session.delete(fav)
+        else:
+            session.add(Favorite(user_id=user.id, listing_id=listing_id))
+    return {"is_fav": fav is None}
+
+
+class VipIn(BaseModel):
+    days: int = Field(ge=1, le=30)
+
+
+@router.get("/vip/price")
+async def vip_price(user: CurrentUser, session: SessionDep):
+    from app.services import app_settings
+
+    return {"price_per_day": await app_settings.get_value(session, "vip_price_per_day")}
+
+
+@router.post("/listings/{listing_id}/vip")
+async def buy_vip(listing_id: int, body: VipIn, user: CurrentUser, session: SessionDep):
+    async with session.begin():
+        item = await svc.buy_vip(session, user.id, listing_id, body.days)
+    return S.listing_card(item)
 
 
 @router.get("/listings/{listing_id}")
@@ -62,7 +105,9 @@ async def listing_detail(listing_id: int, user: CurrentUser, session: SessionDep
         await session.commit()
     stats = await svc.seller_stats(session, item.seller_id)
     chat_id = await session.scalar(select(Chat.id).where(Chat.listing_id == listing_id, Chat.buyer_id == user.id))
-    return {**S.listing_full(item), "seller_stats": stats, "chat_id": chat_id, "is_mine": item.seller_id == user.id}
+    fav = bool(await _fav_ids(session, user.id, [listing_id]))
+    return {**S.listing_full(item), "is_fav": fav, "seller_stats": stats, "seller_verified": stats["sales"] >= svc.VERIFIED_SALES,
+            "chat_id": chat_id, "is_mine": item.seller_id == user.id}
 
 
 class ListingIn(BaseModel):

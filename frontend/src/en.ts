@@ -846,4 +846,8 @@ export const en: Record<string, string> = {
   "To'lov avtomatik tekshirilmoqda — bank xabari kelishi bilan balans o'zi to'ldiriladi va botda xabar keladi. Odatda 1–3 daqiqa. Sahifani yopsangiz ham bo'ladi.": "Your payment is being checked automatically — as soon as the bank notification arrives, your balance is topped up and the bot notifies you. Usually 1–3 minutes. You can close this page.",
   "Aynan {s} o'tkazganingizni tasdiqlaysizmi? Chek kerak emas — to'lov bank xabari orqali avtomatik tekshiriladi.": "Do you confirm you transferred exactly {s}? No receipt needed — the payment is checked automatically via the bank notification.",
   "«To'ladim» ni bosing — to'lov avtomatik tekshiriladi va balans o'zi to'ldiriladi": "Tap «I've paid» — the payment is checked automatically and the balance is topped up",
+  "Hamyon ID": "Wallet ID",
+  "Yechish mumkin: {s}. Faqat sotuv, ijara va boost daromadi yechiladi — hamyonga to'ldirilgan pul yechilmaydi.": "Available to withdraw: {s}. Only sales, rental and boost earnings can be withdrawn — topped-up money can't.",
+  "Pul yechish faqat sotuvchi, ijaraga beruvchi va boosterlar uchun: sotuv, ijara va boost daromadi Hamyon → Yechish orqali kartaga chiqariladi (24 soat ichida). To'ldirilgan pul yechilmaydi — u xizmatlar uchun.": "Withdrawals are for sellers, owners renting out accounts and boosters: sales, rental and boost earnings go to your card via Wallet → Withdraw (within 24 hours). Topped-up money can't be withdrawn — it's for services.",
+  "Pul yechish faqat sotuvchi, ijaraga beruvchi va boosterlar uchun — ishlab topilgan pul yechiladi": "Withdrawals are only for sellers, owners renting out accounts and boosters — only earned money can be withdrawn",
 };

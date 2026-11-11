@@ -133,3 +133,12 @@ async def make_package(price=37_000, game="ML") -> int:
         p = DonatePackage(game=game, name="172 almaz", diamonds=156, bonus=16, price=price, provider_sku="ML_172")
         s.add(p)
     return p.id
+
+
+async def give_earnings(uid: int, amount: int):
+    """Sotuvchi/booster daromadi (yechish mumkin bo'lgan pul)."""
+    from app.services import wallet
+
+    await set_balance(uid, 0)
+    async with SessionLocal() as s, s.begin():
+        await wallet.credit(s, uid, amount, "deal_payout", f"test-earn:{uid}:{amount}")

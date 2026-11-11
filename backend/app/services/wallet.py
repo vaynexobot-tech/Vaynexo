@@ -78,3 +78,52 @@ async def credit(session: AsyncSession, user_id: int, amount: int, kind: str, id
 async def add_ticket(session: AsyncSession, user_id: int, n: int = 1) -> None:
     """Konkurs bileti (atomik oshirish)."""
     await session.execute(update(User).where(User.id == user_id).values(tickets=User.tickets + n))
+
+
+# ---------------------------------------------------------------- hamyon ID va yechish mumkin bo'lgan summa
+EARN_KINDS = ("deal_payout", "rent_payout", "boost_payout")
+
+
+def format_wallet_id(w: str | None) -> str | None:
+    return f"VX {w[:4]} {w[4:]}" if w else None
+
+
+async def ensure_wallet_id(session: AsyncSession, user_id: int) -> str:
+    """Foydalanuvchiga hamyon ID beradi (bir marta). 8 xonali tasodifiy raqam, takrorlanmaydi."""
+    import secrets
+
+    from sqlalchemy import select, update
+    from sqlalchemy.exc import IntegrityError
+
+    from app.models import User
+
+    cur = await session.scalar(select(User.wallet_id).where(User.id == user_id))
+    if cur:
+        return cur
+    for _ in range(10):
+        w = str(10_000_000 + secrets.randbelow(90_000_000))
+        try:
+            async with session.begin_nested():
+                res = await session.execute(update(User).where(User.id == user_id, User.wallet_id.is_(None)).values(wallet_id=w))
+            if res.rowcount:
+                return w
+            return await session.scalar(select(User.wallet_id).where(User.id == user_id))
+        except IntegrityError:
+            continue
+    raise RuntimeError("hamyon ID berib bo'lmadi")
+
+
+async def withdrawable(session: AsyncSession, user_id: int, balance: int) -> dict:
+    """Yechish faqat ishlab topilgan pul (sotuv, ijara, boost) uchun. To'ldirilgan pul yechilmaydi."""
+    from sqlalchemy import func, select
+
+    from app.models import LedgerEntry
+
+    rows = dict((await session.execute(
+        select(LedgerEntry.kind, func.coalesce(func.sum(LedgerEntry.amount), 0))
+        .where(LedgerEntry.user_id == user_id, LedgerEntry.kind.in_((*EARN_KINDS, "withdraw", "withdraw_refund")))
+        .group_by(LedgerEntry.kind)
+    )).all())
+    earned = sum(int(rows.get(k, 0)) for k in EARN_KINDS)
+    withdrawn = -(int(rows.get("withdraw", 0)) + int(rows.get("withdraw_refund", 0)))
+    return {"earned": earned, "withdrawn": withdrawn, "available": max(0, min(balance, earned - withdrawn))}

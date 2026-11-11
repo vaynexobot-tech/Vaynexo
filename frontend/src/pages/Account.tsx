@@ -40,7 +40,7 @@ export function Settings() {
             </div>
             <div className="grow">
               <div className="bb ell" style={{ fontSize: 17 }}>{me.name || "—"}</div>
-              <div className="mut xs mono">ID: {me.id}</div>
+              <div className="mut xs mono">{me.wallet_id ? `${t("Hamyon ID")}: ${me.wallet_id}` : `ID: ${me.id}`}</div>
               <span className="balchip mono" onClick={() => nav("/wallet")}>● {money(me.balance)} so'm</span>
             </div>
             <button className="btn small ghost" onClick={() => nav("/profile")}>{t("Tahrirlash")}</button>

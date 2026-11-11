@@ -13,12 +13,19 @@ from app.errors import AppError, NotFound
 from app.models import LedgerEntry, PaymentCard, Topup, User, Withdrawal
 from app.security import decrypt
 from app.services import app_settings
+from app.services import wallet as wallet_svc
 from app.services import p2p
 from app.services.notify import Outbox
 from app.services.services import create_withdrawal
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/wallet", tags=["wallet"])
+
+
+async def _wid(session, uid: int) -> str:
+    w = await wallet_svc.ensure_wallet_id(session, uid)
+    await session.commit()
+    return w
 
 
 async def _topup(session, t: Topup) -> dict:
@@ -44,6 +51,8 @@ async def wallet_info(user: CurrentUser, session: SessionDep, offset: int = 0):
                    "withdraw_min": settings.withdraw_min,
                    "ttl_minutes": int(await app_settings.get_value(session, "topup_timeout_minutes"))},
         "level": "Silver",
+        "wallet_id": wallet_svc.format_wallet_id(await _wid(session, user.id)),
+        "withdraw": await wallet_svc.withdrawable(session, user.id, user.balance),
     }
 
 

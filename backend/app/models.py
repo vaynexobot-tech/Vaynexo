@@ -64,6 +64,7 @@ class User(TimestampMixin, Base):
     tournament_passes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     boost_coupon_percent: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     badge: Mapped[str | None] = mapped_column(String(32))
+    wallet_id: Mapped[str | None] = mapped_column(String(12), unique=True)  # hamyon ID (8 raqam), Telegram ID o'rniga ko'rsatiladi
 
 
 class LedgerEntry(TimestampMixin, Base):

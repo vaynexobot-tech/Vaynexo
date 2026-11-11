@@ -145,6 +145,7 @@ export interface Me {
   tournament_passes?: number;
   boost_coupon_percent?: number;
   badge?: string | null;
+  wallet_id?: string | null;
 }
 export type Lang = "uz" | "ru" | "en";
 export interface PayCard { id: number; last4: string; brand: string; holder: string; expiry: string; is_default: boolean }

@@ -326,12 +326,12 @@ function Users() {
   const { busy, run } = useAction();
   return (
     <>
-      <form className="row" onSubmit={(e) => { e.preventDefault(); setQuery(q); }}><input className="input grow" placeholder="ID, @username yoki ism" value={q} onChange={(e) => setQ(e.target.value)} /><button className="btn">Qidirish</button></form>
+      <form className="row" onSubmit={(e) => { e.preventDefault(); setQuery(q); }}><input className="input grow" placeholder="Hamyon ID, Telegram ID, @username yoki ism" value={q} onChange={(e) => setQ(e.target.value)} /><button className="btn">Qidirish</button></form>
       <Loadable state={st}>
         {(list) => list.map((u) => (
           <div key={u.id} className="card col">
             <div className="row between"><span className="b">{u.name} {u.username ? `@${u.username}` : ""}</span>{u.is_banned && <span className="badge r">BLOK</span>}</div>
-            <div className="mut xs mono">ID {u.id} · {som(u.balance)} · {dateTime(u.created_at)}</div>
+            <div className="mut xs mono">{(u as Me & { wallet_id?: string }).wallet_id ?? ""} · ID {u.id} · {som(u.balance)} · {dateTime(u.created_at)}</div>
             <div className="row">
               <button className="btn small ghost grow" onClick={() => { setAdj({ id: u.id, name: u.name }); setAmount(""); setNote(""); }}>Balans</button>
               <button className={"btn small " + (u.is_banned ? "green" : "danger")} disabled={busy} onClick={async () => {

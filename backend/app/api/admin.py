@@ -330,10 +330,14 @@ async def users(admin: AdminUser, session: SessionDep, q: str = ""):
     q = q.strip().lstrip("@")
     if q:
         conds = [User.username.ilike(f"%{q}%"), User.first_name.ilike(f"%{q}%")]
+        digits = "".join(ch for ch in q if ch.isdigit())
+        if len(digits) == 8:  # hamyon ID: «VX 1234 5678» yoki «12345678»
+            conds.append(User.wallet_id == digits)
         if q.isdigit():
             conds.append(User.id == int(q))
         stmt = stmt.where(or_(*conds))
-    return [{**S.user_private(u), "is_banned": u.is_banned, "created_at": S.iso(u.created_at)} for u in await session.scalars(stmt)]
+    return [{**S.user_private(u), "is_banned": u.is_banned, "created_at": S.iso(u.created_at),
+             "wallet_id": wallet.format_wallet_id(u.wallet_id)} for u in await session.scalars(stmt)]
 
 
 class BanIn(BaseModel):

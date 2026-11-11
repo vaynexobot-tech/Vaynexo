@@ -38,7 +38,7 @@ const state: Json = {
     referral_bonus: 1234, referral_min_topup: 10_000, ref_link: "https://t.me/VaynexoBot?startapp=ref_1001", ref_invited: 3, ref_paid: 1, ref_earned: 1234,
     commission_percent: 5, kyc_status: "none", kyc_note: null, pin_set: false, bio_set: false, notify_chat: true, notify_tour: true,
     purchases_count: 7, rent_count: 1, kyc_required: { marketplace: true, rental: true }, points: 1_240,
-    vip_credit_days: 0, tournament_passes: 1, boost_coupon_percent: 0, badge: null,
+    vip_credit_days: 0, tournament_passes: 1, boost_coupon_percent: 0, badge: null, wallet_id: "VX 4821 7730",
   },
   settings: {
     referral_bonus: 1234, referral_min_topup: 10_000, vip_price_per_day: 5_000, rent_deposit_type: "percent", rent_deposit_percent: 100,
@@ -216,6 +216,7 @@ on("GET", "/wallet", () => ({
   balance: state.me.balance, entries: state.ledger,
   pending_topup: state.topups.find((t: Json) => ["pending", "checking"].includes(t.status)) ? topupView(state.topups.find((t: Json) => ["pending", "checking"].includes(t.status))) : null,
   limits: { topup_min: 1000, topup_max: 500_000, withdraw_min: 10_000, ttl_minutes: 10 },
+  wallet_id: "VX 4821 7730", withdraw: { earned: 120_000, withdrawn: 0, available: Math.min(state.me.balance, 120_000) },
 }));
 on("POST", "/wallet/topup", (_m, b) => {
   if (!(b.amount >= 1000)) throw new MockError("bad_amount", "Summa 1 000 so'mdan kam bo'lmasin");

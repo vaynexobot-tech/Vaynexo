@@ -859,4 +859,8 @@ export const ru: Record<string, string> = {
   "To'lov avtomatik tekshirilmoqda — bank xabari kelishi bilan balans o'zi to'ldiriladi va botda xabar keladi. Odatda 1–3 daqiqa. Sahifani yopsangiz ham bo'ladi.": "Платёж проверяется автоматически — как только придёт уведомление банка, баланс пополнится и бот пришлёт сообщение. Обычно 1–3 минуты. Страницу можно закрыть.",
   "Aynan {s} o'tkazganingizni tasdiqlaysizmi? Chek kerak emas — to'lov bank xabari orqali avtomatik tekshiriladi.": "Подтверждаете перевод ровно {s}? Чек не нужен — платёж проверяется автоматически по уведомлению банка.",
   "«To'ladim» ni bosing — to'lov avtomatik tekshiriladi va balans o'zi to'ldiriladi": "Нажмите «Я оплатил» — платёж проверится автоматически, баланс пополнится сам",
+  "Hamyon ID": "ID кошелька",
+  "Yechish mumkin: {s}. Faqat sotuv, ijara va boost daromadi yechiladi — hamyonga to'ldirilgan pul yechilmaydi.": "Доступно к выводу: {s}. Выводится только доход от продаж, аренды и буста — пополненные деньги не выводятся.",
+  "Pul yechish faqat sotuvchi, ijaraga beruvchi va boosterlar uchun: sotuv, ijara va boost daromadi Hamyon → Yechish orqali kartaga chiqariladi (24 soat ichida). To'ldirilgan pul yechilmaydi — u xizmatlar uchun.": "Вывод доступен продавцам, арендодателям и бустерам: доход от продаж, аренды и буста выводится на карту через Кошелёк → Вывод (в течение 24 часов). Пополненные деньги не выводятся — они для услуг.",
+  "Pul yechish faqat sotuvchi, ijaraga beruvchi va boosterlar uchun — ishlab topilgan pul yechiladi": "Вывод только для продавцов, арендодателей и бустеров — выводится только заработанное",
 };

@@ -5,7 +5,7 @@ from app.models import Tournament, TournamentEntry, User
 from app.services import account
 from app.services import services as svc
 from app.services.notify import Outbox
-from tests.conftest import get_balance, set_balance
+from tests.conftest import get_balance, set_balance, give_earnings
 
 IMG = b"\x89PNG\r\n\x1a\n" + b"0" * 100
 
@@ -43,7 +43,7 @@ async def test_kyc_requires_three_images(api, monkeypatch):
 
 
 async def test_pin_protects_spending(api):
-    await set_balance(7, 100_000)
+    await give_earnings(7, 100_000)
     a = api(7)
     assert (await a.post("/me/pin", {"pin": "1234"})).json()["code"] if False else True
     r = await a.post("/me/pin", {"pin": "1111"})
@@ -80,7 +80,7 @@ async def test_pin_protects_spending(api):
 
 
 async def test_saved_cards_and_withdraw(api):
-    await set_balance(8, 100_000)
+    await give_earnings(8, 100_000)
     a = api(8)
     r = await a.post("/me/cards", {"number": "9860 1234 5678 4821", "holder": "ali valiyev", "expiry": "12/27"})
     assert r.status_code == 200, r.text

@@ -11,19 +11,17 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-12.p2p-avto"
-NOTES = """🆕 To'lov endi to'liq avtomatik — chek kerak emas
+RELEASE = "2026-11-12.wallet-id"
+NOTES = """🆕 Hamyon yangilandi
 
-💳 Foydalanuvchi: summa → noyob summa (masalan 50 037) → kartaga o'tkazadi → «To'ladim»
-✅ Bank xabari kelishi bilan balans o'zi to'ldiriladi va botda xabar boradi
+🆔 Har bir foydalanuvchiga hamyon ID berildi (masalan VX 4821 7730) — Hamyon va Sozlamalarda ko'rinadi
+   Admin panel → Foydalanuvchilar: hamyon ID bo'yicha qidirish mumkin
 
-Bank xabari qanday keladi (bittasi yetarli):
-📲 1) SMS-forwarder: karta SIM'i turgan Android telefonga ilova o'rnatiladi, bank SMS'larini serverga yuboradi.
-   Sozlash: Admin panel → 💳 Kirimlar → «Avtomatik tasdiqlash (SMS)» → «Qanday ulash»
-🤖 2) Bank SMS'i yoki bank botidagi xabarni shu botga forward qilish — darhol topiladi
-
-⏳ «To'ladim» bosilib, 15 daqiqada bank xabari kelmasa — sizga ✅/❌ tugmalari bilan xabar keladi
-(vaqtni Sozlamalar → Hamyon'da o'zgartirasiz)"""
+💼 Pul yechish qaytdi — faqat ishlab topilgan pul uchun:
+   • sotuvchi (akkaunt sotuvi), ijaraga beruvchi, booster daromadi yechiladi
+   • to'ldirilgan pul yechilmaydi (kartadan kartaga «yuvish»ga yo'l qo'yilmaydi)
+   • «Yechish» tabi faqat daromadi bor foydalanuvchilarga ko'rinadi
+   • so'rovlar avvalgidek Admin panel → 💸 Yechish'da"""
 
 
 async def notify_admins_once() -> None:

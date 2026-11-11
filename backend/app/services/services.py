@@ -343,6 +343,12 @@ async def create_withdrawal(session: AsyncSession, user_id: int, amount: int, ca
     pending = await session.scalar(select(Withdrawal.id).where(Withdrawal.user_id == user_id, Withdrawal.status == "pending"))
     if pending:
         raise BadState("Oldingi so'rovingiz hali ko'rib chiqilmoqda")
+    user = await session.get(User, user_id, with_for_update=True)  # parallel so'rovlarga qarshi
+    w_info = await wallet.withdrawable(session, user_id, user.balance)
+    if w_info["earned"] <= 0:
+        raise AppError("no_earnings", "Pul yechish faqat sotuvchi, ijaraga beruvchi va boosterlar uchun — ishlab topilgan pul yechiladi", 403)
+    if amount > w_info["available"]:
+        raise AppError("over_limit", f"Yechish mumkin: {fmt(w_info['available'])} (faqat sotuv, ijara va boost daromadi)")
     w = Withdrawal(user_id=user_id, amount=amount, card_number=card, card_holder=(holder or "").strip()[:64])
     session.add(w)
     await session.flush()

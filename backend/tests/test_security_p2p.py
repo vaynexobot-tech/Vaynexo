@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 
 from app.security import validate_init_data
 from app.services.p2p import parse_bank_message
-from tests.conftest import get_balance, set_balance
+from tests.conftest import get_balance, set_balance, give_earnings
 
 TOKEN = "123456:TEST"
 
@@ -104,7 +104,7 @@ async def test_referral_bonus_once(api, client):
 
 
 async def test_withdraw_and_reject(api):
-    await set_balance(12, 100_000)
+    await give_earnings(12, 100_000)
     u, admin = api(12), api(1)
     r = await u.post("/wallet/withdraw", {"amount": 60_000, "card_number": "8600 1234 5678 9012"})
     assert r.status_code == 200, r.text

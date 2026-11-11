@@ -28,6 +28,10 @@ router = APIRouter(tags=["user"])
 
 @router.get("/me")
 async def me(user: CurrentUser, session: SessionDep):
+    from app.services import wallet as wallet_svc
+
+    wid = await wallet_svc.ensure_wallet_id(session, user.id)
+    await session.commit()
     stats = await seller_stats(session, user.id)
     active_listings = await session.scalar(
         select(func.count()).select_from(Listing).where(Listing.seller_id == user.id, Listing.status == "active")
@@ -41,6 +45,7 @@ async def me(user: CurrentUser, session: SessionDep):
         **(await referral_stats(session, user.id)),
         "ref_link": f"https://t.me/{settings.bot_username}?startapp=ref_{user.id}" if settings.bot_username else None,
         "commission_percent": await app_settings.get_value(session, "garant_fee_percent"),
+        "wallet_id": wallet_svc.format_wallet_id(wid),
         "kyc_required": {"marketplace": await app_settings.get_value(session, "kyc_marketplace") == "on",
                          "rental": await app_settings.get_value(session, "kyc_rental") == "on"},
         "purchases_count": await session.scalar(

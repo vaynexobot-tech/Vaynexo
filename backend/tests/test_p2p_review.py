@@ -71,3 +71,30 @@ async def test_sms_setup_and_timer(api):
     t = (await api(92).post("/wallet/topup", {"amount": 10_000})).json()
     left = (datetime.fromisoformat(t["expires_at"]) - datetime.fromisoformat(t["created_at"])).total_seconds()
     assert 14 * 60 < left <= 15 * 60 + 5
+
+
+async def test_withdraw_only_earnings_and_wallet_id(api):
+    from tests.conftest import give_earnings
+
+    await set_balance(93, 100_000)  # to'ldirilgan pul — yechilmaydi
+    u = api(93)
+    w = (await u.get("/wallet")).json()
+    assert w["withdraw"]["earned"] == 0 and w["withdraw"]["available"] == 0
+    assert w["wallet_id"].startswith("VX ") and len(w["wallet_id"].replace(" ", "")) == 10
+    assert (await u.get("/me")).json()["wallet_id"] == w["wallet_id"]  # o'zgarmaydi
+    r = await u.post("/wallet/withdraw", {"amount": 20_000, "card_number": "8600123412341234"})
+    assert r.status_code == 403 and r.json()["error"] == "no_earnings"
+    # daromad bor: faqat daromad miqdorigacha
+    await give_earnings(94, 50_000)
+    async with SessionLocal() as s, s.begin():
+        from app.models import User
+        (await s.get(User, 94)).balance += 200_000  # + to'ldirilgan pul
+    v = api(94)
+    assert (await v.get("/wallet")).json()["withdraw"]["available"] == 50_000
+    assert (await v.post("/wallet/withdraw", {"amount": 60_000, "card_number": "8600123412341234"})).status_code == 400
+    assert (await v.post("/wallet/withdraw", {"amount": 50_000, "card_number": "8600123412341234"})).status_code == 200
+    assert (await v.get("/wallet")).json()["withdraw"]["available"] == 0
+    # admin hamyon ID bo'yicha topadi
+    wid = (await v.get("/me")).json()["wallet_id"]
+    found = (await api(1).get(f"/admin/users?q={wid.replace(' ', '%20')}")).json()
+    assert [x["id"] for x in found] == [94]

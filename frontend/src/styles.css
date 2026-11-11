@@ -360,3 +360,4 @@ textarea.input { height: auto; min-height: 90px; padding: 12px 14px; resize: ver
 .mission .progress { margin-top: 6px; }
 .tg4.tg3 { grid-template-columns: repeat(3, 1fr); }
 .stepnum.ok { background: var(--g); color: #06261e; }
+.wid-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; color: #fff; font-weight: 700; font-size: 12px; }

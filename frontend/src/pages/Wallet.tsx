@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { api, type Ledger, type Topup } from "../api";
+import { api, type Ledger, type PayCard, type Topup, type Withdrawal } from "../api";
 import { t } from "../i18n";
 import { confirmDialog } from "../tg";
 import {
-  BottomBar, Copy, dateTime, Empty, Header, Loadable, money, MoneyInput, Seg, Sheet, som, useAction, useApp, useLoad,
+  BottomBar, Copy, dateTime, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Status, useAction, useApp, useLoad,
 } from "../ui";
 
 interface WalletInfo {
@@ -11,6 +11,8 @@ interface WalletInfo {
   entries: Ledger[];
   pending_topup: Topup | null;
   limits: { topup_min: number; topup_max: number; withdraw_min: number; ttl_minutes: number };
+  wallet_id?: string | null;
+  withdraw?: { earned: number; withdrawn: number; available: number };
 }
 
 const KIND: Record<string, string> = {
@@ -22,8 +24,9 @@ const KIND: Record<string, string> = {
 };
 
 export default function Wallet() {
-  const [tab, setTab] = useState<"topup" | "history">("topup");
+  const [tab, setTab] = useState<"topup" | "withdraw" | "history">("topup");
   const w = useLoad(() => api.get<WalletInfo>("/wallet"));
+  const canWithdraw = (w.data?.withdraw?.earned ?? 0) > 0;
   return (
     <>
       <Header title={t("Hamyon")} sub={t("Balans va to'lovlar")} />
@@ -31,6 +34,12 @@ export default function Wallet() {
         <div className="hero">
           <div className="row between"><span className="mut xs mono">{t("JORIY BALANS")}</span><span className="pill-b" style={{ color: "#dfe3ef", borderColor: "rgba(255,255,255,.25)" }}>🥈 Silver</span></div>
           <div className="hf bb y" style={{ fontSize: 30 }}>{money(w.data?.balance ?? 0)} <span className="mut sm">so'm</span></div>
+          {w.data?.wallet_id && (
+            <div className="row between xs" style={{ marginTop: 8 }}>
+              <span className="mut">{t("Hamyon ID")}</span>
+              <WalletIdChip id={w.data.wallet_id} />
+            </div>
+          )}
           {w.data && (
             <div className="row between mut xs" style={{ marginTop: 8 }}>
               <span>{t("Bir martalik limit")}: <b className="mono" style={{ color: "#fff" }}>{money(w.data.limits.topup_max)}</b></span>
@@ -38,10 +47,10 @@ export default function Wallet() {
             </div>
           )}
         </div>
-        <Seg value={tab} onChange={setTab} options={[{ v: "topup", label: t("To'ldirish") }, { v: "history", label: t("Tarix") }]} />
+        <Seg value={tab} onChange={setTab} options={[{ v: "topup", label: t("To'ldirish") }, ...(canWithdraw ? [{ v: "withdraw" as const, label: t("Yechish") }] : []), { v: "history", label: t("Tarix") }]} />
         <Loadable state={w}>
           {(d) =>
-            tab === "topup" ? <TopupFlow info={d} onDone={w.reload} /> : <LedgerList entries={d.entries} />
+            tab === "topup" ? <TopupFlow info={d} onDone={w.reload} /> : tab === "withdraw" && canWithdraw ? <WithdrawForm info={d} onDone={w.reload} /> : <LedgerList entries={d.entries} />
           }
         </Loadable>
       </div>
@@ -242,5 +251,96 @@ function LedgerList({ entries }: { entries: Ledger[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+function WithdrawForm({ info, onDone }: { info: WalletInfo; onDone: () => void }) {
+  const { refreshMe, toast } = useApp();
+  const [amount, setAmount] = useState<number | "">("");
+  const [card, setCard] = useState("");
+  const [holder, setHolder] = useState("");
+  const list = useLoad(() => api.get<Withdrawal[]>("/wallet/withdrawals"));
+  const cards = useLoad(() => api.get<PayCard[]>("/me/cards"));
+  const [cardId, setCardId] = useState<number | null>(null);
+  useEffect(() => {
+    const def = cards.data?.find((c) => c.is_default);
+    if (def && cardId === null) setCardId(def.id);
+  }, [cards.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { busy, run } = useAction();
+  const digits = card.replace(/\D/g, "");
+  const useSaved = cardId !== null && cardId > 0;
+  const avail = info.withdraw?.available ?? 0;
+  const valid = typeof amount === "number" && amount >= info.limits.withdraw_min && amount <= avail && (useSaved || digits.length === 16);
+  return (
+    <>
+      <div className="card col">
+        <Field label={t("Summa (so'm)")}>
+          <MoneyInput value={amount} onChange={setAmount} placeholder={money(info.limits.withdraw_min)} />
+        </Field>
+        <div className="note sm">💼 {t("Yechish mumkin: {s}. Faqat sotuv, ijara va boost daromadi yechiladi — hamyonga to'ldirilgan pul yechilmaydi.", { s: som(avail) })}</div>
+        {avail > 0 && <button className="chip" style={{ alignSelf: "flex-start" }} onClick={() => setAmount(avail)}>{t("Hammasi")}: {money(avail)}</button>}
+        {cards.data && cards.data.length > 0 && (
+          <Field label={t("Karta")}>
+            <div className="col">
+              {cards.data.map((c) => (
+                <button key={c.id} className={"payopt" + (cardId === c.id ? " on" : "")} onClick={() => setCardId(c.id)}>
+                  <span className="payico" style={{ background: "#2b2d45" }}><Icon name="card" size={16} /></span>
+                  <span className="grow b">{c.brand} •••• {c.last4}</span>
+                  {c.is_default && <span className="avto">{t("ASOSIY")}</span>}
+                </button>
+              ))}
+              <button className={"payopt" + (cardId === 0 ? " on" : "")} onClick={() => setCardId(0)}>
+                <span className="payico" style={{ background: "#2b2d45" }}>+</span>
+                <span className="grow b">{t("Boshqa karta")}</span>
+              </button>
+            </div>
+          </Field>
+        )}
+        {!useSaved && (
+          <>
+            <Field label={t("Karta raqami (Uzcard / Humo)")}>
+              <input className="input mono" inputMode="numeric" placeholder="8600 0000 0000 0000" value={digits.replace(/(\d{4})(?=\d)/g, "$1 ")} onChange={(e) => setCard(e.target.value.replace(/\D/g, "").slice(0, 16))} />
+            </Field>
+            <Field label={t("Karta egasi")}>
+              <input className="input" placeholder="ISM FAMILIYA" value={holder} onChange={(e) => setHolder(e.target.value.toUpperCase())} maxLength={64} />
+            </Field>
+          </>
+        )}
+        <div className="mut xs">{t("Eng kam yechish: {min}. So'rov admin tomonidan 24 soat ichida bajariladi.", { min: som(info.limits.withdraw_min) })}</div>
+        <button className="btn full" disabled={!valid || busy} onClick={() => run(async () => {
+          await api.post("/wallet/withdraw", useSaved ? { amount, card_id: cardId } : { amount, card_number: digits, card_holder: holder });
+          toast(t("So'rov yuborildi"), "ok");
+          setAmount("");
+          await refreshMe();
+          onDone();
+          list.reload();
+        })}>{t("Yechib olish")}</button>
+      </div>
+      {list.data && list.data.length > 0 && (
+        <div className="card">
+          <div className="b">{t("So'rovlar")}</div>
+          {list.data.map((w) => (
+            <div key={w.id} className="listrow">
+              <div className="grow">
+                <div className="b">{som(w.amount)}</div>
+                <div className="mut xs">{w.card} · {dateTime(w.created_at)}</div>
+                {w.admin_note && <div className="mut xs">{w.admin_note}</div>}
+              </div>
+              <Status s={w.status} />
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+
+function WalletIdChip({ id }: { id: string }) {
+  const { toast } = useApp();
+  return (
+    <button className="wid-chip mono" onClick={async () => {
+      try { await navigator.clipboard.writeText(id.replace(/\s/g, "")); toast(t("Nusxa olindi"), "ok"); } catch { toast(id); }
+    }}>{id} <Icon name="copy" size={13} /></button>
   );
 }

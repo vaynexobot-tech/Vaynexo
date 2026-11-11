@@ -64,6 +64,9 @@ def validate_listing_data(data: dict) -> dict:
 
 
 async def create_listing(session: AsyncSession, seller_id: int, data: dict, out: Outbox) -> Listing:
+    from app.services.account import require_kyc
+
+    await require_kyc(session, seller_id, "marketplace")
     listing = Listing(seller_id=seller_id, status="moderation", **validate_listing_data(data))
     session.add(listing)
     await session.flush()
@@ -166,8 +169,12 @@ async def buy(session: AsyncSession, listing_id: int, buyer_id: int, out: Outbox
         raise BadState("Bu akkaunt allaqachon sotilgan yoki band")
     if listing.seller_id == buyer_id:
         raise AppError("own_listing", "O'z akkauntingizni sotib ololmaysiz")
+    from app.services import app_settings
+    from app.services.account import require_kyc
+
+    await require_kyc(session, buyer_id, "marketplace")
     chat = await open_chat(session, listing_id, buyer_id)
-    commission = listing.price * settings.commission_percent // 100
+    commission = listing.price * int(await app_settings.get_value(session, "garant_fee_percent")) // 100
     deal = Deal(
         listing_id=listing.id,
         buyer_id=buyer_id,
@@ -204,11 +211,14 @@ async def deliver(session: AsyncSession, deal_id: int, seller_id: int, credentia
     deal.credentials_enc = encrypt(credentials)
     deal.status = "delivered"
     deal.delivered_at = _now()
-    deal.auto_release_at = _now() + timedelta(hours=settings.escrow_auto_release_hours)
+    from app.services import app_settings
+
+    days = int(await app_settings.get_value(session, "escrow_release_days"))
+    deal.auto_release_at = _now() + timedelta(days=days)
     await _system(
         session, deal.chat_id,
         f"📦 Sotuvchi akkaunt ma'lumotlarini yubordi. Tekshirib, tasdiqlang. "
-        f"{settings.escrow_auto_release_hours} soat ichida nizo ochilmasa, bitim avtomatik yakunlanadi.",
+        f"{days} kun ichida nizo ochilmasa, bitim avtomatik yakunlanadi.",
     )
     out.user(
         deal.buyer_id,
@@ -368,6 +378,12 @@ async def buy_vip(session: AsyncSession, seller_id: int, listing_id: int, days: 
     if not 1 <= days <= 30:
         raise AppError("bad_days", "1 dan 30 kungacha")
     price = await app_settings.get_value(session, "vip_price_per_day") * days
+    from app.models import User
+
+    seller = await session.get(User, seller_id, with_for_update=True)
+    if seller.vip_credit_days >= days:  # Hamkor yoki ball evaziga olingan bepul VIP kunlari
+        seller.vip_credit_days -= days
+        price = 0
     if price > 0:
         await wallet.debit(session, seller_id, price, "vip", f"vip:{listing_id}:{_now().timestamp()}", ref_type="listing", ref_id=listing_id,
                            note=f"VIP {days} kun")

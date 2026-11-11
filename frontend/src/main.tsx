@@ -5,6 +5,7 @@ import { api, DEMO, pinToken, type Me } from "./api";
 import { setLang, t } from "./i18n";
 import Admin from "./pages/Admin";
 import Ai from "./pages/Ai";
+import Partner from "./pages/Partner";
 import { Arena, TournamentPage, Top } from "./pages/Arena";
 import { Boost, BoostOrderPage, BoostOrders } from "./pages/Boost";
 import { ChatPage, Chats } from "./pages/Chat";
@@ -92,6 +93,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/ai" element={<Ai />} />
+          <Route path="/partner" element={<Partner />} />
           <Route path="/donate/:game" element={<Donate />} />
           <Route path="/market" element={<Market />} />
           <Route path="/listing/:id" element={<ListingDetail />} />

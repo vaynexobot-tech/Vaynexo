@@ -11,14 +11,14 @@ const GIFT_EMOJI: Record<string, string> = { heart: "❤️", bear: "🧸", box:
 const NFT_EMOJI: Record<string, string> = { gift: "🖼", username: "🔤", number: "📱" };
 const TABS: { v: Kind; icon: string; label: string }[] = [
   { v: "premium", icon: "★", label: "Premium" }, { v: "stars", icon: "✦", label: "Stars" },
-  { v: "gift", icon: "🎁", label: "Gift" }, { v: "nft", icon: "◆", label: "NFT" },
+  { v: "gift", icon: "🎁", label: "Gift" },
 ];
 const USERNAME_RE = /^@?[A-Za-z][A-Za-z0-9_]{3,31}$/;
 
 export default function TgServices() {
   const nav = useNavigate();
   const { me, refreshMe } = useApp();
-  const cat = useLoad(() => api.get<Catalog & { stars: Catalog["stars"] & { preset_prices: Record<string, number> } }>("/tg/catalog"));
+  const cat = useLoad(() => api.get<Catalog & { stars: Catalog["stars"] & { preset_prices: Record<string, number>; bonus?: Record<string, number> } }>("/tg/catalog"));
   const history = useLoad(() => api.get<TgOrder[]>("/tg/orders"));
   const [kind, setKind] = useState<Kind>("premium");
   const [months, setMonths] = useState(3);
@@ -48,12 +48,13 @@ export default function TgServices() {
             : c.nft.find((n) => n.code === nft)?.price ?? 0;
           const valid = userOk && price > 0 && (kind !== "stars" || (typeof stars === "number" && stars >= c.stars.min && stars <= c.stars.max));
           const enough = (me?.balance ?? 0) >= price;
-          const summary = kind === "premium" ? t("Premium {n} oy", { n: months }) : kind === "stars" ? `${money(Number(stars) || 0)} ✦`
+          const sbonus = kind === "stars" ? c.stars.bonus?.[String(stars)] ?? 0 : 0;
+          const summary = kind === "premium" ? t("Premium {n} oy", { n: months }) : kind === "stars" ? `${money(Number(stars) || 0)}${sbonus ? ` + ${sbonus}` : ""} ✦`
             : kind === "gift" ? t(c.gifts.find((g) => g.code === gift)?.name ?? "") : t(c.nft.find((n) => n.code === nft)?.name ?? "");
           return (
             <>
               <div className="page withbar">
-                <div className="tg4">
+                <div className="tg4 tg3">
                   {TABS.map((x) => (
                     <button key={x.v} className={kind === x.v ? "on" : ""} onClick={() => setKind(x.v)}><i>{x.icon}</i>{x.label}</button>
                   ))}
@@ -84,6 +85,7 @@ export default function TgServices() {
                       {c.stars.presets.slice(0, 6).map((n) => (
                         <button key={n} className={"pkg center" + (stars === n ? " on" : "")} onClick={() => setStars(n)}>
                           <div className="bb">✦ {money(n)}</div>
+                          {c.stars.bonus?.[String(n)] ? <div className="g xs b">+{c.stars.bonus[String(n)]} {t("bonus")}</div> : null}
                           <div className="y mono xs">{money(c.stars.preset_prices[String(n)] ?? Math.ceil(n * c.stars.rate))}</div>
                         </button>
                       ))}

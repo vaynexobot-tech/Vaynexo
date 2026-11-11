@@ -29,8 +29,11 @@ def now() -> datetime:
 
 
 async def create_topup(session: AsyncSession, user_id: int, amount: int) -> Topup:
-    if amount < settings.topup_min or amount > settings.topup_max:
-        raise AppError("bad_amount", f"Summa {fmt(settings.topup_min)} dan {fmt(settings.topup_max)} gacha bo'lishi kerak")
+    from app.services import app_settings
+
+    top = min(settings.topup_max, int(await app_settings.get_value(session, "topup_max_silver")))
+    if amount < settings.topup_min or amount > top:
+        raise AppError("bad_amount", f"Summa {fmt(settings.topup_min)} dan {fmt(top)} gacha bo'lishi kerak")
     # Bir vaqtda ikki foydalanuvchiga bir xil summa berilmasligi uchun.
     await session.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": P2P_LOCK_ID})
     # Foydalanuvchining eski kutilayotgan so'rovlari bekor qilinadi (kech to'lansa ham baribir topiladi).

@@ -30,10 +30,22 @@ SCHEMA: dict[str, Spec] = {
     # Referal
     "referral_bonus": Spec("money", None, "Taklif bonusi (so'm). 0 — o'chiq", "Referal", 0, 10_000_000),
     "referral_min_topup": Spec("money", 10_000, "Bonus uchun do'stning eng kam to'ldirishi (so'm)", "Referal", 1_000),
+    # Hamyon
+    "topup_max_silver": Spec("money", 500_000, "Bir martalik to'ldirish limiti — Silver (so'm)", "Hamyon", 1_000, 1_000_000_000),
+    # KYC
+    "kyc_marketplace": Spec("choice", "on", "Account savdo uchun identifikatsiya", "Identifikatsiya (KYC)",
+                            choices={"on": "Majburiy", "off": "Ixtiyoriy"}),
+    "kyc_rental": Spec("choice", "on", "Account ijara uchun identifikatsiya", "Identifikatsiya (KYC)",
+                       choices={"on": "Majburiy", "off": "Ixtiyoriy"}),
     # Savdo
+    "garant_fee_percent": Spec("percent", 0, "Garant xizmat haqi — sotuvchidan (%)", "Account savdo", 0, 50),
+    "escrow_release_days": Spec("money", 3, "Xaridor javob bermasa, necha kundan keyin pul sotuvchiga o'tadi", "Account savdo", 1, 30),
     "vip_price_per_day": Spec("money", 5_000, "VIP e'lon narxi (so'm / kun)", "Account savdo", 0, 10_000_000),
     # Ijara
-    "rent_deposit_type": Spec("choice", "percent", "Ijara depoziti turi", "Account ijara",
+    "rent_discount_24": Spec("percent", 10, "Chegirma: 24 soat (%)", "Account ijara", 0, 90),
+    "rent_discount_72": Spec("percent", 20, "Chegirma: 3 kun (%)", "Account ijara", 0, 90),
+    "rent_discount_168": Spec("percent", 30, "Chegirma: 1 hafta (%)", "Account ijara", 0, 90),
+    "rent_deposit_type": Spec("choice", "fixed", "Ijara depoziti turi", "Account ijara",
                               choices={"percent": "Ijara narxidan foiz", "fixed": "Aniq summa"}),
     "rent_deposit_percent": Spec("percent", 100, "Depozit: ijara narxining necha foizi (%)", "Account ijara", 0, 1000,
                                  show_if=("rent_deposit_type", "percent")),
@@ -44,7 +56,53 @@ SCHEMA: dict[str, Spec] = {
     "boost_express_percent": Spec("percent", 30, "Express boost ustamasi (%)", "Boost", 0, 500),
     "boost_hero_percent": Spec("percent", 15, "Qahramon tanlash ustamasi (%)", "Boost", 0, 500),
     "boost_lane_percent": Spec("percent", 10, "Liniya tanlash ustamasi (%)", "Boost", 0, 500),
+    "boost_star_epic": Spec("money", 6_000, "1 yulduz narxi: Epic (so'm)", "Boost", 100),
+    "boost_star_legend": Spec("money", 8_000, "1 yulduz narxi: Legend (so'm)", "Boost", 100),
+    "boost_star_mythic": Spec("money", 10_000, "1 yulduz narxi: Mythic 0–24★ (so'm)", "Boost", 100),
+    "boost_star_honor": Spec("money", 12_000, "1 yulduz narxi: Mythic 25–49★ (so'm)", "Boost", 100),
+    "boost_star_glory": Spec("money", 15_000, "1 yulduz narxi: Mythical Glory 50★+ (so'm)", "Boost", 100),
+    "boost_stars_per_day": Spec("money", 20, "Kuniga yulduz (oddiy)", "Boost", 1, 500),
+    "boost_express_stars_per_day": Spec("money", 40, "Kuniga yulduz (Express)", "Boost", 1, 500),
+    "booster_share_percent": Spec("percent", 70, "Booster ulushi (%)", "Boost", 0, 100),
 }
+
+# ---------------------------------------------------------------- Arena (ball pulga almashtirilmaydi)
+SCHEMA.update({
+    "pts_tournament_join": Spec("money", 20, "Ball: turnirda ishtirok", "Arena: ball", 0, 100_000),
+    "pts_tournament_win": Spec("money", 100, "Ball: turnirda g'alaba", "Arena: ball", 0, 100_000),
+    "pts_prediction": Spec("money", 50, "Ball: to'g'ri prognoz", "Arena: ball", 0, 100_000),
+    "season_days": Spec("money", 30, "Sezon davomiyligi (kun)", "Arena: ball", 1, 365),
+    "ex_boost_discount_cost": Spec("money", 500, "Almashtirish: Boost chegirmasi (ball)", "Arena: almashtirish", 1, 1_000_000),
+    "ex_boost_discount_percent": Spec("percent", 5, "Boost chegirmasi (%)", "Arena: almashtirish", 1, 90),
+    "ex_vip_3d_cost": Spec("money", 1_000, "Almashtirish: VIP e'lon 3 kun (ball)", "Arena: almashtirish", 1, 1_000_000),
+    "ex_free_tournament_cost": Spec("money", 1_500, "Almashtirish: turnirga bepul kirish (ball)", "Arena: almashtirish", 1, 1_000_000),
+})
+MISSIONS = {  # kalit: (davr, nom, maqsad, standart mukofot)
+    "login": ("daily", "Ilovaga kirish", 1, 10),
+    "join_tournament": ("daily", "1 ta turnirga yozilish", 1, 20),
+    "invite": ("daily", "Do'stni taklif qilish", 1, 50),
+    "play_3": ("weekly", "3 ta turnirda qatnashish", 3, 100),
+    "partner_video": ("weekly", "Hamkor videosi yuborish", 1, 50),
+    "any_service": ("weekly", "Istalgan xizmatdan foydalanish", 1, 30),
+}
+for _k, (_p, _n, _g, _r) in MISSIONS.items():
+    SCHEMA[f"mission_{_k}"] = Spec("money", _r, f"Vazifa mukofoti: {_n} (ball)", "Arena: vazifalar", 0, 100_000)
+
+# ---------------------------------------------------------------- Hamkor dasturi
+SCHEMA.update({
+    "partner_min_views": Spec("money", 3_000, "Eng kam ko'rish", "Hamkor dasturi", 0, 100_000_000),
+    "partner_count_days": Spec("money", 10, "Ko'rishlar necha kundan keyin hisoblanadi", "Hamkor dasturi", 1, 60),
+    "partner_interval_days": Spec("money", 2, "Necha kunda 1 ta video", "Hamkor dasturi", 0, 60),
+    "partner_min_like_ratio": Spec("percent", 3, "Layk / ko'rish nisbati, kamida (%)", "Hamkor dasturi", 0, 100),
+    "partner_tier2_views": Spec("money", 10_000, "2-daraja: ko'rish", "Hamkor dasturi", 1, 100_000_000),
+    "partner_tier3_views": Spec("money", 25_000, "3-daraja: ko'rish", "Hamkor dasturi", 1, 100_000_000),
+    "partner_tier4_views": Spec("money", 50_000, "4-daraja: ko'rish", "Hamkor dasturi", 1, 100_000_000),
+})
+
+# Stars paketlari bonusi (paket -> qo'shimcha yulduz)
+STARS_BONUS_DEFAULT = {250: 5, 500: 15, 1_000: 40, 2_500: 120}
+for _n, _b in STARS_BONUS_DEFAULT.items():
+    SCHEMA[f"stars_bonus_{_n}"] = Spec("money", _b, f"Stars bonusi: {_n} paket (+ yulduz)", "Telegram: Premium va Stars", 0, 100_000)
 
 # ---------------------------------------------------------------- Telegram (Fragment orqali)
 _FIX, _PCT = ("tg_price_mode", "fixed"), ("tg_price_mode", "percent")

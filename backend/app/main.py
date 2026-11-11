@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import account, admin, ai, donate, market, media, rent, services, user, wallet
+from app.api import account, admin, ai, arena, donate, market, media, rent, services, user, wallet
 from app.config import settings
 from app.errors import AppError
 
@@ -43,6 +43,9 @@ async def lifespan(app: FastAPI):
                 allowed_updates=dp.resolve_used_update_types(),
             )
             log.info("Bot webhook o'rnatildi")
+            from app.release import notify_admins_once
+
+            await notify_admins_once()
         except Exception:  # Telegram vaqtincha javob bermasa ham API ishlayversin
             log.exception("Webhook o'rnatilmadi — tokenni va internetni tekshiring, so'ng saytni qayta ishga tushiring")
     yield
@@ -66,7 +69,7 @@ async def validation_error(request: Request, exc: RequestValidationError):
     return JSONResponse({"error": "validation", "message": f"Ma'lumot noto'g'ri: {field}"}, status_code=422)
 
 
-for r in (user.router, wallet.router, wallet.p2p_router, donate.router, market.router, media.router, services.router, rent.router, admin.router, account.router, ai.router):
+for r in (user.router, wallet.router, wallet.p2p_router, donate.router, market.router, media.router, services.router, rent.router, admin.router, account.router, ai.router, arena.router):
     app.include_router(r, prefix="/api")
 
 

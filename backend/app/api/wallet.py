@@ -10,6 +10,7 @@ from app.config import settings
 from app.errors import AppError, NotFound
 from app.models import LedgerEntry, PaymentCard, Topup, User, Withdrawal
 from app.security import decrypt
+from app.services import app_settings
 from app.services import p2p
 from app.services.notify import Outbox
 from app.services.services import create_withdrawal
@@ -33,8 +34,10 @@ async def wallet_info(user: CurrentUser, session: SessionDep, offset: int = 0):
         "balance": user.balance,
         "entries": [S.ledger(e) for e in entries],
         "pending_topup": _topup(pending) if pending else None,
-        "limits": {"topup_min": settings.topup_min, "topup_max": settings.topup_max, "withdraw_min": settings.withdraw_min,
-                   "ttl_minutes": settings.topup_ttl_minutes},
+        "limits": {"topup_min": settings.topup_min,
+                   "topup_max": min(settings.topup_max, int(await app_settings.get_value(session, "topup_max_silver"))),
+                   "withdraw_min": settings.withdraw_min, "ttl_minutes": settings.topup_ttl_minutes},
+        "level": "Silver",
     }
 
 

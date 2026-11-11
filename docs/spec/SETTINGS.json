@@ -1,0 +1,89 @@
+{
+  "_izoh": "Admin paneldan o'zgartiriladigan boshlang'ich qiymatlar. Pul — so'mda (butun son). mode: fixed = so'm, percent = foiz.",
+  "currency": { "usd_rate": null, "rub_rate": null, "star_price": 220, "rate_update": "manual" },
+  "fees": {
+    "garant_fee": { "value": 0, "mode": "percent" },
+    "tournament_create_fee": { "value": null, "mode": "percent" },
+    "listing_fee": { "value": null, "mode": "fixed" },
+    "min_topup": 1000,
+    "max_topup_silver": 500000
+  },
+  "tg_premium": { "1": 69000, "3": 189000, "6": 349000, "12": 599000, "delivery_minutes": "5-15" },
+  "tg_stars": { "min": 50, "packs": [50, 100, 250, 500, 1000, 2500], "bonus": { "250": 5, "500": 15, "1000": 40, "2500": 120 } },
+  "tg_gifts": [
+    { "emoji": "❤️", "name": "Yurak", "price": 15000 },
+    { "emoji": "🧸", "name": "Ayiqcha", "price": 15000 },
+    { "emoji": "🎁", "name": "Sovg‘a qutisi", "price": 25000 },
+    { "emoji": "🌹", "name": "Gul", "price": 25000 },
+    { "emoji": "🏆", "name": "Kubok", "price": 50000 },
+    { "emoji": "💎", "name": "Brilliant", "price": 100000 }
+  ],
+  "marketplace": {
+    "vip_per_day": { "value": 5000, "mode": "fixed" },
+    "vip_days_options": [1, 3, 7, 14],
+    "cover_required": true,
+    "moderation_required": true,
+    "collector_levels": ["World Collector", "Mega Collector", "Exalted Collector", "Renowned Collector", "Expert Collector", "Senior Collector", "Junior Collector"],
+    "escrow_release_days": 3
+  },
+  "rental": {
+    "durations_hours": [12, 24, 72, 168],
+    "discount": { "12": { "value": 0, "mode": "percent" }, "24": { "value": 10, "mode": "percent" }, "72": { "value": 20, "mode": "percent" }, "168": { "value": 30, "mode": "percent" } },
+    "deposit": { "value": 50000, "mode": "fixed" }
+  },
+  "boost": {
+    "star_price_by_tier": { "epic": 6000, "legend": 8000, "mythic_0_24": 10000, "mythic_25_49": 12000, "mythic_glory": 15000 },
+    "stars_per_day": 20,
+    "express": { "value": 30, "mode": "percent", "stars_per_day": 40 },
+    "hero_pick": { "value": 15, "mode": "percent" },
+    "lane_pick": { "value": 10, "mode": "percent" },
+    "lanes": ["Gold", "Mid", "EXP", "Jungle", "Roam"]
+  },
+  "p2p_topup": {
+    "timeout_minutes": 10,
+    "unique_add_range": [1, 99],
+    "cards": [
+      { "number": "8600 0000 0000 0001", "holder": "VAYNEXO kassa", "type": "Uzcard", "active": true },
+      { "number": "9860 0000 0000 0002", "holder": "VAYNEXO kassa", "type": "Humo", "active": true },
+      { "number": "4073 0000 0000 0003", "holder": "VAYNEXO kassa", "type": "Visa", "active": true }
+    ]
+  },
+  "kyc": { "required_for": { "marketplace": true, "rental": true, "boost": false, "tg": false, "partner": false }, "documents": ["selfie_with_document", "passport_front", "passport_back"] },
+  "partner": {
+    "min_views": 3000,
+    "count_days": 10,
+    "video_interval_days": 2,
+    "min_like_ratio": { "value": 3, "mode": "percent" },
+    "private_deal_threshold": 50000,
+    "max_reward_per_video": null,
+    "tiers": [
+      { "views": 3000, "reward": "VIP e’lon · 3 kun" },
+      { "views": 10000, "reward": "Turnirlarga bepul kirish · 1 oy" },
+      { "views": 25000, "reward": "Olmos paketi" },
+      { "views": 50000, "reward": "“Rasmiy hamkor” nishoni + bot xizmatlari 1 oy xizmat haqisiz" }
+    ],
+    "required": ["VAYNEXO logotipi yoki ma’lumot", "#vaynexo", "#vaynexobot", "@vaynexobot belgilangan (otmetka)", "akkaunt kamida 1 oylik"]
+  },
+  "arena": {
+    "points": { "tournament_win": 100, "tournament_join": 20, "correct_prediction": 50 },
+    "season_days": 30,
+    "missions_daily": [
+      { "key": "login", "title": "Ilovaga kirish", "goal": 1, "reward": 10 },
+      { "key": "join_tournament", "title": "1 ta turnirga yozilish", "goal": 1, "reward": 20 },
+      { "key": "invite", "title": "Do‘stni taklif qilish", "goal": 1, "reward": 50 }
+    ],
+    "missions_weekly": [
+      { "key": "play_3", "title": "3 ta turnirda qatnashish", "goal": 3, "reward": 100 },
+      { "key": "partner_video", "title": "Hamkor videosi yuborish", "goal": 1, "reward": 50 },
+      { "key": "any_service", "title": "Istalgan xizmatdan foydalanish", "goal": 1, "reward": 30 }
+    ],
+    "exchange": [
+      { "key": "boost_discount", "cost": 500, "value": { "value": 5, "mode": "percent" } },
+      { "key": "vip_3d", "cost": 1000 },
+      { "key": "free_tournament", "cost": 1500 }
+    ],
+    "season_rewards": { "1": "Olmos paketi", "top10": "“Sezon chempioni” nishoni", "top100": "VIP e’lon 3 kun" },
+    "predictions_enabled": true,
+    "team_posts_moderation": false
+  }
+}

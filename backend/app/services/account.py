@@ -77,6 +77,17 @@ async def kyc_resolve(session: AsyncSession, user_id: int, approve: bool, note: 
     return user
 
 
+async def require_kyc(session: AsyncSession, user_id: int, area: str) -> None:
+    """Sozlamada majburiy bo'lsa (kyc_marketplace / kyc_rental), tasdiqlanmagan foydalanuvchini to'xtatadi."""
+    from app.services import app_settings
+
+    if await app_settings.get_value(session, f"kyc_{area}") != "on":
+        return
+    status = await session.scalar(select(User.kyc_status).where(User.id == user_id))
+    if status != "verified":
+        raise AppError("kyc_required", "Avval shaxsingizni tasdiqlang (Sozlamalar → Identifikatsiya)", 403)
+
+
 # ---------------------------------------------------------------- PIN va biometriya
 def _check_pin_format(pin: str) -> None:
     if not re.fullmatch(r"\d{4}", pin or ""):

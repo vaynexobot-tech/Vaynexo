@@ -103,6 +103,11 @@ async def current_user(
             is_admin=uid in settings.admin_ids,
         )
         session.add(user)
+        if ref:
+            from app.services import arena
+
+            await session.flush()
+            await arena.bump(session, ref, "invite")  # taklif qilganning vazifasi
         await session.commit()
     else:
         if tg.get("username") != user.username:

@@ -120,8 +120,9 @@ async def boost_action(order_id: int, action: str, body: BoostActionIn, user: Cu
 # ------------------------------------------------------------------ Arena
 @router.get("/tournaments")
 async def tournaments(user: CurrentUser, session: SessionDep, status: str = "open"):
-    status = status if status in ("open", "running", "finished") else "open"
-    rows = list(await session.scalars(select(Tournament).where(Tournament.status == status).order_by(Tournament.starts_at).limit(50)))
+    status = status if status in ("soon", "open", "running", "finished") else "open"
+    order = Tournament.starts_at.desc() if status == "finished" else Tournament.starts_at
+    rows = list(await session.scalars(select(Tournament).where(Tournament.status == status).order_by(order).limit(50)))
     joined = set(
         await session.scalars(
             select(TournamentEntry.tournament_id).where(
@@ -148,6 +149,7 @@ class JoinIn(BaseModel):
     game_id: str = Field(max_length=32)
     server: str = Field("", max_length=16)
     tg_username: str = Field("", max_length=64)
+    use_pass: bool = False
 
 
 @router.post("/tournaments/{t_id}/join")

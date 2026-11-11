@@ -37,7 +37,8 @@ const state: Json = {
     phone: null, ml_id: "84512937", bio: null, is_admin: true, sales: 2, positive_percent: 97, active_listings: 1,
     referral_bonus: 1234, referral_min_topup: 10_000, ref_link: "https://t.me/VaynexoBot?startapp=ref_1001", ref_invited: 3, ref_paid: 1, ref_earned: 1234,
     commission_percent: 5, kyc_status: "none", kyc_note: null, pin_set: false, bio_set: false, notify_chat: true, notify_tour: true,
-    purchases_count: 7, rent_count: 1,
+    purchases_count: 7, rent_count: 1, kyc_required: { marketplace: true, rental: true }, points: 1_240,
+    vip_credit_days: 0, tournament_passes: 1, boost_coupon_percent: 0, badge: null,
   },
   settings: {
     referral_bonus: 1234, referral_min_topup: 10_000, vip_price_per_day: 5_000, rent_deposit_type: "percent", rent_deposit_percent: 100,
@@ -74,6 +75,8 @@ const state: Json = {
   boosts: [] as Json[],
   tournaments: [
     { id: 1, title: "Mobile Legends Noyabr kubogi", game: "ML", prize_fund: 1_000_000, entry_fee: 10_000, max_players: 256, players_count: 128, starts_at: new Date(Date.now() + 20 * 86400000).toISOString(), rules: "5v5, Draft pick. Har bir jamoada 5 o'yinchi.", status: "open", joined: false },
+    { id: 3, title: "Dekabr Grand Cup", game: "ML", prize_fund: 2_000_000, entry_fee: 20_000, max_players: 128, players_count: 0, starts_at: new Date(Date.now() + 30 * 86400000).toISOString(), rules: "5v5", status: "soon", joined: false },
+    { id: 4, title: "Oktabr kubogi", game: "ML", prize_fund: 500_000, entry_fee: 0, max_players: 64, players_count: 64, starts_at: new Date(Date.now() - 10 * 86400000).toISOString(), rules: "5v5", status: "finished", joined: true },
     { id: 2, title: "Haftalik Magic Chess turniri", game: "MC", prize_fund: 300_000, entry_fee: 0, max_players: 64, players_count: 37, starts_at: new Date(Date.now() + 5 * 86400000).toISOString(), rules: "Shveytsariya tizimi, 5 tur.", status: "open", joined: false },
   ] as Json[],
   incoming: [{ id: 7, amount: 51_212, source: "sms", raw_text: "HUMOCARD *5276: Popolnenie 51 212.00 UZS", status: "unmatched", topup_id: null, created_at: ago(15) }] as Json[],
@@ -150,7 +153,8 @@ function quote(b: Json) {
 
 const GIFT_NAMES: [string, string][] = [["heart", "Yurak"], ["bear", "Ayiqcha"], ["box", "Sovg'a qutisi"], ["rose", "Gul"], ["cup", "Kubok"], ["diamond", "Brilliant"]];
 const NFT_NAMES: [string, string][] = [["gift", "NFT sovg'a"], ["username", "Username"], ["number", "Anonim raqam"]];
-const PRESETS = [50, 100, 250, 500, 1000, 2500, 5000, 10000];
+const PRESETS = [50, 100, 250, 500, 1000, 2500];
+const SBONUS: Record<number, number> = { 250: 5, 500: 15, 1000: 40, 2500: 120 };
 function catalog() {
   const S = state.settings;
   const pct = S.tg_price_mode === "percent";
@@ -158,7 +162,7 @@ function catalog() {
   const rate = pct ? (S.stars_cost * k) / 100 : S.stars_price;
   return {
     premium: [1, 3, 6, 12].map((m) => ({ months: m, price: pct ? Math.ceil((S[`premium_cost_${m}`] * k) / 100) : S[`premium_price_${m}`] })),
-    stars: { presets: PRESETS, rate, min: 50, max: 100000, preset_prices: Object.fromEntries(PRESETS.map((n) => [n, Math.ceil(n * rate)])) },
+    stars: { presets: PRESETS, rate, min: 50, max: 100000, preset_prices: Object.fromEntries(PRESETS.map((n) => [n, Math.ceil(n * rate)])), bonus: SBONUS },
     gifts: GIFT_NAMES.map(([code, name]) => ({ code, name, price: S[`gift_price_${code}`] })),
     nft: NFT_NAMES.map(([code, name]) => ({ code, name, price: S[`nft_price_${code}`] })),
   };
@@ -562,7 +566,8 @@ const rcard = (x: Json) => ({ ...x, cover: null, reject_reason: null, owner_rati
   busy_until: x.busy_until && Date.parse(x.busy_until) > Date.now() ? x.busy_until : null });
 const rview = (r: Json) => ({ ...r, listing: rcard(rl(r.listing_id)), duration: HOURS[r.hours], role: r.renter_id === ME ? "renter" : "owner",
   credentials: r.renter_id === ME && r.status === "active" ? "Moonton: rent.demo@gmail.com\nParol: Ijara-Demo-2026\n(namuna)" : null });
-const rentCfg = () => ({ durations: Object.entries(HOURS).map(([h, label]) => ({ hours: +h, label })), ...Object.fromEntries(
+const RDISC: Record<number, number> = { 12: 0, 24: 10, 72: 20, 168: 30 };
+const rentCfg = () => ({ durations: Object.entries(HOURS).map(([h, label]) => ({ hours: +h, label, discount: RDISC[+h] ?? 0 })), ...Object.fromEntries(
   ["rent_deposit_type", "rent_deposit_percent", "rent_deposit_fixed", "rent_commission_percent"].map((k) => [k, state.settings[k]])) });
 on("GET", "/rent/config", rentCfg);
 on("GET", "/rent/listings", (_m, _b, q) => {
@@ -648,6 +653,84 @@ on("DELETE", "/me/cards/:id", (m) => {
   return {};
 });
 on("POST", "/support", () => ({ ok: true }));
+// ---------------------------------------------------------------- Arena va Hamkor (demo)
+const arenaMatch: Json = { id: 1, title: "Noyabr kubogi · yarim final", team_a: "Samarqand Lions", team_b: "Tashkent Wolves",
+  starts_at: new Date(Date.now() + 2 * 3600000).toISOString(), status: "open", result: null, my_pick: null, points: 50 };
+const missionsState: Json = {
+  daily: [
+    { key: "login", title: "Ilovaga kirish", goal: 1, progress: 1, claimed: false, reward: 10 },
+    { key: "join_tournament", title: "1 ta turnirga yozilish", goal: 1, progress: 0, claimed: false, reward: 20 },
+    { key: "invite", title: "Do'stni taklif qilish", goal: 1, progress: 0, claimed: false, reward: 50 },
+  ],
+  weekly: [
+    { key: "play_3", title: "3 ta turnirda qatnashish", goal: 3, progress: 1, claimed: false, reward: 100 },
+    { key: "partner_video", title: "Hamkor videosi yuborish", goal: 1, progress: 0, claimed: false, reward: 50 },
+    { key: "any_service", title: "Istalgan xizmatdan foydalanish", goal: 1, progress: 1, claimed: false, reward: 30 },
+  ],
+};
+const EXCH = [{ key: "boost_discount", title: "Boost'ga 5% chegirma", cost: 500 }, { key: "vip_3d", title: "VIP e'lon · 3 kun", cost: 1000 }, { key: "free_tournament", title: "Turnirga bepul kirish", cost: 1500 }];
+const teamPosts: Json[] = [
+  { id: 1, kind: "player", name: "aziz_gg", lane: "Gold", rank: "Mythic 34★", online: "20:00–24:00", note: "Kechqurun onlayn", mine: false },
+  { id: 2, kind: "player", name: "dilshod_jg", lane: "Jungle", rank: "Mythic Glory", online: "kun bo'yi", note: "", mine: false },
+  { id: 3, kind: "team", name: "Team Nova", lane: "Roam", rank: "Mythic 4/5", online: "", note: "Roam kerak", mine: false },
+  { id: 4, kind: "player", name: "sardor_ml", lane: "Mid", rank: "Legend I", online: "dam olish kunlari", note: "", mine: false },
+];
+const ptsRules = { pts_tournament_win: 100, pts_tournament_join: 20, pts_prediction: 50 };
+on("GET", "/arena/summary", () => ({ points: state.me.points, passes: state.me.tournament_passes, vip_credit_days: state.me.vip_credit_days,
+  boost_coupon_percent: state.me.boost_coupon_percent, prediction: arenaMatch, points_rules: ptsRules }));
+on("GET", "/arena/missions", () => ({ ...missionsState, exchange: EXCH, points: state.me.points }));
+on("POST", "/arena/missions/:key/claim", (m) => {
+  const x = [...missionsState.daily, ...missionsState.weekly].find((i: Json) => i.key === m[1]);
+  if (!x || x.progress < x.goal) throw new MockError("bad_state", "Vazifa hali bajarilmagan", 409);
+  x.claimed = true; state.me.points += x.reward;
+  return { reward: x.reward, points: state.me.points };
+});
+on("POST", "/arena/exchange/:key", (m) => {
+  const x = EXCH.find((e) => e.key === m[1])!;
+  if (state.me.points < x.cost) throw new MockError("no_points", "Ball yetarli emas");
+  state.me.points -= x.cost;
+  if (x.key === "free_tournament") state.me.tournament_passes += 1;
+  if (x.key === "vip_3d") state.me.vip_credit_days += 3;
+  if (x.key === "boost_discount") state.me.boost_coupon_percent = 5;
+  return { points: state.me.points, passes: state.me.tournament_passes, vip_credit_days: state.me.vip_credit_days, boost_coupon_percent: state.me.boost_coupon_percent };
+});
+on("GET", "/arena/leaderboard", () => {
+  const names = ["Team Phoenix", "dilshod_jg", "Samarqand Lions", "aziz_gold", "Team Nova", "sardor_ml", "Umid_7"];
+  const items = names.map((n, i) => ({ place: i + 1, user_id: 4000 + i, name: n, points: 4_820 - i * 420 }));
+  return { season: { number: 1, days_left: 19 }, items, me: { place: 47, user_id: ME, name: "", points: state.me.points }, week: 180 };
+});
+on("POST", "/arena/predictions/:id", (_m, b) => { arenaMatch.my_pick = b.pick; return arenaMatch; });
+on("GET", "/arena/team-posts", (_m, _b, q) => teamPosts.filter((p) => !q.get("lane") || p.lane === q.get("lane")));
+on("POST", "/arena/team-posts", (_m, b) => { const p = { id: nid(), ...b, mine: true }; teamPosts.unshift(p); return p; });
+on("POST", "/arena/team-posts/:id/close", (m) => { const i = teamPosts.findIndex((p) => p.id === +m[1]); teamPosts.splice(i, 1); return {}; });
+on("POST", "/arena/team-posts/:id/contact", () => ({ ok: true }));
+const partnerVideos: Json[] = [
+  { id: 1, platform: "tiktok", url: "https://tiktok.com/@aziz_edits/video/7431", status: "approved", views: 12_400, likes: 900, tier: 2, reward: "Turnirlarga bepul kirish · 1 oy", note: null, created_at: ago(20000) },
+  { id: 2, platform: "instagram", url: "https://instagram.com/reel/C9xQ", status: "pending", views: 0, likes: 0, tier: 0, reward: "", note: null, created_at: ago(3000) },
+];
+const PTIERS = [[3000, "VIP e'lon · 3 kun"], [10000, "Turnirlarga bepul kirish · 1 oy"], [25000, "Olmos paketi"], [50000, "«Rasmiy hamkor» nishoni + 1 oy xizmat haqisiz"]] as const;
+on("GET", "/partner", () => {
+  const views = partnerVideos.filter((v) => v.status === "approved").reduce((a, v) => a + v.views, 0);
+  const best = Math.max(0, ...partnerVideos.filter((v) => v.status === "approved").map((v) => v.tier));
+  return { tiers: PTIERS.map(([v, r], i) => ({ tier: i + 1, views: v, reward: r, done: i + 1 <= best })), videos: partnerVideos,
+    stats: { sent: partnerVideos.length, views, pending: partnerVideos.filter((v) => v.status === "pending").length, to_official: Math.max(0, 50000 - views) },
+    rules: { min_views: 3000, count_days: 10, interval_days: 2, like_ratio: 3 } };
+});
+on("POST", "/partner/videos", (_m, b) => {
+  const url = String(b.url);
+  const platform = /tiktok/.test(url) ? "tiktok" : /instagram/.test(url) ? "instagram" : /youtu/.test(url) ? "youtube" : null;
+  if (!platform) throw new MockError("bad_url", "Faqat TikTok, Instagram yoki YouTube havolasi qabul qilinadi");
+  if (partnerVideos.some((v) => Date.now() - Date.parse(v.created_at) < 2 * 86400000)) throw new MockError("bad_state", "2 kunda 1 ta video yuborish mumkin", 409);
+  const v = { id: nid(), platform, url, status: "pending", views: 0, likes: 0, tier: 0, reward: "", note: null, created_at: now() };
+  partnerVideos.unshift(v);
+  return v;
+});
+on("GET", "/admin/partner/videos", () => partnerVideos.filter((v) => v.status === "pending").map((v) => ({ ...v, user_id: ME })));
+on("POST", "/admin/partner/videos/:id", (m, b) => { const v = partnerVideos.find((x) => x.id === +m[1])!; v.status = b.approve ? "approved" : "rejected"; v.views = b.views; v.tier = b.views >= 10000 ? 2 : 1; return v; });
+on("GET", "/admin/arena/matches", () => [arenaMatch]);
+on("POST", "/admin/arena/matches", (_m, b) => ({ id: nid(), ...b, status: "open", result: null }));
+on("POST", "/admin/arena/matches/:id/settle", (_m, b) => { arenaMatch.status = "settled"; arenaMatch.result = b.result; return { winners: 12 }; });
+on("GET", "/admin/kyc", () => []);
 let aiLeft = 15;
 on("GET", "/ai/status", () => ({ enabled: true, limit: 15, left: aiLeft }));
 on("POST", "/ai/ask", (_m, b) => {

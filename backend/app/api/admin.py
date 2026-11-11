@@ -328,7 +328,7 @@ class TournamentIn(BaseModel):
     max_players: int = Field(gt=1, le=4096)
     starts_at: datetime
     rules: str = Field("", max_length=5000)
-    status: str = Field("open", pattern="^(open|running|finished)$")
+    status: str = Field("open", pattern="^(soon|open|running|finished)$")
 
 
 @router.post("/tournaments")

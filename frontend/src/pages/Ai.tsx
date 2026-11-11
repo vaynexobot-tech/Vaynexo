@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type ListingCard } from "../api";
 import { t } from "../i18n";
-import { BottomNav, errorText, GAME_IMG, Header, Icon, money } from "../ui";
+import { errorText, GAME_IMG, Header, Icon, money } from "../ui";
 
 interface Msg { role: "user" | "ai"; text: string; listings?: ListingCard[]; error?: boolean }
 interface Status { enabled: boolean; limit: number; left: number }
@@ -68,7 +68,7 @@ export default function Ai() {
 
   return (
     <>
-      <Header title={t("AI bo'limi")} sub={t("Aqlli yordamchi")} back={false} icon="ai"
+      <Header title={t("AI yordamchi")} sub={t("Aqlli yordamchi")}
         right={st?.enabled ? <span className="ai-left mono">● {t("{n} so'rov", { n: st.left })}</span> : <span />} />
       <div className="page ai-page">
         <div className="ai-row">
@@ -117,7 +117,6 @@ export default function Ai() {
         <input className="grow" placeholder={t("Savol yozing...")} maxLength={500} value={text} onChange={(e) => setText(e.target.value)} disabled={busy || st?.enabled === false} />
         <button type="submit" className="ai-send" disabled={busy || text.trim().length < 2} aria-label={t("Yuborish")}>↑</button>
       </form>
-      <BottomNav />
     </>
   );
 }

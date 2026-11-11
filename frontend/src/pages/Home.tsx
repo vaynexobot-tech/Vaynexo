@@ -117,6 +117,17 @@ export default function Home() {
           </div>
           <span className="y"><Icon name="right" /></span>
         </div>
+
+        <div className="card click row between" onClick={() => nav("/ai")}>
+          <div className="row">
+            <div className="iconbtn y" style={{ width: 44, height: 44, background: "rgba(255,214,10,.08)" }}><Icon name="ai" /></div>
+            <div>
+              <div className="b">{t("AI yordamchi")}</div>
+              <div className="mut xs">{t("Akkaunt topish va savollarga javob")}</div>
+            </div>
+          </div>
+          <span className="y"><Icon name="right" /></span>
+        </div>
       </div>
       <BottomNav />
     </>

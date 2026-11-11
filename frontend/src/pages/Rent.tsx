@@ -4,7 +4,7 @@ import { api, type Media } from "../api";
 import { t } from "../i18n";
 import { confirmDialog } from "../tg";
 import {
-  BottomBar, BottomNav, Chips, Copy, dateTime, Empty, Field, GAME_IMG, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som,
+  BottomBar, BottomNav, Chips, KycBanner, Copy, dateTime, Empty, Field, GAME_IMG, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som,
   Spinner, Status, useAction, useApp, useLoad,
 } from "../ui";
 
@@ -13,7 +13,7 @@ export interface RentCard {
   status: string; reject_reason: string | null; cover: string | null; busy_until: string | null; owner_rating: number | null; created_at: string;
 }
 interface RentFull extends RentCard { description: string; media: Media[]; owner: { id: number; name: string; username: string | null; rating: number | null; rating_count: number }; is_mine: boolean }
-interface RentConfig { durations: { hours: number; label: string }[]; rent_deposit_type: "percent" | "fixed"; rent_deposit_percent: number; rent_deposit_fixed: number; rent_commission_percent: number }
+interface RentConfig { durations: { hours: number; label: string; discount?: number }[]; rent_deposit_type: "percent" | "fixed"; rent_deposit_percent: number; rent_deposit_fixed: number; rent_commission_percent: number }
 interface Rental {
   id: number; listing: RentCard; role: "renter" | "owner" | "admin"; hours: number; duration: string; price: number; deposit: number; commission: number;
   status: string; starts_at: string; ends_at: string; review_until: string | null; dispute_by: string | null; dispute_reason: string | null;
@@ -21,6 +21,12 @@ interface Rental {
 }
 
 const RANKS = ["Epic", "Legend", "Mythic", "Mythic Honor", "Mythic Glory", "Mythic Immortal"];
+/** Narx = soatlik × soat − muddat chegirmasi (server ham xuddi shunday hisoblaydi). */
+const priceOf = (pph: number, hours: number, c: RentConfig) => {
+  const gross = pph * hours;
+  const d = c.durations.find((x) => x.hours === hours)?.discount ?? 0;
+  return gross - Math.floor((gross * d) / 100);
+};
 const depositOf = (price: number, c: RentConfig) => (c.rent_deposit_type === "fixed" ? c.rent_deposit_fixed : Math.floor((price * c.rent_deposit_percent) / 100));
 
 function useCountdown(iso: string | null) {
@@ -56,6 +62,7 @@ export function Rent() {
     <>
       <Header title={t("Account ijara")} sub={t("Soatbay ijaraga oling")} back={false} icon="bag" />
       <div className="page">
+        <KycBanner area="rental" />
         <div className="grid2">
           <button className="btn small" onClick={() => nav("/rent/new")}>+ {t("Ijaraga berish")}</button>
           <button className="btn small ghost" onClick={() => nav("/rentals")}>{t("Mening ijaralarim")}</button>
@@ -113,7 +120,7 @@ export function RentDetail() {
       <Header title={t("Ijara tafsilotlari")} sub={t("Account ijara")} />
       <Loadable state={st}>
         {([l, cfg]) => {
-          const price = l.price_per_hour * hours;
+          const price = priceOf(l.price_per_hour, hours, cfg);
           const deposit = depositOf(price, cfg);
           const total = price + deposit;
           const enough = (me?.balance ?? 0) >= total;
@@ -160,12 +167,13 @@ export function RentDetail() {
                 <div className="grid2">
                   {cfg.durations.map((d) => (
                     <button key={d.hours} className={"pkg center" + (hours === d.hours ? " on" : "")} onClick={() => setHours(d.hours)}>
-                      <div className="b">{t(d.label)}</div><div className="y mono xs">{money(l.price_per_hour * d.hours)}</div>
+                      <div className="b">{t(d.label)}</div><div className="y mono xs">{money(priceOf(l.price_per_hour, d.hours, cfg))}</div>
+                      {d.discount ? <div className="g xs b">−{d.discount}%</div> : null}
                     </button>
                   ))}
                 </div>
                 <div className="card tight">
-                  <div className="kv"><span>{t("Ijara")} ({t(cfg.durations.find((d) => d.hours === hours)!.label)})</span><span>{som(price)}</span></div>
+                  <div className="kv"><span>{t("Ijara")} ({t(cfg.durations.find((d) => d.hours === hours)!.label)}{cfg.durations.find((d) => d.hours === hours)?.discount ? `, −${cfg.durations.find((d) => d.hours === hours)!.discount}%` : ""})</span><span>{som(price)}</span></div>
                   <div className="kv"><span>{t("Depozit")} <span className="g xs">{t("qaytariladi")}</span></span><span>{som(deposit)}</span></div>
                   <div className="kv"><span>{t("Jami yechiladi")}</span><span className="y">{som(total)}</span></div>
                   <div className="kv"><span>{t("Balans")}</span><span className={enough ? "" : "r"}>{som(me?.balance ?? 0)}</span></div>

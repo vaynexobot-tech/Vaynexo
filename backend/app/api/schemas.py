@@ -34,6 +34,11 @@ def user_private(u: User) -> dict:
         "bio_set": bool(u.bio_hash),
         "notify_chat": u.notify_chat,
         "notify_tour": u.notify_tour,
+        "points": u.points,
+        "vip_credit_days": u.vip_credit_days,
+        "tournament_passes": u.tournament_passes,
+        "boost_coupon_percent": u.boost_coupon_percent,
+        "badge": u.badge,
     }
 
 
@@ -117,7 +122,9 @@ def boost(o: BoostOrder) -> dict:
     return {"id": o.id, "ref": f"VX-B{o.id}", "game": o.game, "current_rank": o.current_rank,
             "target_rank": o.target_rank, "stars": o.stars, "lane": o.lane, "note": o.note,
             "login_method": o.login_method, "price": o.price, "status": o.status, "booster_name": o.booster_name,
-            "user_id": o.user_id, "created_at": iso(o.created_at), "finished_at": iso(o.finished_at)}
+            "user_id": o.user_id, "created_at": iso(o.created_at), "finished_at": iso(o.finished_at),
+            "progress_stars": o.progress_stars, "winrate": o.winrate, "accepted_at": iso(o.accepted_at),
+            "started_at": iso(o.started_at), "booster_code": f"#{o.booster_id % 97 + 1}" if o.booster_id else None}
 
 
 def tournament(t: Tournament, joined: bool = False) -> dict:

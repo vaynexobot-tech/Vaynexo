@@ -45,6 +45,11 @@ async def ensure_user(tg_user, ref: int | None = None) -> User:
                 referrer_id=ref, is_admin=is_admin(tg_user.id),
             )
             session.add(user)
+            if ref:
+                from app.services import arena
+
+                await session.flush()
+                await arena.bump(session, ref, "invite")
         elif user.username != tg_user.username:
             user.username = tg_user.username
     return user
@@ -67,6 +72,85 @@ async def start(message: Message, command: CommandObject):
 @router.message(Command("help"), F.chat.type == "private")
 async def help_cmd(message: Message):
     await message.answer("Savollar bo'yicha: @vaynexo_support\nIlovani ochish:", reply_markup=open_app_kb())
+
+
+async def is_booster(bot, user_id: int) -> bool:
+    """Booster — boosterlar guruhi a'zosi (yoki admin)."""
+    if is_admin(user_id):
+        return True
+    if not settings.booster_group_id:
+        return False
+    try:
+        m = await bot.get_chat_member(settings.booster_group_id, user_id)
+        return m.status in ("member", "administrator", "creator", "restricted")
+    except Exception:
+        return False
+
+
+@router.message(Command("administ"), F.chat.type == "private")
+async def administ(message: Message):
+    """Yashirin admin buyrug'i: tezkor vazifalar va statistika."""
+    if not is_admin(message.from_user.id):
+        return
+    from app.models import Deal, Listing, PartnerVideo, Rental, RentListing, TgOrder, Withdrawal
+
+    async with SessionLocal() as session:
+        cnt = lambda q: session.scalar(select(func.count()).select_from(q))  # noqa: E731
+        users = await session.scalar(select(func.count()).select_from(User))
+        rows = [
+            ("🆕 E'lonlar moderatsiyada", await cnt(select(Listing).where(Listing.status == "moderation").subquery())),
+            ("🔑 Ijara e'lonlari", await cnt(select(RentListing).where(RentListing.status == "moderation").subquery())),
+            ("🪪 KYC so'rovlari", await cnt(select(User).where(User.kyc_status == "pending").subquery())),
+            ("🎬 Hamkor videolari", await cnt(select(PartnerVideo).where(PartnerVideo.status == "pending").subquery())),
+            ("💸 Pul yechish", await cnt(select(Withdrawal).where(Withdrawal.status == "pending").subquery())),
+            ("⭐️ TG buyurtmalar", await cnt(select(TgOrder).where(TgOrder.status.in_(("paid", "processing"))).subquery())),
+            ("⚖️ Nizolar", await cnt(select(Deal).where(Deal.status == "disputed").subquery())
+             + await cnt(select(Rental).where(Rental.status == "disputed").subquery())),
+            ("⚠️ Biriktirilmagan kirimlar", await p2p.unmatched_count(session)),
+            ("🚀 Booster kutayotgan boost", await cnt(select(BoostOrder).where(BoostOrder.status == "searching").subquery())),
+        ]
+    text = f"🛠 VAYNEXO admin\n👥 Foydalanuvchilar: {users}\n\n" + "\n".join(f"{n}: {c}" for n, c in rows)
+    await message.answer(text, reply_markup=open_app_kb("🛠 Admin panelni ochish", "/admin"))
+
+
+@router.message(Command("booster"), F.chat.type == "private")
+async def booster_cmd(message: Message):
+    """Yashirin booster buyrug'i: yangi buyurtmalar va o'z buyurtmalarim."""
+    if not await is_booster(message.bot, message.from_user.id):
+        return
+    await get_share_pct()
+    async with SessionLocal() as session:
+        mine = list(await session.scalars(select(BoostOrder).where(
+            BoostOrder.booster_id == message.from_user.id, BoostOrder.status.in_(("accepted", "in_progress", "finished"))
+        ).order_by(BoostOrder.id)))
+        new = list(await session.scalars(select(BoostOrder).where(BoostOrder.status == "searching").order_by(BoostOrder.id).limit(10)))
+    if not mine and not new:
+        await message.answer("Hozircha buyurtma yo'q. Yangi buyurtmalar boosterlar guruhiga tushadi.")
+        return
+    for o in mine:
+        extra = f"\nProgress: {o.progress_stars}/{o.stars}★\nYangilash: /progress {o.id} <olingan yulduz> [win-rate]"
+        await message.answer("📌 Sizning buyurtmangiz\n" + boost_post_text(o) + extra, reply_markup=booster_dm_kb(o))
+    for o in new:
+        await message.answer(boost_post_text(o), reply_markup=boost_post_kb(o))
+
+
+@router.message(Command("progress"), F.chat.type == "private")
+async def progress_cmd(message: Message, command: CommandObject):
+    """/progress <buyurtma> <olingan yulduz> [win-rate] — mijozga jonli progress yuboriladi."""
+    parts = (command.args or "").split()
+    if len(parts) < 2 or not parts[0].lstrip("#").isdigit() or not parts[1].isdigit():
+        await message.answer("Foydalanish: /progress 1043 12 74\n(buyurtma raqami, olingan yulduz, win-rate % — ixtiyoriy)")
+        return
+    winrate = int(parts[2].rstrip("%")) if len(parts) > 2 and parts[2].rstrip("%").isdigit() else None
+    out = Outbox()
+    try:
+        async with SessionLocal() as session, session.begin():
+            o = await svc.boost_report_progress(session, int(parts[0].lstrip("#")), message.from_user.id, int(parts[1]), winrate, out)
+    except AppError as e:
+        await message.answer(f"❌ {e.message}")
+        return
+    await out.flush()
+    await message.answer(f"✅ Yuborildi: {o.progress_stars}/{o.stars}★ — mijozga xabar ketdi.")
 
 
 @router.message(Command("stats"), F.chat.type == "private")
@@ -115,6 +199,21 @@ async def admin_bank_forward(message: Message):
 
 
 # ------------------------------------------------------------------ boosterlar guruhi
+_share_pct = 70  # admin paneldagi «Booster ulushi»; get_share_pct() yangilaydi
+
+
+async def get_share_pct() -> int:
+    global _share_pct
+    from app.services import app_settings
+
+    try:
+        async with SessionLocal() as session:
+            _share_pct = int(await app_settings.get_value(session, "booster_share_percent"))
+    except Exception:
+        log.debug("booster ulushini o'qib bo'lmadi", exc_info=True)
+    return _share_pct
+
+
 def boost_post_text(o: BoostOrder) -> str:
     status = {"searching": "🟢 YANGI", "accepted": "🟡 Olingan", "in_progress": "🔵 Jarayonda", "finished": "🏁 Tugatildi",
               "done": "✅ Yakunlandi", "refunded": "⛔️ Bekor qilindi", "disputed": "⚖️ Nizo"}.get(o.status, o.status)
@@ -125,7 +224,7 @@ def boost_post_text(o: BoostOrder) -> str:
         f"Yulduz: {o.stars}",
         f"Liniya: {o.lane or 'Ixtiyoriy'}",
         f"Kirish: {o.login_method}",
-        f"Booster ulushi: {fmt(o.price * svc.BOOSTER_SHARE_PERCENT // 100)}",
+        f"Booster ulushi: {fmt(o.price * _share_pct // 100)}",
     ]
     if o.note:
         lines.append(f"Izoh: {o.note}")
@@ -165,6 +264,7 @@ async def boost_callback(cb: CallbackQuery):
         await cb.answer(e.message, show_alert=True)
         return
     await out.flush()
+    await get_share_pct()
     if action == "accept":
         dm = boost_post_text(order) + (f"\n\n🔐 Kirish ma'lumotlari:\n{creds}" if creds else
                                        "\n\nMijoz bilan bog'lanish uchun admin bilan aloqa qiling.")

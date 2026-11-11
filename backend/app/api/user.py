@@ -40,7 +40,9 @@ async def me(user: CurrentUser, session: SessionDep):
         "referral_min_topup": await app_settings.get_value(session, "referral_min_topup"),
         **(await referral_stats(session, user.id)),
         "ref_link": f"https://t.me/{settings.bot_username}?startapp=ref_{user.id}" if settings.bot_username else None,
-        "commission_percent": settings.commission_percent,
+        "commission_percent": await app_settings.get_value(session, "garant_fee_percent"),
+        "kyc_required": {"marketplace": await app_settings.get_value(session, "kyc_marketplace") == "on",
+                         "rental": await app_settings.get_value(session, "kyc_rental") == "on"},
         "purchases_count": await session.scalar(
             select(func.count()).select_from(LedgerEntry).where(
                 LedgerEntry.user_id == user.id, LedgerEntry.amount < 0, LedgerEntry.kind.in_(SPEND_KINDS)

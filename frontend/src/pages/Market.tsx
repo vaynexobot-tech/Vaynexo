@@ -4,12 +4,12 @@ import { api, type Deal, type ListingCard, type ListingFull } from "../api";
 import { t } from "../i18n";
 import { haptic } from "../tg";
 import {
-  BottomBar, BottomNav, Chips, Empty, Field, GAME_IMG, GameLogo, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Spinner, Status,
+  BottomBar, BottomNav, Chips, KycBanner, Empty, Field, GAME_IMG, GameLogo, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Spinner, Status,
   useAction, useApp, useLoad,
 } from "../ui";
 
-const LEVELS = ["Amateur", "Junior", "Senior", "Expert", "Renowned", "Exalted", "Mega", "World"];
-type Cat = "all" | "fav" | "mythic" | "legend" | "epic" | "cheap" | "skins";
+const LEVELS = ["Junior", "Senior", "Expert", "Renowned", "Exalted", "Mega", "World"];
+type Cat = string; // all | fav | lv:<daraja>
 
 interface Filters {
   game: "" | "ML" | "MC";
@@ -49,6 +49,7 @@ export function Market() {
     if (query) p.set("q", query);
     if (f.game) p.set("game", f.game);
     if (f.level) p.set("level", f.level);
+    if (cat.startsWith("lv:")) p.set("level", cat.slice(3));
     let min = f.min_price, max = f.max_price;
     if (cat === "cheap") max = 500_000;
     if (cat === "mythic") p.set("rank", "Mythic");
@@ -87,6 +88,7 @@ export function Market() {
     <>
       <Header title={t("Account savdo")} sub={t("Tayyor akkauntlarni sotib oling")} back={false} icon="grid" />
       <div className="page">
+        <KycBanner area="marketplace" />
         <div className="grid2">
           <button className="btn small" onClick={() => nav("/sell")}>+ {t("E'lon joylash")}</button>
           <button className="btn small ghost" onClick={() => nav("/deals")}>{t("Mening bitimlarim")}</button>
@@ -99,8 +101,8 @@ export function Market() {
           <button type="button" className="iconbtn" style={{ width: 48, height: 48 }} onClick={() => setShowFilter(true)} aria-label={t("Filtr")}><Icon name="filter" /></button>
         </form>
         <Chips value={cat} onChange={setCat} options={[
-          { v: "all", label: t("Hammasi") }, { v: "fav", label: "❤️ " + t("Sevimlilar") }, { v: "mythic", label: "Mythic" },
-          { v: "legend", label: "Legend" }, { v: "epic", label: "Epic" }, { v: "cheap", label: t("500k gacha") }, { v: "skins", label: t("100+ skin") },
+          { v: "all", label: t("Hammasi") }, { v: "fav", label: "❤️ " + t("Sevimlilar") },
+          ...[...LEVELS].reverse().map((l) => ({ v: "lv:" + l, label: l })),
         ]} />
         <div className="row between sm">
           <span className="mut">{t("{n} ta e'lon", { n: total })}</span>

@@ -33,8 +33,17 @@ def _lock(model, oid):
 
 
 async def config(session: AsyncSession) -> dict:
-    s = await app_settings.get_many(session, "rent_deposit_type", "rent_deposit_percent", "rent_deposit_fixed", "rent_commission_percent")
-    return {"durations": [{"hours": h, "label": lbl} for h, lbl in DURATIONS.items()], **s}
+    s = await app_settings.get_many(session, "rent_deposit_type", "rent_deposit_percent", "rent_deposit_fixed", "rent_commission_percent",
+                                    "rent_discount_24", "rent_discount_72", "rent_discount_168")
+    disc = {12: 0, 24: s["rent_discount_24"], 72: s["rent_discount_72"], 168: s["rent_discount_168"]}
+    return {"durations": [{"hours": h, "label": lbl, "discount": int(disc.get(h, 0))} for h, lbl in DURATIONS.items()], **s}
+
+
+def price_for(price_per_hour: int, hours: int, cfg: dict) -> int:
+    """Narx = soatlik narx × soat − muddat chegirmasi (%)."""
+    disc = next((d["discount"] for d in cfg["durations"] if d["hours"] == hours), 0)
+    gross = price_per_hour * hours
+    return gross - gross * int(disc) // 100
 
 
 def deposit_for(price: int, cfg: dict) -> int:
@@ -61,6 +70,9 @@ def validate_listing(data: dict, need_creds: bool) -> dict:
 
 
 async def create_listing(session: AsyncSession, owner_id: int, data: dict, out: Outbox) -> RentListing:
+    from app.services.account import require_kyc
+
+    await require_kyc(session, owner_id, "rental")
     item = RentListing(owner_id=owner_id, status="moderation", **validate_listing(data, need_creds=True))
     session.add(item)
     await session.flush()
@@ -113,8 +125,11 @@ async def rent(session: AsyncSession, lid: int, renter_id: int, hours: int, out:
     paid = await session.scalar(select(func.count()).select_from(Topup).where(Topup.user_id == renter_id, Topup.status == "paid"))
     if not paid:
         raise Forbidden("Ijaraga olish uchun avval hamyoningizni kamida bir marta to'ldiring")
+    from app.services.account import require_kyc
+
+    await require_kyc(session, renter_id, "rental")
     cfg = await config(session)
-    price = item.price_per_hour * hours
+    price = price_for(item.price_per_hour, hours, cfg)
     deposit = deposit_for(price, cfg)
     commission = price * int(cfg["rent_commission_percent"]) // 100
     r = Rental(listing_id=item.id, renter_id=renter_id, owner_id=item.owner_id, hours=hours, price=price, deposit=deposit,

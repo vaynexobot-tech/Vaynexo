@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type Boost, type Deal, type DonateOrder, type ListingFull, type Me, type Pkg, type TgOrder, type Topup, type Withdrawal } from "../api";
 import { t } from "../i18n";
-import { confirmDialog } from "../tg";
+import { confirmDialog, openTg } from "../tg";
 import { Chips, Copy, dateTime, Empty, Field, Header, Loadable, money, MoneyInput, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
 
-type Tab = "stats" | "settings" | "rent" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments";
+type Tab = "stats" | "settings" | "rent" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments" | "kyc" | "partner" | "matches";
 
 export default function Admin() {
   const { me } = useApp();
@@ -20,6 +20,7 @@ export default function Admin() {
           { v: "moderation", label: "📝 E'lonlar" }, { v: "disputes", label: "⚖️ Nizolar" }, { v: "donate", label: "💎 Donat" },
           { v: "tg", label: "⭐️ TG" }, { v: "boost", label: "🚀 Boost" }, { v: "users", label: "👥 Foydalanuvchilar" },
           { v: "packages", label: "📦 Paketlar" }, { v: "tournaments", label: "🏆 Turnirlar" },
+          { v: "kyc", label: "🪪 KYC" }, { v: "partner", label: "🎬 Hamkor" }, { v: "matches", label: "🎯 Prognoz" },
         ]} />
         {tab === "stats" && <Stats go={setTab} />}
         {tab === "settings" && <AppSettings />}
@@ -34,6 +35,9 @@ export default function Admin() {
         {tab === "users" && <Users />}
         {tab === "packages" && <Packages />}
         {tab === "tournaments" && <Tournaments />}
+        {tab === "kyc" && <KycAdmin />}
+        {tab === "partner" && <PartnerAdmin />}
+        {tab === "matches" && <MatchesAdmin />}
       </div>
     </>
   );
@@ -394,9 +398,11 @@ function Packages() {
 interface TourForm { id?: number; title: string; game: "ML" | "MC"; prize_fund: number | ""; entry_fee: number | ""; max_players: number; starts_at: string; rules: string; status: string }
 
 function Tournaments() {
-  const st = useLoad(() => Promise.all(["open", "running", "finished"].map((s) => api.get<(TourForm & { id: number; players_count: number })[]>(`/tournaments?status=${s}`))).then((r) => r.flat()));
+  const { toast } = useApp();
+  const st = useLoad(() => Promise.all(["soon", "open", "running", "finished"].map((s) => api.get<(TourForm & { id: number; players_count: number })[]>(`/tournaments?status=${s}`))).then((r) => r.flat()));
   const [f, setF] = useState<TourForm | null>(null);
   const [entries, setEntries] = useState<{ user_id: number; nick: string; game_id: string; server: string; tg_username: string }[] | null>(null);
+  const [entriesFor, setEntriesFor] = useState<number | null>(null);
   const { busy, run } = useAction();
   const blank: TourForm = { title: "", game: "ML", prize_fund: "", entry_fee: 0, max_players: 32, starts_at: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 16), rules: "", status: "open" };
   return (
@@ -409,7 +415,7 @@ function Tournaments() {
             <div className="mut xs">{x.players_count}/{x.max_players} · {som(Number(x.prize_fund))} · {dateTime(x.starts_at)}</div>
             <div className="row">
               <button className="btn small ghost grow" onClick={() => setF({ ...x, starts_at: new Date(x.starts_at).toISOString().slice(0, 16) })}>Tahrirlash</button>
-              <button className="btn small ghost grow" onClick={() => run(async () => setEntries(await api.get(`/admin/tournaments/${x.id}/entries`)))}>Ishtirokchilar</button>
+              <button className="btn small ghost grow" onClick={() => run(async () => { setEntriesFor(x.id); setEntries(await api.get(`/admin/tournaments/${x.id}/entries`)); })}>Ishtirokchilar</button>
             </div>
           </div>
         ))}
@@ -425,7 +431,7 @@ function Tournaments() {
             <Field label="Ishtirokchilar soni"><Chips value={f.max_players} onChange={(v) => setF({ ...f, max_players: v })} options={[16, 32, 64, 128, 256].map((v) => ({ v, label: String(v) }))} /></Field>
             <Field label="Boshlanish"><input className="input" type="datetime-local" value={f.starts_at} onChange={(e) => setF({ ...f, starts_at: e.target.value })} /></Field>
             <Field label="Qoidalar"><textarea className="input" value={f.rules} onChange={(e) => setF({ ...f, rules: e.target.value })} /></Field>
-            <Field label="Holati"><Seg value={f.status} onChange={(s) => setF({ ...f, status: s })} options={[{ v: "open", label: "Ochiq" }, { v: "running", label: "Davom" }, { v: "finished", label: "Tugagan" }]} /></Field>
+            <Field label="Holati"><Seg value={f.status} onChange={(s) => setF({ ...f, status: s })} options={[{ v: "soon", label: "Tez kunda" }, { v: "open", label: "Ochiq" }, { v: "running", label: "Davom" }, { v: "finished", label: "Tugagan" }]} /></Field>
             <button className="btn full" disabled={busy || !f.title || f.prize_fund === ""} onClick={() => run(async () => {
               const body = { ...f, entry_fee: f.entry_fee || 0, starts_at: new Date(f.starts_at).toISOString() };
               if (f.id) await api.put(`/admin/tournaments/${f.id}`, body);
@@ -438,7 +444,12 @@ function Tournaments() {
       </Sheet>
       <Sheet open={!!entries} onClose={() => setEntries(null)}>
         <div className="sec-title">Ishtirokchilar ({entries?.length})</div>
-        {entries?.map((e, i) => <div key={e.user_id} className="listrow sm"><span className="mono">{i + 1}.</span><span className="grow"><b>{e.nick}</b> · {e.game_id} ({e.server})<br /><span className="mut xs">{e.tg_username} · user {e.user_id}</span></span></div>)}
+        {entries?.map((e, i) => <div key={e.user_id} className="listrow sm"><span className="mono">{i + 1}.</span><span className="grow"><b>{e.nick}</b> · {e.game_id} ({e.server})<br /><span className="mut xs">{e.tg_username} · user {e.user_id}</span></span>
+          <button className="btn small ghost" onClick={() => run(async () => {
+            if (!entriesFor || !(await confirmDialog(`${e.nick} — g'olib? Turnir yakunlanadi va ball beriladi.`))) return;
+            await api.post(`/admin/tournaments/${entriesFor}/winner`, { user_id: e.user_id });
+            toast("G'olib belgilandi", "ok"); setEntries(null); st.reload();
+          })}>🏆</button></div>)}
       </Sheet>
     </>
   );
@@ -548,6 +559,110 @@ function RentAdmin() {
           ))}
         </Loadable>
       )}
+    </>
+  );
+}
+
+
+function KycAdmin() {
+  const { toast } = useApp();
+  const st = useLoad(() => api.get<{ id: number; name: string; username: string | null; at: string | null }[]>("/admin/kyc"));
+  const { run } = useAction();
+  return (
+    <Loadable state={st}>
+      {(list) => list.length === 0 ? <Empty text="Kutilayotgan so'rov yo'q" /> : (
+        <>
+          <div className="mut xs">Rasmlar sizga botda yuborilgan. Shu yerda yoki botdagi tugmalar bilan qaror qiling.</div>
+          {list.map((u) => (
+            <div key={u.id} className="card row">
+              <div className="grow"><div className="b">{u.name} {u.username ? `@${u.username}` : ""}</div><div className="mut xs">ID {u.id} · {u.at ? dateTime(u.at) : ""}</div></div>
+              <button className="btn small green" onClick={() => run(async () => { await api.post(`/admin/kyc/${u.id}`, { approve: true }); toast("Tasdiqlandi", "ok"); st.reload(); })}>✓</button>
+              <button className="btn small danger" onClick={() => run(async () => { const note = window.prompt("Rad etish sababi") ?? ""; await api.post(`/admin/kyc/${u.id}`, { approve: false, note }); st.reload(); })}>✕</button>
+            </div>
+          ))}
+        </>
+      )}
+    </Loadable>
+  );
+}
+
+interface PVideo { id: number; user_id: number; platform: string; url: string; status: string; created_at: string }
+
+function PartnerAdmin() {
+  const { toast } = useApp();
+  const st = useLoad(() => api.get<PVideo[]>("/admin/partner/videos"));
+  const [cur, setCur] = useState<PVideo | null>(null);
+  const [views, setViews] = useState<number | "">("");
+  const [likes, setLikes] = useState<number | "">("");
+  const { busy, run } = useAction();
+  const decide = (approve: boolean) => run(async () => {
+    const note = approve ? null : (window.prompt("Rad etish sababi") ?? "Talablarga mos emas");
+    await api.post(`/admin/partner/videos/${cur!.id}`, { approve, views: views || 0, likes: likes || 0, note });
+    toast(approve ? "Tasdiqlandi, mukofot berildi" : "Rad etildi", "ok");
+    setCur(null); st.reload();
+  });
+  return (
+    <>
+      <Loadable state={st}>
+        {(list) => list.length === 0 ? <Empty text="Tekshiruvdagi video yo'q" /> : list.map((v) => (
+          <div key={v.id} className="card row click" onClick={() => { setCur(v); setViews(""); setLikes(""); }}>
+            <div className="grow" style={{ minWidth: 0 }}><div className="b ell sm">{v.url}</div><div className="mut xs">#{v.id} · {v.platform} · user {v.user_id} · {dateTime(v.created_at)}</div></div>
+            <span className="y">›</span>
+          </div>
+        ))}
+      </Loadable>
+      <Sheet open={!!cur} onClose={() => setCur(null)}>
+        <div className="sec-title" style={{ marginTop: 0 }}>Hamkor videosi #{cur?.id}</div>
+        <div className="col">
+          <button className="btn ghost full" onClick={() => cur && (window.Telegram?.WebApp?.openLink ? window.Telegram.WebApp.openLink(cur.url) : openTg(cur.url))}>Videoni ochish ↗</button>
+          <div className="mut xs">Ko'rishlar video joylanganidan 10 kun o'tgach kiritiladi. Daraja ko'rishlarga qarab avtomatik aniqlanadi.</div>
+          <Field label="Ko'rishlar"><MoneyInput value={views} onChange={setViews} /></Field>
+          <Field label="Layklar"><MoneyInput value={likes} onChange={setLikes} /></Field>
+          <div className="row">
+            <button className="btn danger grow" disabled={busy} onClick={() => decide(false)}>Rad etish</button>
+            <button className="btn green grow" disabled={busy || !views} onClick={() => decide(true)}>Tasdiqlash</button>
+          </div>
+        </div>
+      </Sheet>
+    </>
+  );
+}
+
+interface MatchRow { id: number; title: string; team_a: string; team_b: string; starts_at: string; status: string; result: string | null }
+
+function MatchesAdmin() {
+  const { toast } = useApp();
+  const st = useLoad(() => api.get<MatchRow[]>("/admin/arena/matches"));
+  const [f, setF] = useState({ title: "", team_a: "", team_b: "", starts_at: "" });
+  const { busy, run } = useAction();
+  return (
+    <>
+      <div className="card col">
+        <div className="b">Yangi bepul prognoz</div>
+        <Field label="Nomi"><input className="input" placeholder="Noyabr kubogi · yarim final" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
+        <div className="row">
+          <input className="input grow" placeholder="1-jamoa" value={f.team_a} onChange={(e) => setF({ ...f, team_a: e.target.value })} />
+          <input className="input grow" placeholder="2-jamoa" value={f.team_b} onChange={(e) => setF({ ...f, team_b: e.target.value })} />
+        </div>
+        <Field label="Boshlanish"><input className="input" type="datetime-local" value={f.starts_at} onChange={(e) => setF({ ...f, starts_at: e.target.value })} /></Field>
+        <button className="btn full" disabled={busy || !f.title || !f.team_a || !f.team_b || !f.starts_at} onClick={() => run(async () => {
+          await api.post("/admin/arena/matches", { ...f, starts_at: new Date(f.starts_at).toISOString() });
+          setF({ title: "", team_a: "", team_b: "", starts_at: "" }); toast("Qo'shildi", "ok"); st.reload();
+        })}>Qo'shish</button>
+      </div>
+      <Loadable state={st}>
+        {(list) => list.map((m) => (
+          <div key={m.id} className="card col">
+            <div className="row between"><span className="b">{m.title}</span><span className="mut xs">{dateTime(m.starts_at)}</span></div>
+            {m.status === "settled" ? <div className="g sm">G'olib: {m.result === "a" ? m.team_a : m.team_b}</div> : (
+              <div className="row">
+                <button className="btn small ghost grow" onClick={() => run(async () => { const r = await api.post<{ winners: number }>(`/admin/arena/matches/${m.id}/settle`, { result: "a" }); toast(`${r.winners} kishiga ball berildi`, "ok"); st.reload(); })}>🏆 {m.team_a}</button>
+                <button className="btn small ghost grow" onClick={() => run(async () => { const r = await api.post<{ winners: number }>(`/admin/arena/matches/${m.id}/settle`, { result: "b" }); toast(`${r.winners} kishiga ball berildi`, "ok"); st.reload(); })}>🏆 {m.team_b}</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </Loadable>
     </>
   );
 }

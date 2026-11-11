@@ -245,7 +245,7 @@ async def test_boost_flow(api, ctx):
     await set_balance(71, 0)  # booster
     u = api(70)
     q = (await u.post("/boost/quote", {"current_rank": "Epic", "current_division": "V", "target_rank": "Mythic", "target_stars": 12})).json()
-    assert q["stars"] == 62 and q["price"] == 25 * 4_000 + 25 * 5_000 + 12 * 7_000
+    assert q["stars"] == 62 and q["price"] == 25 * 6_000 + 25 * 8_000 + 12 * 10_000
     r = await u.post("/boost/orders", {"current_rank": "Epic", "target_rank": "Mythic", "target_stars": 12,
                                        "login_method": "moonton", "credentials": "id 123 / parol"})
     assert r.status_code == 200, r.text

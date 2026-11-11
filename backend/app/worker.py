@@ -13,7 +13,7 @@ from aiogram.exceptions import TelegramForbiddenError, TelegramNetworkError, Tel
 from arq import Retry, cron
 from sqlalchemy import select
 
-from app.bot.handlers import boost_post_kb, boost_post_text
+from app.bot.handlers import boost_post_kb, boost_post_text, get_share_pct
 from app.bot.instance import get_bot
 from app.config import settings
 from app.db import SessionLocal
@@ -54,6 +54,7 @@ async def post_boost(ctx, order_id: int):
         out.admins(f"🚀 Yangi boost buyurtma #{order_id} (BOOSTER_GROUP_ID sozlanmagan — admin paneldan kuzating).")
         await out.flush()
         return
+    await get_share_pct()
     async with SessionLocal() as session, session.begin():
         o = await session.scalar(select(BoostOrder).where(BoostOrder.id == order_id).with_for_update())
         if o is None or o.group_message_id:
@@ -63,6 +64,7 @@ async def post_boost(ctx, order_id: int):
 
 
 async def update_boost_post(ctx, order_id: int):
+    await get_share_pct()
     async with SessionLocal() as session:
         o = await session.get(BoostOrder, order_id)
     if o is None or not o.group_message_id or not settings.booster_group_id:

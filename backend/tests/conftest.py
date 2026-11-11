@@ -46,6 +46,13 @@ async def db():
 
 @pytest.fixture(autouse=True)
 async def isolate(monkeypatch):
+    # Testlarda KYC majburiy emas (alohida testda yoqiladi), garant komissiyasi 5%
+    from dataclasses import replace as _replace
+
+    from app.services import app_settings as _A
+
+    for _k, _v in (("kyc_marketplace", "off"), ("kyc_rental", "off"), ("garant_fee_percent", 5)):
+        monkeypatch.setitem(_A.SCHEMA, _k, _replace(_A.SCHEMA[_k], default=_v))
     deps._redis = None
     try:
         await deps.get_redis().flushdb()

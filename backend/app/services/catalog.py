@@ -1,7 +1,7 @@
 """Telegram xizmatlari (narxlar admin paneldan) va boost narxlari (so'm)."""
 
 PREMIUM_MONTHS = (1, 3, 6, 12)
-STARS_PRESETS = [50, 100, 250, 500, 1_000, 2_500, 5_000, 10_000]
+STARS_PRESETS = [50, 100, 250, 500, 1_000, 2_500]
 STARS_MIN, STARS_MAX = 50, 100_000
 GIFTS = {"heart": "Yurak", "bear": "Ayiqcha", "box": "Sovg'a qutisi", "rose": "Gul", "cup": "Kubok", "diamond": "Brilliant"}
 NFT = {"gift": "NFT sovg'a", "username": "Username", "number": "Anonim raqam"}
@@ -21,7 +21,8 @@ async def tg_prices(session) -> dict:
         star_x100 = await A.get_value(session, "stars_price") * 100
     gifts = {c: (n, await A.get_value(session, f"gift_price_{c}")) for c, n in GIFTS.items()}
     nft = {c: (n, await A.get_value(session, f"nft_price_{c}")) for c, n in NFT.items()}
-    return {"mode": mode, "premium": premium, "star_x100": star_x100, "gifts": gifts, "nft": nft}
+    bonus = {n: int(await A.get_value(session, f"stars_bonus_{n}")) for n in A.STARS_BONUS_DEFAULT}
+    return {"mode": mode, "premium": premium, "star_x100": star_x100, "gifts": gifts, "nft": nft, "stars_bonus": bonus}
 
 
 def stars_total(amount: int, star_x100: int) -> int:
@@ -33,7 +34,8 @@ async def public_catalog(session) -> dict:
     return {
         "premium": [{"months": m, "price": price} for m, price in p["premium"].items()],
         "stars": {"presets": STARS_PRESETS, "rate": p["star_x100"] / 100, "min": STARS_MIN, "max": STARS_MAX,
-                  "preset_prices": {n: stars_total(n, p["star_x100"]) for n in STARS_PRESETS}},
+                  "preset_prices": {n: stars_total(n, p["star_x100"]) for n in STARS_PRESETS},
+                  "bonus": {n: b for n, b in p["stars_bonus"].items() if b > 0}},
         "gifts": [{"code": c, "name": n, "price": price} for c, (n, price) in p["gifts"].items()],
         "nft": [{"code": c, "name": n, "price": price} for c, (n, price) in p["nft"].items()],
     }
@@ -75,15 +77,23 @@ def target_position(target: str, stars: int) -> int:
     raise ValueError(target)
 
 
-def star_price(pos: int) -> int:
-    price = STAR_PRICE[0][1]
-    for start, p in STAR_PRICE:
+def star_price(pos: int, table: list[tuple[int, int]] | None = None) -> int:
+    table = table or STAR_PRICE
+    price = table[0][1]
+    for start, p in table:
         if pos >= start:
             price = p
     return price
 
 
-def boost_price(cur_rank: str, cur_div: str, cur_stars: int, target: str, target_stars: int) -> tuple[int, int, int]:
+def star_table(cfg: dict) -> list[tuple[int, int]]:
+    """Admin paneldagi yulduz narxlari (Epic, Legend, Mythic 0–24, 25–49, Glory 50+)."""
+    return [(0, cfg["boost_star_epic"]), (25, cfg["boost_star_legend"]), (50, cfg["boost_star_mythic"]),
+            (75, cfg["boost_star_honor"]), (100, cfg["boost_star_glory"])]
+
+
+def boost_price(cur_rank: str, cur_div: str, cur_stars: int, target: str, target_stars: int,
+                table: list[tuple[int, int]] | None = None) -> tuple[int, int, int]:
     """(narx, boshlang'ich pozitsiya, maqsad pozitsiya)."""
     start = position(cur_rank, cur_div, cur_stars)
     end = target_position(target, target_stars)
@@ -91,4 +101,4 @@ def boost_price(cur_rank: str, cur_div: str, cur_stars: int, target: str, target
         raise ValueError("Maqsad rank hozirgisidan yuqori bo'lishi kerak")
     if end - 50 > MAX_MYTHIC_STARS:
         raise ValueError("Juda ko'p yulduz")
-    return sum(star_price(p) for p in range(start, end)), start, end
+    return sum(star_price(p, table) for p in range(start, end)), start, end

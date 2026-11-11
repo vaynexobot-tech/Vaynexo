@@ -49,7 +49,7 @@ class User(TimestampMixin, Base):
     referrer_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))
     referral_paid: Mapped[bool] = mapped_column(Boolean, default=False)
     # Identifikatsiya: none | pending | verified | rejected
-    kyc_status: Mapped[str] = mapped_column(String(16), default="none", server_default="none")
+    kyc_status: Mapped[str] = mapped_column(String(16), default="none", server_default="none", index=True)
     kyc_note: Mapped[str | None] = mapped_column(String(300))
     kyc_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Xavfsizlik: PIN (scrypt xeshi), pin_ver o'zgarsa eski tokenlar bekor bo'ladi; biometrik kalit xeshi
@@ -58,6 +58,12 @@ class User(TimestampMixin, Base):
     bio_hash: Mapped[str | None] = mapped_column(String(128))
     notify_chat: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     notify_tour: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    # Arena va Hamkor: ball (pulga almashtirilmaydi) va almashtirilgan imtiyozlar
+    points: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    vip_credit_days: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    tournament_passes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    boost_coupon_percent: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    badge: Mapped[str | None] = mapped_column(String(32))
 
 
 class LedgerEntry(TimestampMixin, Base):
@@ -275,6 +281,11 @@ class BoostOrder(TimestampMixin, Base):
     booster_name: Mapped[str | None] = mapped_column(String(64))
     group_message_id: Mapped[int | None] = mapped_column(BigInteger)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Jonli progress: booster /progress buyrug'i bilan yangilaydi
+    progress_stars: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    winrate: Mapped[int | None] = mapped_column(Integer)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 # ---------------------------------------------------------------- Arena
@@ -392,3 +403,82 @@ class PaymentCard(TimestampMixin, Base):
     holder: Mapped[str] = mapped_column(String(64), default="")
     expiry: Mapped[str] = mapped_column(String(5), default="")
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+# ---------------------------------------------------------------- Arena: ball, vazifalar, prognoz, jamoa
+class PointsEntry(TimestampMixin, Base):
+    __tablename__ = "points_ledger"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    amount: Mapped[int] = mapped_column(Integer)
+    reason: Mapped[str] = mapped_column(String(32))
+    idem_key: Mapped[str] = mapped_column(String(120), unique=True)
+
+
+class MissionCounter(Base):
+    """Vazifa progressi: (foydalanuvchi, vazifa, davr) bo'yicha hisoblagich."""
+
+    __tablename__ = "mission_counters"
+    __table_args__ = (UniqueConstraint("user_id", "key", "period", name="uq_mission_counter"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    key: Mapped[str] = mapped_column(String(32))
+    period: Mapped[str] = mapped_column(String(16))
+    count: Mapped[int] = mapped_column(Integer, default=0)
+    claimed: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class PredictionMatch(TimestampMixin, Base):
+    __tablename__ = "prediction_matches"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    title: Mapped[str] = mapped_column(String(120))
+    team_a: Mapped[str] = mapped_column(String(64))
+    team_b: Mapped[str] = mapped_column(String(64))
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)  # open | settled | cancelled
+    result: Mapped[str | None] = mapped_column(String(1))  # a | b
+
+
+class Prediction(TimestampMixin, Base):
+    __tablename__ = "predictions"
+    __table_args__ = (UniqueConstraint("match_id", "user_id", name="uq_prediction"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    match_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("prediction_matches.id"), index=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
+    pick: Mapped[str] = mapped_column(String(1))
+
+
+class TeamPost(TimestampMixin, Base):
+    __tablename__ = "team_posts"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(8))  # player | team
+    name: Mapped[str] = mapped_column(String(64))
+    lane: Mapped[str] = mapped_column(String(16), default="")
+    rank: Mapped[str] = mapped_column(String(32), default="")
+    online: Mapped[str] = mapped_column(String(32), default="")
+    note: Mapped[str] = mapped_column(String(300), default="")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    status: Mapped[str] = mapped_column(String(16), default="active")
+
+
+# ---------------------------------------------------------------- Hamkor dasturi
+class PartnerVideo(TimestampMixin, Base):
+    __tablename__ = "partner_videos"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    platform: Mapped[str] = mapped_column(String(16))
+    url: Mapped[str] = mapped_column(String(300), unique=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)  # pending | approved | rejected
+    views: Mapped[int] = mapped_column(Integer, default=0)
+    likes: Mapped[int] = mapped_column(Integer, default=0)
+    tier: Mapped[int] = mapped_column(Integer, default=0)
+    reward: Mapped[str] = mapped_column(String(120), default="")
+    note: Mapped[str | None] = mapped_column(String(300))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

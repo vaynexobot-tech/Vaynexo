@@ -127,6 +127,8 @@ const P: Record<string, ReactNode> = {
   out: <path d="M15 12H3M7 8l-4 4 4 4M13 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" />,
   admin: <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4" />,
   upload: <path d="M12 16V4M7 9l5-5 5 5M4 20h16" />,
+  calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>,
+  play: <><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M10 9l5 3-5 3z" /></>,
   grid: <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />,
   bolt: <path d="M13 2 4 14h7l-1 8 9-12h-7z" />,
   bell: <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0" />,
@@ -226,7 +228,7 @@ export function BottomNav() {
   }
   const items = [
     { to: "/", icon: "home", label: t("Bosh sahifa") },
-    { to: "/ai", icon: "ai", label: t("AI bo'limi") },
+    { to: "/partner", icon: "play", label: t("Hamkor") },
     { to: "/arena", icon: "arena", label: t("Arena") },
     { to: "/settings", icon: "settings", label: t("Sozlamalar") },
   ];
@@ -399,5 +401,23 @@ export function MoneyInput({ value, onChange, placeholder }: { value: number | "
         onChange(d ? Number(d) : "");
       }}
     />
+  );
+}
+
+/** «Identifikatsiya majburiy» banneri (Account savdo / ijara). */
+export function KycBanner({ area }: { area: "marketplace" | "rental" }) {
+  const { me } = useApp();
+  const nav = useNavigate();
+  if (!me || !me.kyc_required?.[area] || me.kyc_status === "verified") return null;
+  const pending = me.kyc_status === "pending";
+  return (
+    <div className="card row kyc-card" style={{ padding: "10px 12px" }}>
+      <span className="y"><Icon name="lock" size={18} /></span>
+      <div className="grow">
+        <div className="y b sm">{pending ? t("Identifikatsiya tekshirilmoqda") : t("Identifikatsiya majburiy")}</div>
+        <div className="mut xs">{area === "marketplace" ? t("Sotish va xarid uchun shaxsingizni tasdiqlang") : t("Ijara uchun shaxsingizni tasdiqlang")}</div>
+      </div>
+      {!pending && <button className="btn small" onClick={() => nav("/kyc")}>{t("O'tish")} ›</button>}
+    </div>
   );
 }

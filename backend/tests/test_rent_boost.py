@@ -37,6 +37,7 @@ async def _expire(rid: int):
 
 
 async def test_rent_full_flow_percent_deposit(api):
+    await api(1).put("/admin/settings", {"key": "rent_deposit_type", "value": "percent"})
     lid = await _listing(api)
     await set_balance(31, 200_000)
     renter, owner = api(31), api(30)
@@ -72,13 +73,13 @@ async def test_rent_fixed_deposit_and_owner_dispute(api):
     await set_balance(31, 200_000)
     await _paid_topup(31)
     r = (await api(31).post(f"/rent/listings/{lid}/rent", {"hours": 24})).json()
-    assert r["deposit"] == 50_000 and r["price"] == 120_000
+    assert r["deposit"] == 50_000 and r["price"] == 108_000  # 24 soat: 10% chegirma
     await _expire(r["id"])
     assert (await api(30).post(f"/rentals/{r['id']}/dispute", {"reason": "Parol almashtirilgan"})).json()["status"] == "disputed"
     res = await api(1).post(f"/admin/rentals/{r['id']}/resolve", {"decision": "owner", "note": "isbotlandi"})
     assert res.status_code == 200, res.text
-    assert await get_balance(30) == 120_000 - 12_000 + 50_000  # depozit egasiga
-    assert await get_balance(31) == 200_000 - 170_000
+    assert await get_balance(30) == 108_000 - 10_800 + 50_000  # depozit egasiga
+    assert await get_balance(31) == 200_000 - 158_000
 
 
 async def test_rent_auto_complete_after_review_window(api):

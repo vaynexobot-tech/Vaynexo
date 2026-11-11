@@ -48,8 +48,12 @@ async def create_tg_order(session: AsyncSession, user: User, data: dict, out: Ou
         amount = int(data.get("stars") or 0)
         if not catalog.STARS_MIN <= amount <= catalog.STARS_MAX:
             raise AppError("bad_stars", f"Stars soni {catalog.STARS_MIN} dan kam bo'lmasin")
-        price, title = catalog.stars_total(amount, prices["star_x100"]), f"Telegram Stars · {amount:,}".replace(",", " ")
+        bonus = prices.get("stars_bonus", {}).get(amount, 0)
+        price = catalog.stars_total(amount, prices["star_x100"])
+        title = f"Telegram Stars · {amount:,}".replace(",", " ") + (f" + {bonus} bonus" if bonus else "")
         details["stars"] = amount
+        if bonus:
+            details["bonus"] = bonus
     elif kind == "gift":
         code = data.get("gift")
         if code not in prices["gifts"]:
@@ -111,7 +115,8 @@ def boost_quote(data: dict, pct: dict) -> dict:
         raise AppError("bad_rank", "Maqsad rankni tanlang")
     try:
         base, start, end = catalog.boost_price(
-            cur, div, int(data.get("current_stars") or 0), target, int(data.get("target_stars") or 0)
+            cur, div, int(data.get("current_stars") or 0), target, int(data.get("target_stars") or 0),
+            catalog.star_table(pct) if "boost_star_epic" in pct else None,
         )
     except ValueError as e:
         raise AppError("bad_rank", str(e)) from e
@@ -126,9 +131,8 @@ def boost_quote(data: dict, pct: dict) -> dict:
         extras.append(("lane", f"Liniya: {data['lane']}", pct["boost_lane_percent"]))
     lines = [{"key": k, "label": lbl, "percent": p, "amount": base * p // 100} for k, lbl, p in extras]
     stars = end - start
-    days = max(1, round(stars / 15))
-    if data.get("express"):
-        days = max(1, days // 2)
+    per_day = int(pct.get("boost_express_stars_per_day" if data.get("express") else "boost_stars_per_day") or 15)
+    days = max(1, -(-stars // per_day))
     return {"base": base, "extras": lines, "price": base + sum(x["amount"] for x in lines), "stars": stars,
             "days": f"{days}–{days + 1}", "percents": pct}
 
@@ -140,7 +144,11 @@ def _rank_label(rank: str, division: str, stars: int) -> str:
 async def boost_percents(session: AsyncSession) -> dict:
     from app.services import app_settings
 
-    return await app_settings.get_many(session, "boost_express_percent", "boost_hero_percent", "boost_lane_percent")
+    return await app_settings.get_many(
+        session, "boost_express_percent", "boost_hero_percent", "boost_lane_percent",
+        "boost_star_epic", "boost_star_legend", "boost_star_mythic", "boost_star_honor", "boost_star_glory",
+        "boost_stars_per_day", "boost_express_stars_per_day",
+    )
 
 
 async def create_boost(session: AsyncSession, user: User, data: dict, out: Outbox) -> BoostOrder:
@@ -167,13 +175,18 @@ async def create_boost(session: AsyncSession, user: User, data: dict, out: Outbo
         credentials_enc=encrypt(creds) if creds else None,
         price=q["price"],
     )
+    u = await session.get(User, user.id, with_for_update=True)
+    if u.boost_coupon_percent > 0:  # ball evaziga olingan chegirma — bir martalik
+        off = order.price * u.boost_coupon_percent // 100
+        order.price -= off
+        order.note = f"[Ball chegirmasi −{u.boost_coupon_percent}%] " + order.note
+        u.boost_coupon_percent = 0
     session.add(order)
     await session.flush()
     await wallet.debit(session, user.id, order.price, "boost", f"boost:{order.id}", ref_type="boost", ref_id=order.id)
     return order
 
 
-BOOSTER_SHARE_PERCENT = 70  # booster ulushi; qolgani platformaga
 
 
 async def boost_accept(session: AsyncSession, order_id: int, booster: User, out: Outbox) -> BoostOrder:
@@ -185,6 +198,7 @@ async def boost_accept(session: AsyncSession, order_id: int, booster: User, out:
     if order.user_id == booster.id:
         raise Forbidden("O'z buyurtmangizni ololmaysiz")
     order.status = "accepted"
+    order.accepted_at = _now()
     order.booster_id = booster.id
     order.booster_name = booster.username or booster.first_name
     out.user(order.user_id, f"🤝 Booster buyurtma #{order.id} ni qabul qildi. Ishni boshlaganda xabar beramiz.")
@@ -197,6 +211,7 @@ async def boost_progress(session: AsyncSession, order_id: int, booster_id: int, 
         raise NotFound("Buyurtma")
     if step == "start" and order.status == "accepted":
         order.status = "in_progress"
+        order.started_at = _now()
         out.user(order.user_id, f"🚀 Booster ishni boshladi: {order.current_rank} → {order.target_rank}")
     elif step == "finish" and order.status == "in_progress":
         order.status = "finished"
@@ -216,7 +231,9 @@ async def boost_complete(session: AsyncSession, order: BoostOrder, out: Outbox) 
     order.status = "done"
     order.finished_at = _now()
     order.credentials_enc = None  # parol endi kerak emas — o'chiriladi
-    share = order.price * BOOSTER_SHARE_PERCENT // 100
+    from app.services import app_settings
+
+    share = order.price * int(await app_settings.get_value(session, "booster_share_percent")) // 100
     if order.booster_id and share > 0:
         await wallet.credit(session, order.booster_id, share, "boost_payout", f"boost:{order.id}:payout", ref_type="boost", ref_id=order.id)
         out.user(order.booster_id, f"💸 Buyurtma #{order.id} tasdiqlandi: +{fmt(share)}")
@@ -298,8 +315,18 @@ async def join_tournament(session: AsyncSession, t_id: int, user_id: int, data: 
     session.add(entry)
     await session.flush()
     if t.entry_fee > 0:
-        await wallet.debit(session, user_id, t.entry_fee, "tournament_fee", f"tour:{t_id}:{user_id}", ref_type="tournament", ref_id=t_id)
+        user = await session.get(User, user_id, with_for_update=True)
+        if data.get("use_pass") and user.tournament_passes > 0:
+            user.tournament_passes -= 1  # ball evaziga olingan bepul kirish
+        else:
+            await wallet.debit(session, user_id, t.entry_fee, "tournament_fee", f"tour:{t_id}:{user_id}", ref_type="tournament", ref_id=t_id)
     t.players_count += 1
+    from app.services import app_settings, arena
+
+    pts = int(await app_settings.get_value(session, "pts_tournament_join"))
+    await arena.add_points(session, user_id, pts, "tournament_join", f"tour_join:{t_id}:{user_id}")
+    await arena.bump(session, user_id, "join_tournament")
+    await arena.bump(session, user_id, "play_3")
     return entry
 
 
@@ -364,3 +391,23 @@ async def tournament_reminders(session: AsyncSession, out: Outbox) -> int:
             out.user(uid, f"⏰ «{t.title}» turniri 30 daqiqadan keyin boshlanadi. Tayyor turing!",
                      webapp_button("Turnirni ochish", f"/arena/{t.id}"), kind="tour")
     return len(tours)
+
+
+async def boost_report_progress(session: AsyncSession, order_id: int, booster_id: int, stars_done: int,
+                                winrate: int | None, out: Outbox) -> BoostOrder:
+    """Booster progressni yuboradi (/progress). Mijozga bot orqali xabar boradi."""
+    order = await session.scalar(select(BoostOrder).where(BoostOrder.id == order_id).with_for_update().execution_options(populate_existing=True))
+    if order is None or order.booster_id != booster_id:
+        raise NotFound("Buyurtma")
+    if order.status not in ("accepted", "in_progress"):
+        raise BadState("Buyurtma faol emas")
+    if order.status == "accepted":
+        order.status, order.started_at = "in_progress", _now()
+    order.progress_stars = max(0, min(order.stars, stars_done))
+    if winrate is not None:
+        order.winrate = max(0, min(100, winrate))
+    left = order.stars - order.progress_stars
+    out.user(order.user_id, f"📈 Boost #{order.id}: {order.progress_stars}/{order.stars} yulduz olindi, {left} ta qoldi."
+             + (f" Win-rate: {order.winrate}%" if order.winrate is not None else ""),
+             webapp_button("Jonli progress", f"/boost/{order.id}"))
+    return order

@@ -29,7 +29,7 @@ export default function Wallet() {
       <Header title={t("Hamyon")} sub={t("Balans va to'lovlar")} />
       <div className="page withbar">
         <div className="hero">
-          <div className="mut xs mono">{t("JORIY BALANS")}</div>
+          <div className="row between"><span className="mut xs mono">{t("JORIY BALANS")}</span><span className="pill-b" style={{ color: "#dfe3ef", borderColor: "rgba(255,255,255,.25)" }}>🥈 Silver</span></div>
           <div className="hf bb y" style={{ fontSize: 30 }}>{money(w.data?.balance ?? 0)} <span className="mut sm">so'm</span></div>
           {w.data && (
             <div className="row between mut xs" style={{ marginTop: 8 }}>

@@ -62,7 +62,11 @@ async def change_balance(
 async def debit(session: AsyncSession, user_id: int, amount: int, kind: str, idem_key: str, **kw):
     if amount <= 0:
         raise ValueError("debit summasi musbat bo'lishi kerak")
-    return await change_balance(session, user_id, -amount, kind, idem_key, **kw)
+    entry = await change_balance(session, user_id, -amount, kind, idem_key, **kw)
+    from app.services import arena  # vazifa: «Istalgan xizmatdan foydalanish»
+
+    await arena.on_payment(session, user_id, kind)
+    return entry
 
 
 async def credit(session: AsyncSession, user_id: int, amount: int, kind: str, idem_key: str, **kw):

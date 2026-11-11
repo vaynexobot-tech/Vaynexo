@@ -7,7 +7,7 @@ import { BottomBar, Chips, Empty, Field, Header, Icon, Loadable, money, MoneyInp
 import { ListingRow } from "./Market";
 
 const RANKS = ["Epic", "Legend", "Mythic", "Mythic Honor", "Mythic Glory", "Mythic Immortal"];
-const LEVELS = ["Amateur", "Junior", "Senior", "Expert", "Renowned", "Exalted", "Mega", "World"].map((l) => l + " Collector");
+const LEVELS = ["World", "Mega", "Exalted", "Renowned", "Expert", "Senior", "Junior"].map((l) => l + " Collector");
 const MAX_MEDIA = 6;
 
 interface Form {

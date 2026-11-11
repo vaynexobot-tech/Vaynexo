@@ -214,32 +214,46 @@ export function BoostOrderPage() {
     refreshMe();
   });
   const STEPS = ["searching", "accepted", "in_progress", "finished", "done"];
-  const LABELS: Record<string, string> = { searching: "Booster qidirilmoqda", accepted: "Booster buyurtmani qabul qildi", in_progress: "Booster ishni boshladi", finished: "Booster ishni tugatdi", done: "Yakunlandi" };
+  const LABELS: Record<string, string> = { searching: "Buyurtma berildi", accepted: "Booster topildi", in_progress: "Ish jarayonda", finished: "Booster ishni tugatdi", done: "Tekshirish va tasdiqlash" };
   return (
     <>
-      <Header title={t("Boost buyurtma")} />
+      <Header title={t("Boost · jonli progress")} />
       <Loadable state={st}>
         {(o) => {
           const idx = STEPS.indexOf(o.status);
           return (
             <>
               <div className="page">
-                <div className="card">
-                  <div className="row between"><span className="bb">{o.current_rank} → {o.target_rank}</span><Status s={o.status} /></div>
-                  <div className="kv"><span>{t("Buyurtma")}</span><span className="mono">{o.ref}</span></div>
-                  <div className="kv"><span>{t("Yulduzlar")}</span><span>{o.stars}</span></div>
-                  <div className="kv"><span>{t("Liniya")}</span><span>{o.lane || t("Ixtiyoriy")}</span></div>
-                  <div className="kv"><span>{t("Summa")}</span><span className="y">{som(o.price)}</span></div>
-                  {o.booster_name && <div className="kv"><span>Booster</span><span>{o.booster_name}</span></div>}
+                <div className="hero col" style={{ gap: 10 }}>
+                  <div className="row between"><span className="b">{o.current_rank}</span><span className="y b">{o.target_rank}</span></div>
+                  <div className="progress" style={{ height: 10 }}><i style={{ width: Math.round(((o.status === "done" || o.status === "finished" ? o.stars : o.progress_stars ?? 0) / Math.max(1, o.stars)) * 100) + "%", background: "var(--g)" }} /></div>
+                  <div className="grid3 center">
+                    <div><div className="hf bb" style={{ fontSize: 20 }}>{o.status === "done" || o.status === "finished" ? o.stars : o.progress_stars ?? 0}</div><div className="mut xs">{t("yulduz olindi")}</div></div>
+                    <div><div className="hf bb" style={{ fontSize: 20 }}>{o.status === "done" || o.status === "finished" ? 0 : o.stars - (o.progress_stars ?? 0)}</div><div className="mut xs">{t("qoldi")}</div></div>
+                    <div><div className="g hf bb" style={{ fontSize: 20 }}>{o.winrate != null ? o.winrate + "%" : "—"}</div><div className="mut xs">{t("win-rate")}</div></div>
+                  </div>
+                  <div className="row between xs"><span className="mut">{o.ref}</span><Status s={o.status} /></div>
                 </div>
+                {o.booster_code && (
+                  <div className="card row">
+                    <div className="seller-ava">B</div>
+                    <div className="grow"><div className="b">Booster {o.booster_code} ✓</div><div className="mut xs">{t("Shaxsi maxfiy — aloqa bot orqali")}</div></div>
+                  </div>
+                )}
                 <div className="card">
-                  {STEPS.map((s, i) => (
-                    <div key={s} className="row" style={{ padding: "6px 0", opacity: idx >= i || o.status === "done" ? 1 : 0.4 }}>
-                      <span className={"badge " + (idx > i || o.status === "done" ? "g" : idx === i ? "y" : "m")}>{idx > i || o.status === "done" ? "✓" : i + 1}</span>
-                      <span className="sm">{t(LABELS[s])}</span>
-                    </div>
-                  ))}
+                  {STEPS.map((s, i) => {
+                    const done = idx > i || o.status === "done";
+                    const when = s === "accepted" ? o.accepted_at : s === "in_progress" ? o.started_at : s === "searching" ? o.created_at : s === "finished" ? o.finished_at : null;
+                    return (
+                      <div key={s} className="row" style={{ padding: "7px 0", opacity: idx >= i || o.status === "done" ? 1 : 0.4 }}>
+                        <span className={"stepnum" + (done ? " ok" : idx === i ? " on" : "")}>{done ? "✓" : i + 1}</span>
+                        <div className="grow"><div className="sm b">{t(LABELS[s])}</div>{when && <div className="mut xs">{dateTime(when)}</div>}
+                          {s === "in_progress" && idx === i && <div className="mut xs">{t("{n} / {m} yulduz", { n: o.progress_stars ?? 0, m: o.stars })}</div>}</div>
+                      </div>
+                    );
+                  })}
                 </div>
+                <div className="card tight xs mut">🔒 {t("Pul garantda. Boost tugagach akkauntni tekshirib, «Tasdiqlash» ni bosing. Muammo bo'lsa «Muammo bor» orqali admin hal qiladi.")}</div>
                 {o.status === "finished" && <div className="card tight sm">🏁 {t("Booster ishni tugatdi. Akkauntga kirib tekshiring va tasdiqlang.")}</div>}
                 {o.status === "disputed" && <div className="card tight sm">⚖️ {t("Nizo ochilgan. Admin bog'lanadi.")}</div>}
               </div>

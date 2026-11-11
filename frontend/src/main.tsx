@@ -4,13 +4,14 @@ import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useNavigate } fro
 import { api, DEMO, pinToken, type Me } from "./api";
 import { setLang, t } from "./i18n";
 import Admin from "./pages/Admin";
+import Ai from "./pages/Ai";
 import { Arena, TournamentPage, Top } from "./pages/Arena";
 import { Boost, BoostOrderPage, BoostOrders } from "./pages/Boost";
 import { ChatPage, Chats } from "./pages/Chat";
 import { DealPage, Deals } from "./pages/Deal";
 import Donate from "./pages/Donate";
 import Home from "./pages/Home";
-import { ListingDetail, Market } from "./pages/Market";
+import { ListingDetail, Market, PayListing } from "./pages/Market";
 import { MyRentals, Rent, RentalPage, RentDetail, RentSell } from "./pages/Rent";
 import { MyListings, Sell } from "./pages/Sell";
 import { Help, History, Legal, ProfileEdit, Referral } from "./pages/Settings";
@@ -90,9 +91,11 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/wallet" element={<Wallet />} />
+          <Route path="/ai" element={<Ai />} />
           <Route path="/donate/:game" element={<Donate />} />
           <Route path="/market" element={<Market />} />
           <Route path="/listing/:id" element={<ListingDetail />} />
+          <Route path="/pay/listing/:id" element={<PayListing />} />
           <Route path="/sell" element={<Sell />} />
           <Route path="/sell/:id" element={<Sell />} />
           <Route path="/my-listings" element={<MyListings />} />

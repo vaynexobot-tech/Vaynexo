@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type Tournament } from "../api";
 import { t } from "../i18n";
-import { BottomBar, BottomNav, dateTime, Empty, Field, Header, Icon, Loadable, money, Seg, som, Status, useAction, useApp, useLoad } from "../ui";
+import { BottomBar, BottomNav, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, som, useAction, useApp, useLoad } from "../ui";
 
 export function Arena() {
   const nav = useNavigate();
@@ -15,7 +15,22 @@ export function Arena() {
       <div className="page">
         <Seg value={status} onChange={setStatus} options={[{ v: "open", label: t("Faol") }, { v: "running", label: t("Davom etmoqda") }]} />
         <Loadable state={st}>
-          {(list) => list.length === 0 ? <Empty icon="🏆" text={t("Hozircha turnirlar yo'q")} /> : list.map((x) => <TourCard key={x.id} x={x} onClick={() => nav(`/arena/${x.id}`)} />)}
+          {(list) => list.length === 0 ? <Empty icon="🏆" text={t("Hozircha turnirlar yo'q")} /> : (
+            <>
+              <FeaturedTour x={list[0]} onClick={() => nav(`/arena/${list[0].id}`)} />
+              {list.slice(1).map((x) => (
+                <div key={x.id} className="card click row" onClick={() => nav(`/arena/${x.id}`)}>
+                  <GameLogo game={x.game} size={46} />
+                  <div className="grow" style={{ minWidth: 0 }}>
+                    <div className="b ell">{x.title}</div>
+                    <div className="mut xs">{x.game === "ML" ? "Mobile Legends" : "Magic Chess"} · {dateTime(x.starts_at)}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}><div className="y mono bb">{money(x.prize_fund)}</div><div className="mut xs">UZS</div></div>
+                  <span className="mut"><Icon name="right" size={16} /></span>
+                </div>
+              ))}
+            </>
+          )}
         </Loadable>
         <div className="card click row between" onClick={() => nav("/top")}>
           <div className="row">
@@ -30,63 +45,105 @@ export function Arena() {
   );
 }
 
-function TourCard({ x, onClick }: { x: Tournament; onClick: () => void }) {
+function FeaturedTour({ x, onClick }: { x: Tournament; onClick: () => void }) {
   const pct = Math.round((x.players_count / x.max_players) * 100);
   return (
-    <div className="hero click" style={{ cursor: "pointer" }} onClick={onClick}>
-      <div className="row between"><span className="badge g">{x.game === "ML" ? "Mobile Legends" : "Magic Chess"}</span>{x.joined ? <span className="badge y">✓ {t("Qatnashyapsiz")}</span> : <Status s={x.status} />}</div>
-      <div className="hf bb" style={{ fontSize: 19, margin: "10px 0 2px" }}>{x.title}</div>
-      <div className="y mono bb">{money(x.prize_fund)} UZS <span className="mut xs">{t("sovrin fondi")}</span></div>
-      <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,.08)", margin: "10px 0 6px" }}><div style={{ width: pct + "%", height: "100%", borderRadius: 3, background: "var(--g)" }} /></div>
-      <div className="row between mut xs"><span>{t("Ishtirokchilar")} {x.players_count} / {x.max_players}</span><span>{t("Boshlanish")}: {dateTime(x.starts_at)}</span></div>
+    <div className="hero col" style={{ gap: 8 }}>
+      <div className="row between"><span className="badge g">● {t("KONKURS")}</span><span className="mut xs">{x.game === "ML" ? "Mobile Legends" : "Magic Chess"}</span></div>
+      <div className="hf bb" style={{ fontSize: 22 }}>{x.title}</div>
+      <div className="y mono bb" style={{ fontSize: 20 }}>{money(x.prize_fund)} UZS <span className="mut xs">{t("sovrin fondi")}</span></div>
+      <div className="row between xs"><span className="mut">{t("Ishtirokchilar")}</span><span className="mono b">{x.players_count} / {x.max_players}</span></div>
+      <div className="progress"><i style={{ width: pct + "%", background: "var(--g)" }} /></div>
+      <div className="divider" />
+      <div className="row between">
+        <span className="mut xs">{t("Boshlanish")}: {dateTime(x.starts_at)}</span>
+        <button className="btn small" onClick={onClick}>{x.joined ? "✓ " + t("Qatnashyapsiz") : t("Qatnashish")}</button>
+      </div>
     </div>
   );
 }
 
 export function TournamentPage() {
   const id = useParams().id;
+  const nav = useNavigate();
   const { me, refreshMe, toast } = useApp();
   const st = useLoad(() => api.get<Tournament>(`/tournaments/${id}`), [id]);
   const [nick, setNick] = useState("");
   const [gameId, setGameId] = useState(me?.ml_id ?? "");
   const [server, setServer] = useState("");
+  const [tgUser, setTgUser] = useState(me?.username ? "@" + me.username : "");
+  const [agree, setAgree] = useState(false);
+  const [done, setDone] = useState(false);
   const { busy, run } = useAction();
   return (
     <>
-      <Header title={t("Turnir")} />
+      <Header title={done ? t("Ro'yxatdan o'tdingiz") : t("Ro'yxatdan o'tish")} sub={t("Turnirga qatnashish")} />
       <Loadable state={st}>
         {(x) => {
           const canJoin = x.status === "open" && !x.joined && x.players_count < x.max_players;
           const enough = (me?.balance ?? 0) >= x.entry_fee;
+          if (done) return (
+            <>
+              <div className="page center" style={{ alignItems: "center", paddingTop: 60 }}>
+                <div className="okcircle"><Icon name="check" size={40} /></div>
+                <div className="hf bb" style={{ fontSize: 24 }}>{t("Ro'yxatdan o'tdingiz")}</div>
+                <div className="mut sm">{t("Siz turnirga qo'shildingiz. Boshlanishidan oldin Telegram orqali eslatma yuboramiz.")}</div>
+                <div className="card" style={{ width: "100%", textAlign: "left" }}>
+                  <div className="kv"><span>{t("Turnir")}</span><span className="b">{x.title}</span></div>
+                  <div className="kv"><span>{t("Boshlanish")}</span><span>{dateTime(x.starts_at)}</span></div>
+                  <div className="kv"><span>{t("Kirish to'lovi")}</span><span className="y mono">{x.entry_fee ? money(x.entry_fee) : t("Bepul")}</span></div>
+                </div>
+              </div>
+              <BottomBar>
+                <button className="btn full" onClick={() => nav("/arena")}>{t("Arenaga qaytish")}</button>
+              </BottomBar>
+            </>
+          );
           return (
             <>
-              <div className="page">
-                <TourCard x={x} onClick={() => undefined} />
-                <div className="card">
-                  <div className="kv"><span>{t("Kirish to'lovi")}</span><span>{x.entry_fee ? som(x.entry_fee) : t("Bepul")}</span></div>
-                  <div className="kv"><span>{t("Boshlanish")}</span><span>{dateTime(x.starts_at)}</span></div>
+              <div className="page withbar">
+                <div className="hero col" style={{ gap: 8 }}>
+                  <div className="row between"><span className="badge g">● {t("KONKURS")}</span><span className="mut xs">{x.game === "ML" ? "Mobile Legends" : "Magic Chess"}</span></div>
+                  <div className="hf bb" style={{ fontSize: 20 }}>{x.title}</div>
+                  <div className="kv"><span>{t("Sovrin fondi")}</span><span className="y mono bb">{money(x.prize_fund)} UZS</span></div>
+                  <div className="kv"><span>{t("Ishtirokchilar")}</span><span className="mono b">{x.players_count} / {x.max_players}</span></div>
+                  <div className="kv"><span>{t("Boshlanish")}</span><span className="mono b">{dateTime(x.starts_at)}</span></div>
                 </div>
                 {x.rules && <div className="card"><div className="b" style={{ marginBottom: 6 }}>{t("Qoidalar")}</div><div className="pre sm mut">{x.rules}</div></div>}
                 {x.joined && <div className="card tight g sm">✅ {t("Siz ro'yxatdan o'tgansiz. Boshlanishidan oldin Telegram orqali eslatma yuboramiz.")}</div>}
                 {canJoin && (
-                  <div className="card col">
+                  <>
                     <div className="b">{t("Ishtirokchi ma'lumotlari")}</div>
-                    <Field label={t("O'yindagi nik")}><input className="input" maxLength={64} value={nick} onChange={(e) => setNick(e.target.value)} /></Field>
+                    <Field label={t("O'yindagi nik")}><input className="input" maxLength={64} placeholder={t("Nik")} value={nick} onChange={(e) => setNick(e.target.value)} /></Field>
                     <div className="row">
-                      <div className="grow"><Field label={t("O'yin ID")}><input className="input mono" inputMode="numeric" maxLength={32} value={gameId} onChange={(e) => setGameId(e.target.value.replace(/\D/g, ""))} /></Field></div>
-                      <div style={{ width: 110 }}><Field label="Server"><input className="input mono" inputMode="numeric" maxLength={16} value={server} onChange={(e) => setServer(e.target.value)} /></Field></div>
+                      <div className="grow"><Field label={t("O'yin ID")}><input className="input mono" inputMode="numeric" maxLength={32} placeholder="123456789" value={gameId} onChange={(e) => setGameId(e.target.value.replace(/\D/g, ""))} /></Field></div>
+                      <div style={{ width: 120 }}><Field label="Server"><input className="input mono" inputMode="numeric" maxLength={16} placeholder="1234" value={server} onChange={(e) => setServer(e.target.value)} /></Field></div>
                     </div>
-                  </div>
+                    <Field label={t("Telegram username")}><input className="input" maxLength={64} placeholder="@username" value={tgUser} onChange={(e) => setTgUser(e.target.value)} /></Field>
+                    <div className="card row" style={{ borderColor: "rgba(255,214,10,.45)" }}>
+                      <div className="grow"><div className="b">{t("Qatnashish narxi")}</div><div className="mut xs">{t("Hamyon balansidan yechiladi")}</div></div>
+                      <div className="y mono bb" style={{ fontSize: 18 }}>{x.entry_fee ? som(x.entry_fee) : t("Bepul")}</div>
+                    </div>
+                    {!enough && <div className="r sm">{t("Balans yetarli emas")}</div>}
+                    <label className="row sm" style={{ cursor: "pointer" }}>
+                      <input type="checkbox" className="cbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+                      <span>{t("Turnir qoidalari bilan tanishdim, roziman.")}</span>
+                    </label>
+                  </>
                 )}
               </div>
               {canJoin && (
                 <BottomBar>
-                  <div className="grow"><div className="mut xs">{t("Qatnashish narxi")}</div><div className="y bb mono">{x.entry_fee ? som(x.entry_fee) : t("Bepul")}</div></div>
-                  <button className="btn" disabled={!nick.trim() || !gameId || busy || !enough} onClick={() => run(async () => {
-                    st.setData(await api.post<Tournament>(`/tournaments/${x.id}/join`, { nick, game_id: gameId, server, tg_username: me?.username ? "@" + me.username : "" }));
-                    toast(t("Siz turnirga qo'shildingiz"), "ok");
-                    refreshMe();
-                  })}>{enough ? t("Qatnashish") : t("Balans yetarli emas")}</button>
+                  {enough ? (
+                    <button className="btn full" disabled={!nick.trim() || !gameId || !agree || busy} onClick={() => run(async () => {
+                      st.setData(await api.post<Tournament>(`/tournaments/${x.id}/join`, { nick, game_id: gameId, server, tg_username: tgUser.trim() }));
+                      toast(t("Siz turnirga qo'shildingiz"), "ok");
+                      refreshMe();
+                      setDone(true);
+                    })}>{t("Ro'yxatdan o'tish")}</button>
+                  ) : (
+                    <button className="btn full" onClick={() => nav("/wallet")}>+ {t("Balansni to'ldirish")}</button>
+                  )}
                 </BottomBar>
               )}
             </>

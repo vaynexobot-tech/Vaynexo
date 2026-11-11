@@ -10,6 +10,11 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
+    # --- AI bo'limi (Claude) ---
+    anthropic_api_key: str = ""  # bo'sh bo'lsa AI bo'limi o'chiq
+    ai_model: str = "claude-opus-5-5"
+    ai_daily_limit: int = 15  # bir foydalanuvchiga kuniga savollar
+
     # --- Telegram ---
     bot_token: str = ""
     bot_username: str = ""  # @ belgisisiz, masalan: vaynexo_bot

@@ -648,6 +648,19 @@ on("DELETE", "/me/cards/:id", (m) => {
   return {};
 });
 on("POST", "/support", () => ({ ok: true }));
+let aiLeft = 15;
+on("GET", "/ai/status", () => ({ enabled: true, limit: 15, left: aiLeft }));
+on("POST", "/ai/ask", (_m, b) => {
+  aiLeft = Math.max(0, aiLeft - 1);
+  const q = String(b.text).toLowerCase();
+  if (/mythic|legend|epic|skin|akkaunt|аккаунт|account/.test(q)) {
+    const items = state.listings.filter((x: Json) => x.status === "active").sort((a: Json, c: Json) => c.skins - a.skins).slice(0, 3);
+    return { reply: "Talablaringizga mos e'lonlar topdim. Eng yaxshisi birinchi o'rinda:", listings: items.map(card), left: aiLeft };
+  }
+  if (/to'ldir|пополн|top up/.test(q)) return { reply: "Hamyon → To'ldirish. Summani kiriting, tizim bergan ANIQ summani kartaga o'tkazing — 1–3 daqiqada balansga tushadi.", listings: [], left: aiLeft };
+  return { reply: "Demo rejimda AI cheklangan. Haqiqiy botda Claude savolingizga to'liq javob beradi.", listings: [], left: aiLeft };
+});
+on("POST", "/ai/describe", (_m, b) => ({ title: `${b.rank || "Mythic"} akkaunt · ${b.skins || 0} skin`, description: `${b.rank || "Mythic"} rankdagi akkaunt, ${b.skins || 0} ta skin va ${b.heroes || 0} ta qahramon. Akkaunt toza, faqat bitta egada bo'lgan.`, left: --aiLeft }));
 
 export async function mockRequest(method: string, url: string, body: unknown): Promise<unknown> {
   await new Promise((r) => setTimeout(r, 180)); // tarmoq kechikishi taqlidi

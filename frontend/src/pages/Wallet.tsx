@@ -3,7 +3,7 @@ import { api, type Ledger, type PayCard, type Topup, type Withdrawal } from "../
 import { t } from "../i18n";
 import { confirmDialog } from "../tg";
 import {
-  BottomBar, BottomNav, Copy, dateTime, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, som, Status, useAction, useApp, useLoad,
+  BottomBar, Copy, dateTime, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, som, Status, useAction, useApp, useLoad,
 } from "../ui";
 
 interface WalletInfo {
@@ -26,11 +26,17 @@ export default function Wallet() {
   const w = useLoad(() => api.get<WalletInfo>("/wallet"));
   return (
     <>
-      <Header title={t("Hamyon")} sub={t("Balans va to'lovlar")} back={false} icon="wallet" />
+      <Header title={t("Hamyon")} sub={t("Balans va to'lovlar")} />
       <div className="page withbar">
         <div className="hero">
           <div className="mut xs mono">{t("JORIY BALANS")}</div>
-          <div className="hf bb" style={{ fontSize: 30 }}>{som(w.data?.balance ?? 0)}</div>
+          <div className="hf bb y" style={{ fontSize: 30 }}>{money(w.data?.balance ?? 0)} <span className="mut sm">so'm</span></div>
+          {w.data && (
+            <div className="row between mut xs" style={{ marginTop: 8 }}>
+              <span>{t("Bir martalik limit")}: <b className="mono" style={{ color: "#fff" }}>{money(w.data.limits.topup_max)}</b></span>
+              <span>{t("Eng kam")}: {money(w.data.limits.topup_min)}</span>
+            </div>
+          )}
         </div>
         <Seg value={tab} onChange={setTab} options={[{ v: "topup", label: t("To'ldirish") }, { v: "withdraw", label: t("Yechish") }, { v: "history", label: t("Tarix") }]} />
         <Loadable state={w}>
@@ -39,7 +45,6 @@ export default function Wallet() {
           }
         </Loadable>
       </div>
-      <BottomNav />
     </>
   );
 }
@@ -78,7 +83,7 @@ function TopupFlow({ info, onDone }: { info: WalletInfo; onDone: () => void }) {
     return () => clearInterval(id);
   }, [topup, refreshMe, toast, onDone]);
 
-  if (topup && topup.status === "pending") return <PayInstructions topup={topup} onCancel={() => run(async () => {
+  if (topup && topup.status === "pending") return <PayInstructions topup={topup} app={app} onCancel={() => run(async () => {
     await api.post(`/wallet/topup/${topup.id}/cancel`);
     setTopup(null);
   })} />;
@@ -121,7 +126,7 @@ function TopupFlow({ info, onDone }: { info: WalletInfo; onDone: () => void }) {
       <div className="note sm">
         🔒 {t("Istalgan ilova yoki karta orqali kartamizga o'tkazasiz — to'lov avtomatik topiladi va balans 1–3 daqiqada to'ldiriladi. Balansdagi pul faqat VAYNEXO xizmatlari uchun ishlatiladi.")}
       </div>
-      <BottomBar aboveNav>
+      <BottomBar>
         <button className="btn full" disabled={!valid || busy} onClick={() => run(async () => {
           setTopup(await api.post<Topup>("/wallet/topup", { amount }));
         })}>
@@ -132,7 +137,7 @@ function TopupFlow({ info, onDone }: { info: WalletInfo; onDone: () => void }) {
   );
 }
 
-function PayInstructions({ topup, onCancel }: { topup: Topup; onCancel: () => void }) {
+function PayInstructions({ topup, app, onCancel }: { topup: Topup; app: string; onCancel: () => void }) {
   const [left, setLeft] = useState(() => Math.max(0, new Date(topup.expires_at).getTime() - Date.now()));
   useEffect(() => {
     const id = setInterval(() => setLeft(Math.max(0, new Date(topup.expires_at).getTime() - Date.now())), 1000);
@@ -151,6 +156,17 @@ function PayInstructions({ topup, onCancel }: { topup: Topup; onCancel: () => vo
         <div className="r sm b">⚠️ {t("Summani yaxlitlamang! Boshqa summa o'tkazilsa, to'lov avtomatik topilmaydi.")}</div>
         <Copy label={t("Karta raqami")} value={topup.card_number} />
         <div className="mut sm">{t("Qabul qiluvchi")}: <span className="b" style={{ color: "#fff" }}>{topup.card_holder}</span></div>
+      </div>
+      <div className="card col">
+        <div className="mut xs mono b">{t("TO'LDIRISH BOSQICHLARI")}</div>
+        {[
+          app === "card" ? t("Istalgan bank ilovasini oching") : t("{a} ilovasini oching", { a: app }),
+          t("«Kartaga o'tkazma» bo'limini tanlang va karta raqamini kiriting"),
+          t("Aynan {s} so'm o'tkazing va to'lovni tasdiqlang", { s: money(topup.pay_amount) }),
+          t("Balans avtomatik to'ldiriladi"),
+        ].map((x, i) => (
+          <div key={i} className="row sm"><span className={"stepnum" + (i === 0 ? " on" : "")}>{i + 1}</span><span>{x}</span></div>
+        ))}
       </div>
       <div className="card row">
         <div className="spinner" style={{ margin: 0, width: 22, height: 22, flex: "none" }} />

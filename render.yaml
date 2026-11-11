@@ -22,6 +22,8 @@ services:
       # Quyidagilarni yaratishda Render so'raydi:
       - key: BOT_TOKEN
         sync: false
+      - key: ANTHROPIC_API_KEY  # AI bo'limi; bo'sh bo'lsa AI o'chiq
+        sync: false
       - key: BOT_USERNAME
         sync: false
       - key: ADMIN_IDS

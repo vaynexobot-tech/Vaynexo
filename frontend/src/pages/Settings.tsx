@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type HistoryItem, type Me } from "../api";
 import { t } from "../i18n";
-import { openTg } from "../tg";
-import { BottomBar, Chips, Copy, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, som, Status, useAction, useApp, useLoad } from "../ui";
+import { openTg, tgPhoto } from "../tg";
+import { BottomBar, Chips, Copy, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, som, Status, useAction, useApp, useLoad } from "../ui";
 
 export const SUPPORT = "vaynexo_support";
 
@@ -56,9 +56,14 @@ export function ProfileEdit() {
   if (!me) return null;
   return (
     <>
-      <Header title={t("Profilni tahrirlash")} />
-      <div className="page">
+      <Header title={t("Profilni tahrirlash")} sub={t("Shaxsiy ma'lumotlar")} />
+      <div className="page withbar">
+        <div className="col" style={{ alignItems: "center", gap: 8, margin: "8px 0" }}>
+          <div className="big-ava">{tgPhoto() ? <img src={tgPhoto()!} alt="" /> : <Icon name="user" size={38} />}</div>
+          <span className="mut xs">{t("Rasm Telegram profilingizdan olinadi")}</span>
+        </div>
         <Field label={t("Ism")}><input className="input" maxLength={128} value={f.first_name} onChange={(e) => setF({ ...f, first_name: e.target.value })} /></Field>
+        <Field label={t("Foydalanuvchi nomi")}><input className="input" value={me.username ? "@" + me.username : "—"} readOnly disabled /></Field>
         <Field label={t("Telefon")}><input className="input" inputMode="tel" maxLength={32} placeholder="+998 90 123 45 67" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
         <Field label={t("ML ID (ixtiyoriy)")}><input className="input mono" inputMode="numeric" maxLength={32} value={f.ml_id} onChange={(e) => setF({ ...f, ml_id: e.target.value.replace(/\D/g, "") })} /></Field>
         <Field label={t("O'zingiz haqingizda")}><textarea className="input" maxLength={300} value={f.bio} onChange={(e) => setF({ ...f, bio: e.target.value })} /></Field>
@@ -76,7 +81,7 @@ export function ProfileEdit() {
 }
 
 const HIST_LINK: Record<string, (id: number) => string> = {
-  account: (id) => `/deal/${id}`, boost: (id) => `/boost/${id}`,
+  account: (id) => `/deal/${id}`, boost: (id) => `/boost/${id}`, rent: (id) => `/rental/${id}`, telegram: (id) => `/tg/order/${id}`,
 };
 
 export function History() {
@@ -87,6 +92,41 @@ export function History() {
     <>
       <Header title={t("Xaridlar tarixi")} sub={t("Barcha xaridlaringiz")} />
       <div className="page">
+        {st.data && (
+          <div className="hero row between">
+            <div><div className="mut xs">{t("Jami sarflangan")}</div><div className="y hf bb" style={{ fontSize: 26 }}>{money(st.data.spent)} <span className="mut sm">so'm</span></div></div>
+            <div style={{ textAlign: "right" }}><div className="hf bb" style={{ fontSize: 22 }}>{st.data.count}</div><div className="mut xs">{t("ta xarid")}</div></div>
+          </div>
+        )}
+        <Chips wrap value={type} onChange={setType} options={[
+          { v: "all", label: t("Hammasi") }, { v: "donate", label: t("Donat") }, { v: "account", label: t("Akkaunt") }, { v: "rent", label: t("Ijara") },
+          { v: "boost", label: "Boost" }, { v: "telegram", label: "Telegram" }, { v: "wallet", label: t("Hamyon") },
+        ]} />
+        <Loadable state={st}>
+          {(d) => d.items.length === 0 ? <Empty icon="🧾" text={t("Hali xaridlar yo'q")} /> : (
+            <>
+              {groupByDay(d.items).map(([day, items]) => (
+                <div key={day} className="col">
+                  <div className="mut xs mono b" style={{ marginTop: 4 }}>{day}</div>
+                  {items.map((i) => (
+                    <div key={i.type + i.id} className="card row tight" style={HIST_LINK[i.type] ? { cursor: "pointer" } : undefined} onClick={() => HIST_LINK[i.type] && nav(HIST_LINK[i.type](i.id))}>
+                      <GameLogo game={i.game} size={42} />
+                      <div className="grow" style={{ minWidth: 0 }}>
+                        <div className="b ell">{t(i.title)}</div>
+                        <div className="mut xs ell">{t(i.sub)} · {timeOnly(i.created_at)}</div>
+                      </div>
+                      <div className="col" style={{ alignItems: "flex-end", gap: 4 }}>
+                        <span className={"mono bb " + (i.amount > 0 ? "g" : "")}>{i.amount > 0 ? "+" : ""}{money(Math.abs(i.amount))}</span>
+                        <Status s={i.status} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </>
+          )}
+        </Loadable>
+        <div className="mut xs mono b" style={{ marginTop: 8 }}>{t("BUYURTMALARIM")}</div>
         <div className="quick5">
           {[
             ["bag", t("Bitimlar"), "/deals"], ["chat", t("Chatlar"), "/chats"], ["rocket", "Boost", "/boosts"],
@@ -95,35 +135,29 @@ export function History() {
             <button key={to} onClick={() => nav(to)}><span className="rowico y"><Icon name={ic} /></span><span className="xs b">{label}</span></button>
           ))}
         </div>
-        <Chips value={type} onChange={setType} options={[
-          { v: "all", label: t("Hammasi") }, { v: "donate", label: t("Donat") }, { v: "account", label: t("Akkaunt") },
-          { v: "boost", label: "Boost" }, { v: "telegram", label: "Telegram" }, { v: "wallet", label: t("Hamyon") },
-        ]} />
-        <Loadable state={st}>
-          {(d) => d.items.length === 0 ? <Empty icon="🧾" text={t("Hali xaridlar yo'q")} /> : (
-            <>
-              <div className="card row between"><span className="mut sm">{t("Jami sarflangan")}</span><span className="y bb mono">{som(d.spent)}</span></div>
-              <div className="card" style={{ padding: "4px 14px" }}>
-                {d.items.map((i) => (
-                  <div key={i.type + i.id} className="listrow" style={HIST_LINK[i.type] ? { cursor: "pointer" } : undefined} onClick={() => HIST_LINK[i.type] && nav(HIST_LINK[i.type](i.id))}>
-                    <GameLogo game={i.game} size={38} />
-                    <div className="grow">
-                      <div className="b ell sm">{i.title}</div>
-                      <div className="mut xs ell">{i.sub} · {dateTime(i.created_at)}</div>
-                    </div>
-                    <div className="col" style={{ alignItems: "flex-end", gap: 4 }}>
-                      <span className={"mono b sm " + (i.amount > 0 ? "g" : "")}>{i.amount > 0 ? "+" : "−"}{money(Math.abs(i.amount))}</span>
-                      <Status s={i.status} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </Loadable>
       </div>
     </>
   );
+}
+
+function timeOnly(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+
+function groupByDay(items: HistoryItem[]): [string, HistoryItem[]][] {
+  const out: [string, HistoryItem[]][] = [];
+  const today = new Date().toDateString();
+  const yest = new Date(Date.now() - 86400000).toDateString();
+  const months = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
+  for (const i of items) {
+    const d = new Date(i.created_at);
+    const key = d.toDateString() === today ? t("BUGUN") : d.toDateString() === yest ? t("KECHA") : `${d.getDate()}-${t(months[d.getMonth()])}`.toUpperCase();
+    const last = out[out.length - 1];
+    if (last && last[0] === key) last[1].push(i);
+    else out.push([key, [i]]);
+  }
+  return out;
 }
 
 const FAQ: [string, string][] = [
@@ -210,19 +244,83 @@ Ma'lumotlar uchinchi shaxslarga sotilmaydi. Faqat buyurtmani bajarish uchun zaru
 5. Aloqa
 Savollar bo'yicha: @vaynexo_support`;
 
-export function Legal() {
-  const nav = useNavigate();
-  const doc = useParams().doc;
-  const isTerms = doc !== "privacy";
+const RENT = `1. Umumiy shartlar
+1.1. Ushbu shartnoma akkaunt egasi (ijaraga beruvchi) va ijarachi o'rtasida VAYNEXO platformasi orqali tuziladi.
+1.2. Ijara muddati: 12 soat, 24 soat, 3 kun yoki 1 hafta. Narx egasi belgilagan soatlik narx asosida hisoblanadi.
+
+2. To'lov va garant
+2.1. Ijara puli va depozit to'lov paytida hamyondan yechiladi va ijara tugaguncha garantda saqlanadi.
+2.2. Ijara muvaffaqiyatli yakunlansa: egasiga ijara puli (platforma komissiyasi ushlangan holda), ijarachiga depozit to'liq qaytariladi.
+
+3. Ijarachining majburiyatlari
+3.1. Akkauntning parolini, pochtasini, telefon raqamini yoki bog'langan hisoblarini o'zgartirish qat'iyan taqiqlanadi.
+3.2. Akkauntdagi almazni sarflash, skin yoki qahramonni sotish, akkauntni boshqa shaxsga berish taqiqlanadi.
+3.3. Muddat tugagach akkauntdan chiqish shart.
+3.4. Qoidabuzarlik aniqlansa depozit egasiga beriladi va hisob bloklanadi.
+
+4. Egasining majburiyatlari
+4.1. Kirish ma'lumotlari to'g'ri va ishlaydigan bo'lishi kerak.
+4.2. Muddat tugagach parolni almashtirib, «Akkaunt qaytdi» tugmasini bosish kerak. 24 soat ichida bosilmasa, ijara avtomatik yakunlanadi.
+
+5. Nizolar
+5.1. Egasi «Muammo bor», ijarachi «Akkaunt ishlamayapti» orqali nizo ochishi mumkin.
+5.2. Admin qarori: egasi haq — depozit egasiga; oddiy yakun — depozit ijarachiga; ijarachi haq — ijarachiga barcha pul qaytariladi. Admin qarori yakuniy.`;
+
+const DOCS: Record<string, { title: string; date: string; key: string; body: string }> = {
+  terms: { title: "Foydalanuvchi kelishuvi", date: "10.11.2026", body: TERMS,
+    key: "Shartlarni o'qib, ularga rozilik berasiz. Kelishuvni buzish, ayniqsa sotilgan akkauntni qaytarib olish, bloklanish va javobgarlikka olib keladi." },
+  privacy: { title: "Maxfiylik siyosati", date: "10.11.2026", body: PRIVACY,
+    key: "VAYNEXO sizning ma'lumotlaringizni himoya qiladi va faqat xizmat ko'rsatish uchun ishlatadi." },
+  rent: { title: "Ijara shartnomasi", date: "10.11.2026", body: RENT,
+    key: "Ijaraga olishdan oldin shartlarni o'qing. Parol yoki pochtani o'zgartirish depozitni yo'qotishga va bloklanishga olib keladi." },
+};
+
+/** Matnni bo'limlarga ajratadi: "1. Sarlavha", "1.1. band", oddiy qator. */
+function DocBody({ body }: { body: string }) {
+  const sections = body.split(/\n\s*\n/).map((block) => {
+    const [head, ...rest] = block.trim().split("\n");
+    const m = head.match(/^(\d+)\.\s+(.*)$/);
+    return { num: m?.[1] ?? "", title: m ? m[2] : head, lines: m ? rest : rest };
+  });
   return (
     <>
-      <Header title={t("Qoidalar va shartlar")} right={<span />} />
-      <div className="page">
-        <Seg value={isTerms ? "terms" : "privacy"} onChange={(v) => nav(`/legal/${v}`, { replace: true })}
-          options={[{ v: "terms", label: t("Foydalanuvchi kelishuvi") }, { v: "privacy", label: t("Maxfiylik siyosati") }]} />
-        <div className="card pre sm" style={{ lineHeight: 1.6 }}>{isTerms ? TERMS : PRIVACY}</div>
-      </div>
+      {sections.map((sec, i) => (
+        <div key={i} className="card col">
+          <div className="row"><span className="stepnum on">{sec.num || "•"}</span><span className="b">{t(sec.title)}</span></div>
+          {sec.lines.map((ln, j) => {
+            const m = ln.match(/^(\d+\.\d+)\.\s+(.*)$/);
+            return m ? (
+              <div key={j} className="row sm" style={{ alignItems: "flex-start" }}>
+                <span className="y mono xs b" style={{ minWidth: 26, paddingTop: 2 }}>{m[1]}</span><span style={{ color: "#d6dbe8" }}>{t(m[2])}</span>
+              </div>
+            ) : <div key={j} className="sm" style={{ color: "#d6dbe8" }}>{t(ln)}</div>;
+          })}
+        </div>
+      ))}
     </>
   );
 }
 
+export function Legal() {
+  const nav = useNavigate();
+  const docKey = useParams().doc ?? "terms";
+  const doc = DOCS[docKey] ?? DOCS.terms;
+  return (
+    <>
+      <Header title={t(doc.title)} sub={t("Kuchga kirgan sana: {d}", { d: doc.date })} right={<span />} />
+      <div className="page withbar">
+        {docKey !== "rent" && (
+          <Seg value={docKey === "privacy" ? "privacy" : "terms"} onChange={(v) => nav(`/legal/${v}`, { replace: true })}
+            options={[{ v: "terms", label: t("Foydalanuvchi kelishuvi") }, { v: "privacy", label: t("Maxfiylik siyosati") }]} />
+        )}
+        <div className="card row" style={{ borderColor: "rgba(29,233,182,.4)", background: "rgba(29,233,182,.06)", alignItems: "flex-start" }}>
+          <span className="g"><Icon name="shield" /></span><span className="sm">{t(doc.key)}</span>
+        </div>
+        <DocBody body={doc.body} />
+      </div>
+      <BottomBar>
+        <button className="btn full" onClick={() => nav(-1)}>{t("Roziman")}</button>
+      </BottomBar>
+    </>
+  );
+}

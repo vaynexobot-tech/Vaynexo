@@ -172,7 +172,7 @@ export function RentDetail() {
                 </div>
                 <label className="row sm" style={{ cursor: "pointer" }}>
                   <input id="rent-agree" type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ width: 18, height: 18, accentColor: "#ffd60a" }} />
-                  {t("Ijara shartlariga roziman: parol va pochtani o'zgartirmayman, muddat tugagach chiqaman")}
+                  <span><a className="y" style={{ textDecoration: "underline" }} onClick={(e) => { e.preventDefault(); nav("/legal/rent"); }}>{t("Ijara shartnomasi")}</a>{t("ni o'qidim va roziman: parol va pochtani o'zgartirmayman, muddat tugagach chiqaman")}</span>
                 </label>
                 {enough ? (
                   <button className="btn full" disabled={busy || !agree} onClick={() => run(async () => {

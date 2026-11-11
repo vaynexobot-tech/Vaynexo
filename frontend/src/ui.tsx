@@ -226,7 +226,7 @@ export function BottomNav() {
   }
   const items = [
     { to: "/", icon: "home", label: t("Bosh sahifa") },
-    { to: "/wallet", icon: "wallet", label: t("Hamyon") },
+    { to: "/ai", icon: "ai", label: t("AI bo'limi") },
     { to: "/arena", icon: "arena", label: t("Arena") },
     { to: "/settings", icon: "settings", label: t("Sozlamalar") },
   ];

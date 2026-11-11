@@ -206,7 +206,6 @@ function FilterSheet({ open, value, onClose, onApply }: { open: boolean; value: 
 export function ListingDetail() {
   const id = useParams().id;
   const nav = useNavigate();
-  const { me, refreshMe } = useApp();
   const st = useLoad(() => api.get<ListingFull>(`/listings/${id}`), [id]);
   const [buyOpen, setBuyOpen] = useState(false);
   const { busy, run } = useAction();
@@ -227,7 +226,6 @@ export function ListingDetail() {
       <Header title={t("Akkaunt tafsilotlari")} sub={t("Account savdo")} />
       <Loadable state={st}>
         {(l) => {
-          const enough = (me?.balance ?? 0) >= l.price;
           return (
             <>
               <div className="page">
@@ -255,25 +253,30 @@ export function ListingDetail() {
                   <div className="mut sm">{l.game === "ML" ? "Mobile Legends" : "Magic Chess"}{l.server ? ` · ${t("Server")}: ${l.server}` : ""}</div>
                 </div>
                 <div className="y bb mono" style={{ fontSize: 24 }}>{som(l.price)}</div>
-                <div className="card">
-                  {l.collection_level && <div className="kv"><span>{t("Kolleksiya darajasi")}</span><span>{l.collection_level}</span></div>}
-                  <div className="kv"><span>{t("Skinlar")}</span><span>{l.skins}</span></div>
-                  {l.heroes > 0 && <div className="kv"><span>{t("Qahramonlar")}</span><span>{l.heroes}</span></div>}
-                  <div className="kv"><span>{t("Ko'rishlar")}</span><span>{l.views}</span></div>
-                </div>
-                {l.description && <div className="card"><div className="b" style={{ marginBottom: 6 }}>{t("Tavsif")}</div><div className="pre sm">{l.description}</div></div>}
+                {l.collection_level ? <CollectionCard level={l.collection_level} skins={l.skins} heroes={l.heroes} /> : (
+                  <div className="card">
+                    <div className="kv"><span>{t("Skinlar")}</span><span>{l.skins}</span></div>
+                    {l.heroes > 0 && <div className="kv"><span>{t("Qahramonlar")}</span><span>{l.heroes}</span></div>}
+                  </div>
+                )}
                 <div className="card row">
-                  <div className="glogo UZS" style={{ width: 40, height: 40, borderRadius: "50%", fontSize: 14 }}>{(l.seller.name || "?")[0]}</div>
+                  <div className="seller-ava">{(l.seller.username || l.seller.name || "?")[0].toUpperCase()}</div>
                   <div className="grow">
-                    <div className="b">{l.seller.username ? "@" + l.seller.username : l.seller.name}</div>
+                    <div className="b">{l.seller.username ? l.seller.username : l.seller.name}</div>
                     <div className="mut xs">
-                      {l.seller.rating ? `★ ${l.seller.rating} (${l.seller.rating_count})` : t("Hali baho yo'q")} · {t("{n} ta savdo", { n: l.seller_stats?.sales ?? 0 })}
+                      {l.seller.rating ? <span className="y">★ {l.seller.rating}</span> : t("Hali baho yo'q")} · {t("{n} ta savdo", { n: l.seller_stats?.sales ?? 0 })}
                     </div>
                   </div>
-                  {l.seller_verified ? <span className="badge g">✔ {t("Tasdiqlangan")}</span> : <span className="badge g">GARANT</span>}
+                  {(l.seller_verified || (l.seller_stats?.sales ?? 0) >= 5) && <span className="pill-b g">✓ {t("Ishonchli")}</span>}
                 </div>
-                <div className="card tight sm mut">
-                  🔒 {t("Garant: to'lov VAYNEXO'da saqlanadi va siz akkauntni tekshirib tasdiqlaganingizdan keyin sotuvchiga o'tkaziladi.")}
+                {l.description && <div className="card"><div className="b" style={{ marginBottom: 6 }}>{t("Tavsif")}</div><div className="pre sm" style={{ color: "#d6dbe8" }}>{l.description}</div></div>}
+                <div className="card col">
+                  <div className="b">{t("Xavfsiz savdo")}</div>
+                  {[t("Pul escrow'da saqlanadi — akkaunt topshirilgach sotuvchiga o'tadi"), t("Login va parol faqat to'lovdan keyin beriladi"),
+                    t("Muammo bo'lsa nizo ochasiz — admin hal qiladi")].map((x) => (
+                    <div key={x} className="row sm" style={{ alignItems: "flex-start" }}><span className="g"><Icon name="check" size={16} /></span><span>{x}</span></div>
+                  ))}
+                  <div className="mut xs">{t("Ko'rishlar")}: {l.views}</div>
                 </div>
               </div>
               <BottomBar>
@@ -281,30 +284,148 @@ export function ListingDetail() {
                   <button className="btn ghost full" onClick={() => nav(`/sell/${l.id}`)}>{t("Tahrirlash")}</button>
                 ) : (
                   <>
-                    <button className="btn ghost" disabled={busy} onClick={() => openChat(l)}><Icon name="chat" /> {t("Chat")}</button>
+                    <button className="btn ghost sq" disabled={busy} onClick={() => openChat(l)} aria-label={t("Chat")}><Icon name="chat" /></button>
                     <button className="btn grow" disabled={l.status !== "active"} onClick={() => setBuyOpen(true)}>{l.status === "active" ? t("Sotib olish") : t("Sotilgan")}</button>
                   </>
                 )}
               </BottomBar>
-              <Sheet open={buyOpen} onClose={() => setBuyOpen(false)}>
-                <div className="sec-title">{t("Xaridni tasdiqlang")}</div>
-                <div className="row"><GameLogo game={l.game} /><div className="grow"><div className="b ell">{l.title}</div><div className="y bb mono">{som(l.price)}</div></div></div>
-                <div className="card">
-                  {[t("Pul balansingizdan yechiladi va garantda saqlanadi"), t("Sotuvchi akkaunt ma'lumotlarini yuboradi"), t("Tekshirib, «Tasdiqlash» ni bosasiz — pul sotuvchiga o'tadi"), t("Muammo bo'lsa — nizo ochasiz, admin hal qiladi")].map((s, i) => (
-                    <div key={i} className="row sm" style={{ padding: "4px 0", alignItems: "flex-start" }}><span className="badge y">{i + 1}</span><span>{s}</span></div>
+              <BuyMethodSheet open={buyOpen} l={l} busy={busy} onClose={() => setBuyOpen(false)}
+                onChat={() => { setBuyOpen(false); openChat(l); }}
+                onGarant={() => { setBuyOpen(false); nav(`/pay/listing/${l.id}`); }} />
+            </>
+          );
+        }}
+      </Loadable>
+    </>
+  );
+}
+
+function CollectionCard({ level, skins, heroes }: { level: string; skins: number; heroes: number }) {
+  const name = level.replace(" Collector", "");
+  const idx = LEVELS.indexOf(name);
+  const next = idx >= 0 && idx < LEVELS.length - 1 ? LEVELS[idx + 1] + " Collector" : null;
+  const pct = idx >= 0 ? Math.round(((idx + 1) / LEVELS.length) * 100) : 50;
+  return (
+    <div className="card col coll-card">
+      <div className="row">
+        <div className="hd-ico" style={{ width: 40, height: 40, background: "rgba(255,214,10,.15)", color: "var(--y)" }}><Icon name="trophy" /></div>
+        <div className="grow">
+          <div className="mut xs">{t("Kolleksiya darajasi")}</div>
+          <div className="y bb" style={{ fontSize: 17 }}>{level}</div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div className="hf bb" style={{ fontSize: 22 }}>{skins}</div>
+          <div className="mut xs">{t("jami skin")}</div>
+        </div>
+      </div>
+      <div className="row between mut xs">
+        <span>{heroes > 0 ? t("Qahramonlar: {n}", { n: heroes }) : ""}</span>
+        <span>{next ? t("Keyingisi: {l}", { l: next }) : t("Eng yuqori daraja")}</span>
+      </div>
+      <div className="progress"><i style={{ width: pct + "%" }} /></div>
+    </div>
+  );
+}
+
+/** «Qanday sotib olasiz?» — chat yoki garant orqali. */
+function BuyMethodSheet({ open, l, busy, onClose, onChat, onGarant }: {
+  open: boolean; l: ListingFull; busy: boolean; onClose: () => void; onChat: () => void; onGarant: () => void;
+}) {
+  const nav = useNavigate();
+  const [agree, setAgree] = useState(false);
+  return (
+    <Sheet open={open} onClose={onClose}>
+      <div className="row between" style={{ marginBottom: 10 }}>
+        <div><div className="sec-title" style={{ margin: 0 }}>{t("Qanday sotib olasiz?")}</div><div className="mut xs">{t("O'zingizga qulay usulni tanlang")}</div></div>
+        <button className="iconbtn" onClick={onClose} aria-label={t("Yopish")}>✕</button>
+      </div>
+      <div className="col">
+        <div className="card row tight">
+          <GameLogo game={l.game} size={44} />
+          <div className="grow" style={{ minWidth: 0 }}><div className="b ell">{l.title}</div><div className="mut xs">{l.game === "ML" ? "Mobile Legends" : "Magic Chess"} · {l.skins} skin</div></div>
+          <div className="y mono bb">{money(l.price)}</div>
+        </div>
+        <div className="card col">
+          <div className="row"><span className="rowico"><Icon name="chat" /></span><div><div className="b">{t("Sotuvchi bilan chat")}</div><div className="mut xs">{t("Savol bering, narxni kelishing")}</div></div></div>
+          <div className="row sm"><span className="g"><Icon name="check" size={14} /></span>{t("Akkaunt haqida batafsil so'rash")}</div>
+          <div className="row sm"><span className="g"><Icon name="check" size={14} /></span>{t("Narx bo'yicha kelishish")}</div>
+          <button className="btn ghost full" disabled={busy} onClick={onChat}><Icon name="chat" /> {t("Chatni ochish")}</button>
+        </div>
+        <div className="card col" style={{ borderColor: "rgba(255,214,10,.6)" }}>
+          <div className="row"><span className="hd-ico" style={{ width: 36, height: 36 }}><Icon name="shield" size={18} /></span>
+            <div><div className="b">{t("Garant orqali sotib olish")} <span className="pill-b g" style={{ fontSize: 10, padding: "2px 7px" }}>{t("Xavfsiz")}</span></div><div className="mut xs">{t("Pul kafolatlanadi, akkaunt tekshiriladi")}</div></div></div>
+          <div className="row sm"><span className="g"><Icon name="check" size={14} /></span>{t("To'lov qilsangiz, akkaunt ma'lumotlari ochiladi")}</div>
+          <div className="row sm"><span className="g"><Icon name="check" size={14} /></span>{t("Tasdiqlaganingizdan so'ng pul sotuvchiga o'tadi")}</div>
+          <button className="btn full" disabled={!agree || l.status !== "active"} onClick={onGarant}>{t("Garant bilan davom etish")}</button>
+        </div>
+        <label className="row sm" style={{ cursor: "pointer" }}>
+          <input type="checkbox" className="cbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+          <span>{t("Men")} <a className="y" style={{ textDecoration: "underline" }} onClick={(e) => { e.preventDefault(); nav("/legal/terms"); }}>{t("Foydalanuvchi kelishuvi")}</a> {t("bilan tanishdim va unga roziman.")}</span>
+        </label>
+      </div>
+    </Sheet>
+  );
+}
+
+/** To'lov sahifasi: garant orqali akkaunt xaridi. */
+export function PayListing() {
+  const id = useParams().id;
+  const nav = useNavigate();
+  const { me, refreshMe } = useApp();
+  const st = useLoad(() => api.get<ListingFull>(`/listings/${id}`), [id]);
+  const { busy, run } = useAction();
+  return (
+    <>
+      <Header title={t("To'lov")} sub={t("Xavfsiz savdo · pul kafolatlanadi")} />
+      <Loadable state={st}>
+        {(l) => {
+          const bal = me?.balance ?? 0;
+          const short = Math.max(0, l.price - bal);
+          return (
+            <>
+              <div className="page withbar">
+                <div className="card row">
+                  <GameLogo game={l.game} size={52} />
+                  <div className="grow" style={{ minWidth: 0 }}><div className="b ell">{l.title}</div><div className="mut xs">{l.game === "ML" ? "Mobile Legends" : "Magic Chess"}</div><div className="y mono bb">{som(l.price)}</div></div>
+                </div>
+                <div className="card col">
+                  <div className="b">{t("Qanday ishlaydi")}</div>
+                  {[[t("To'lov qilasiz"), t("Pul hamyon balansingizdan yechiladi va himoyada saqlanadi")],
+                    [t("Akkaunt ma'lumotlari ochiladi"), t("Sotuvchi login va parolni bitim sahifasida yuboradi")],
+                    [t("Tekshirib, tasdiqlaysiz"), t("Tasdiqlaganingizdan so'ng pul sotuvchiga o'tkaziladi")]].map(([a, b], i) => (
+                    <div key={i} className="row" style={{ alignItems: "flex-start" }}>
+                      <span className={"stepnum" + (i === 0 ? " on" : "")}>{i + 1}</span>
+                      <div><div className="b sm">{a}</div><div className="mut xs">{b}</div></div>
+                    </div>
                   ))}
                 </div>
-                <div className="kv"><span>{t("Balans")}</span><span className={enough ? "" : "r"}>{som(me?.balance ?? 0)}</span></div>
-                {enough ? (
-                  <button className="btn full" disabled={busy} onClick={() => run(async () => {
+                <div className="card row">
+                  <span className="hd-ico" style={{ width: 40, height: 40, background: "rgba(255,214,10,.12)", color: "var(--y)" }}><Icon name="wallet" /></span>
+                  <div className="grow"><div className="mut xs mono">{t("HAMYON BALANSI")}</div><div className="bb">{som(bal)}</div></div>
+                </div>
+                <div className="card">
+                  <div className="kv"><span>{t("Akkaunt narxi")}</span><span className="mono">{money(l.price)}</span></div>
+                  <div className="kv"><span>{t("Xizmat haqi")}</span><span className="g">{t("Bepul")}</span></div>
+                  <div className="kv"><span className="b">{t("Jami")}</span><span className="y bb mono" style={{ fontSize: 18 }}>{som(l.price)}</span></div>
+                </div>
+                {short > 0 && (
+                  <div className="card row" style={{ borderColor: "rgba(255,90,110,.5)", background: "rgba(255,90,110,.06)" }}>
+                    <span className="r"><Icon name="help" /></span>
+                    <div><div className="r b">{t("Mablag' yetarli emas")}</div><div className="mut xs">{t("Yetishmaydi: {s}. Hamyonni to'ldiring.", { s: som(short) })}</div></div>
+                  </div>
+                )}
+              </div>
+              <BottomBar>
+                {short > 0 ? (
+                  <button className="btn full" onClick={() => nav("/wallet")}>+ {t("Balansni to'ldirish")}</button>
+                ) : (
+                  <button className="btn full" disabled={busy || l.status !== "active"} onClick={() => run(async () => {
                     const d = await api.post<Deal>(`/listings/${l.id}/buy`);
                     await refreshMe();
                     nav(`/deal/${d.id}`, { replace: true });
                   })}>{t("To'lash")} · {money(l.price)}</button>
-                ) : (
-                  <button className="btn full" onClick={() => nav("/wallet")}>{t("Balansni to'ldirish")} (−{money(l.price - (me?.balance ?? 0))})</button>
                 )}
-              </Sheet>
+              </BottomBar>
             </>
           );
         }}

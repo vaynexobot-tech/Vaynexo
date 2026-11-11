@@ -145,6 +145,13 @@ async def history(user: CurrentUser, session: SessionDep, type: str = "all", lim
         for t in await session.scalars(select(TgOrder).where(TgOrder.user_id == uid).order_by(TgOrder.id.desc()).limit(limit)):
             items.append({"type": "telegram", "id": t.id, "game": "TG", "title": t.title, "sub": t.target_username,
                           "amount": -t.price, "status": t.status, "created_at": S.iso(t.created_at)})
+    if type in ("all", "rent"):
+        rq = select(Rental).where(Rental.renter_id == uid).order_by(Rental.id.desc()).limit(limit)
+        for r in await session.scalars(rq):
+            hours = r.hours
+            dur = f"{hours} soat" if hours < 72 else f"{hours // 24} kun"
+            items.append({"type": "rent", "id": r.id, "game": r.listing.game, "title": f"{r.listing.title} · {dur}",
+                          "sub": "Ijara", "amount": -r.price, "status": r.status, "created_at": S.iso(r.created_at)})
     if type in ("all", "wallet"):
         for t in await session.scalars(select(Topup).where(Topup.user_id == uid, Topup.status == "paid").order_by(Topup.id.desc()).limit(limit)):
             items.append({"type": "topup", "id": t.id, "game": "UZS", "title": "Hamyon to'ldirish", "sub": "P2P karta",

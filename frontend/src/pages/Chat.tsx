@@ -96,7 +96,10 @@ export function ChatPage() {
           <div className="grow"><div className="b ell sm">{c.listing.title}</div><div className="y mono sm">{som(c.listing.price)}</div></div>
           {data.deal ? <Status s={data.deal.status} /> : <span className="badge g">GARANT</span>}
         </div>
-        <div className="card tight xs mut">🔒 {t("Garant yoqilgan: to'lovni faqat ilova orqali qiling. Kartaga to'g'ridan-to'g'ri pul o'tkazmang — bunday holatda platforma himoya qila olmaydi.")}</div>
+        <div className="card tight row xs" style={{ borderColor: "rgba(29,233,182,.4)", background: "rgba(29,233,182,.06)", alignItems: "flex-start" }}>
+          <span className="g"><Icon name="shield" size={18} /></span>
+          <span>{t("Garant yoqilgan: to'lovni faqat ilova orqali qiling. Kartaga to'g'ridan-to'g'ri pul o'tkazmang — bunday holatda platforma himoya qila olmaydi.")}</span>
+        </div>
         <div className="msgs">
           {msgs.length === 0 && <div className="mut sm center">{t("Savolingizni yozing")}</div>}
           {msgs.map((m) => (
@@ -109,6 +112,11 @@ export function ChatPage() {
         </div>
       </div>
       <div className="bottombar">
+        {data.deal && c.role === "buyer" && data.deal.status === "delivered" && (
+          <div className="bottombar-in" style={{ paddingBottom: 0 }}>
+            <button className="btn full okbtn" onClick={() => nav(`/deal/${data.deal!.id}`)}>✓ {t("Akkauntni tasdiqlayman")}</button>
+          </div>
+        )}
         <form className="bottombar-in" onSubmit={(e) => { e.preventDefault(); send(); }}>
           <input className="input grow" maxLength={2000} placeholder={t("Xabar yozing...")} value={text} onChange={(e) => setText(e.target.value)} />
           <button className="btn" style={{ width: 52, padding: 0 }} disabled={!text.trim() || sending} aria-label={t("Yuborish")}><Icon name="send" /></button>

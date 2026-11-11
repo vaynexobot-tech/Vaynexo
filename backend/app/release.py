@@ -11,23 +11,22 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-11.arena-hamkor"
-NOTES = """🆕 VAYNEXO yangilandi
+RELEASE = "2026-11-12.karta-otkazma"
+NOTES = """🆕 VAYNEXO yangilandi: to'lov tizimi
 
-🤝 Hamkor dasturi — video havolasi yuboriladi, admin ko'rishlarni kiritib tasdiqlaydi, mukofot avtomatik
-🏆 Arena: Turnirlar · Jamoa · Reyting · Vazifalar
-  • ball tizimi (pulga almashtirilmaydi), kunlik/haftalik vazifalar
-  • ballni almashtirish: Boost chegirmasi, VIP 3 kun, turnirga bepul kirish
-  • bepul prognoz (admin o'yin qo'shadi va natijani kiritadi)
-  • jamoa topish e'lonlari (7 kun), sezon reytingi
-🚀 Boost: yulduz narxlari daraja bo'yicha, jonli progress (/progress)
-🔑 Ijara: 24 soat −10%, 3 kun −20%, 1 hafta −30%, depozit 50 000
-⭐️ Stars paketlariga bonus yulduz
-🪪 Account savdo va ijara uchun identifikatsiya majburiy (admin paneldan o'chirsa bo'ladi)
-💼 Garant xizmat haqi 0%, to'ldirish limiti 500 000 (Silver)
+💳 Hamyon → «Karta orqali o'tkazma»
+  • taymer (standart 10 daqiqa) va noyob summa
+  • kartalar ro'yxati, nusxa olish tugmasi bilan
+  • «To'ladim» tugmasi va chek yuklash → «Tekshirilmoqda» holati
+  • chek sizga botda keladi: ✅ Tasdiqlash / ❌ Rad etish
+  • bank SMS'ini botga forward qilsangiz, to'lov avvalgidek avtomatik tasdiqlanadi
 
-Yangi buyruqlar: /administ — tezkor vazifalar, /booster — boosterlar uchun.
-Barcha narx va foizlar: Admin panel → Sozlamalar."""
+⚙️ Admin panel → 💳 Kirimlar:
+  • «To'lov kartalari» — kartalarni shu yerda qo'shing/o'chiring
+  • «To'ladim — tekshiruvda» ro'yxati
+⚙️ Sozlamalar → Hamyon → «To'lov taymeri (daqiqa)»
+
+❗️ Tasdiqlashdan oldin kartaga aynan shu summa tushganini bank ilovasida tekshiring — chek soxta bo'lishi mumkin."""
 
 
 async def notify_admins_once() -> None:

@@ -3,7 +3,7 @@ import { api, type Ledger, type PayCard, type Topup, type Withdrawal } from "../
 import { t } from "../i18n";
 import { confirmDialog } from "../tg";
 import {
-  BottomBar, Copy, dateTime, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, som, Status, useAction, useApp, useLoad,
+  BottomBar, Copy, dateTime, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Status, useAction, useApp, useLoad,
 } from "../ui";
 
 interface WalletInfo {
@@ -64,11 +64,11 @@ function TopupFlow({ info, onDone }: { info: WalletInfo; onDone: () => void }) {
 
   // To'lov kutilayotganda har 5 soniyada holatni tekshiramiz.
   useEffect(() => {
-    if (!topup || topup.status !== "pending") return;
+    if (!topup || (topup.status !== "pending" && topup.status !== "checking")) return;
     const id = setInterval(async () => {
       try {
         const fresh = await api.get<Topup>(`/wallet/topup/${topup.id}`);
-        if (fresh.status !== "pending") {
+        if (fresh.status !== topup.status) {
           setTopup(fresh);
           if (fresh.status === "paid") {
             toast(t("Balans to'ldirildi: +{s}", { s: som(fresh.pay_amount) }), "ok");
@@ -83,10 +83,20 @@ function TopupFlow({ info, onDone }: { info: WalletInfo; onDone: () => void }) {
     return () => clearInterval(id);
   }, [topup, refreshMe, toast, onDone]);
 
-  if (topup && topup.status === "pending") return <PayInstructions topup={topup} app={app} onCancel={() => run(async () => {
+  if (topup && (topup.status === "pending" || topup.status === "checking")) return <PayInstructions topup={topup} app={app} onChange={setTopup} onCancel={() => run(async () => {
     await api.post(`/wallet/topup/${topup.id}/cancel`);
     setTopup(null);
   })} />;
+
+  if (topup && (topup.status === "rejected" || topup.status === "expired"))
+    return (
+      <div className="card center col" style={{ alignItems: "center", padding: 24 }}>
+        <div style={{ fontSize: 46 }}>{topup.status === "rejected" ? "❌" : "⏱"}</div>
+        <div className="bb" style={{ fontSize: 18 }}>{topup.status === "rejected" ? t("To'lov tasdiqlanmadi") : t("Vaqt tugadi")}</div>
+        <div className="mut sm">{topup.status === "rejected" ? (topup.reject_reason ? t(topup.reject_reason) : "") : t("Pul o'tkazgan bo'lsangiz, xavotir olmang: to'lov topilsa balans baribir to'ldiriladi yoki chekni @vaynexo_support ga yuboring.")}</div>
+        <button className="btn full" onClick={() => setTopup(null)}>{t("Yangi so'rov")}</button>
+      </div>
+    );
 
   if (topup && topup.status === "paid")
     return (
@@ -137,25 +147,63 @@ function TopupFlow({ info, onDone }: { info: WalletInfo; onDone: () => void }) {
   );
 }
 
-function PayInstructions({ topup, app, onCancel }: { topup: Topup; app: string; onCancel: () => void }) {
+function PayInstructions({ topup, app, onCancel, onChange }: { topup: Topup; app: string; onCancel: () => void; onChange: (t: Topup) => void }) {
+  const { toast } = useApp();
   const [left, setLeft] = useState(() => Math.max(0, new Date(topup.expires_at).getTime() - Date.now()));
+  const [sheet, setSheet] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const { busy, run } = useAction();
   useEffect(() => {
     const id = setInterval(() => setLeft(Math.max(0, new Date(topup.expires_at).getTime() - Date.now())), 1000);
     return () => clearInterval(id);
   }, [topup.expires_at]);
   const mm = String(Math.floor(left / 60000)).padStart(2, "0");
   const ss = String(Math.floor((left % 60000) / 1000)).padStart(2, "0");
+  const cards = topup.cards?.length ? topup.cards : [{ id: 0, number: topup.card_number, holder: topup.card_holder, kind: "" }];
+  const checking = topup.status === "checking";
+  const paid = () => run(async () => {
+    const fd = new FormData();
+    if (file) fd.append("receipt", file);
+    onChange(await api.form<Topup>(`/wallet/topup/${topup.id}/paid`, fd));
+    setSheet(false);
+    toast(t("To'lov tekshiruvga yuborildi"), "ok");
+  });
+
+  if (checking)
+    return (
+      <>
+        <div className="card center col" style={{ alignItems: "center", padding: 22, borderColor: "rgba(255,214,10,.45)" }}>
+          <div className="spinner" style={{ margin: 0, width: 40, height: 40 }} />
+          <div className="bb" style={{ fontSize: 18 }}>{t("Tekshirilmoqda")}</div>
+          <div className="y bb mono" style={{ fontSize: 22 }}>{som(topup.pay_amount)}</div>
+          <div className="mut sm">{t("To'lovingiz tekshirilmoqda. Odatda 1–10 daqiqa. Tasdiqlangach balans to'ldiriladi va botda xabar keladi — sahifani yopsangiz ham bo'ladi.")}</div>
+        </div>
+        <div className="card">
+          <div className="kv"><span>{t("Summa")}</span><span className="mono">{som(topup.pay_amount)}</span></div>
+          <div className="kv"><span>{t("Chek")}</span><span>{topup.has_receipt ? "✓ " + t("yuborilgan") : t("yuborilmagan")}</span></div>
+          <div className="kv"><span>{t("Holati")}</span><span className="y">{t("Tekshirilmoqda")}</span></div>
+        </div>
+        <div className="note sm">{t("Pul o'tkazmagan bo'lsangiz, to'lov tasdiqlanmaydi. Savol bo'lsa: @vaynexo_support")}</div>
+      </>
+    );
+
   return (
     <>
       <div className="card col">
         <div className="row between">
-          <span className="b">{t("To'lovni amalga oshiring")}</span>
-          <span className="badge y mono">⏱ {mm}:{ss}</span>
+          <span className="b">{t("Karta orqali o'tkazma")}</span>
+          <span className={"badge mono " + (left < 60000 ? "r" : "y")}>⏱ {mm}:{ss}</span>
         </div>
         <Copy label={t("Aynan shu summani o'tkazing")} value={money(topup.pay_amount)} />
-        <div className="r sm b">⚠️ {t("Summani yaxlitlamang! Boshqa summa o'tkazilsa, to'lov avtomatik topilmaydi.")}</div>
-        <Copy label={t("Karta raqami")} value={topup.card_number} />
-        <div className="mut sm">{t("Qabul qiluvchi")}: <span className="b" style={{ color: "#fff" }}>{topup.card_holder}</span></div>
+        <div className="r sm b">⚠️ {t("Summani yaxlitlamang! 1 so'm kam yoki ko'p bo'lsa ham to'lov avtomatik topilmaydi.")}</div>
+      </div>
+      <div className="card col">
+        <div className="mut xs mono b">{cards.length > 1 ? t("KARTALARDAN BIRIGA O'TKAZING") : t("KARTA RAQAMI")}</div>
+        {cards.map((c) => (
+          <div key={c.id + c.number} className="col" style={{ gap: 4 }}>
+            <Copy label={[c.kind, c.holder].filter(Boolean).join(" · ") || undefined} value={c.number} />
+          </div>
+        ))}
       </div>
       <div className="card col">
         <div className="mut xs mono b">{t("TO'LDIRISH BOSQICHLARI")}</div>
@@ -163,18 +211,32 @@ function PayInstructions({ topup, app, onCancel }: { topup: Topup; app: string; 
           app === "card" ? t("Istalgan bank ilovasini oching") : t("{a} ilovasini oching", { a: app }),
           t("«Kartaga o'tkazma» bo'limini tanlang va karta raqamini kiriting"),
           t("Aynan {s} so'm o'tkazing va to'lovni tasdiqlang", { s: money(topup.pay_amount) }),
-          t("Balans avtomatik to'ldiriladi"),
+          t("«To'ladim» tugmasini bosing — balans tekshiruvdan so'ng to'ldiriladi"),
         ].map((x, i) => (
           <div key={i} className="row sm"><span className={"stepnum" + (i === 0 ? " on" : "")}>{i + 1}</span><span>{x}</span></div>
         ))}
       </div>
-      <div className="card row">
-        <div className="spinner" style={{ margin: 0, width: 22, height: 22, flex: "none" }} />
-        <div className="sm">{t("To'lov kutilmoqda. O'tkazganingizdan so'ng balans avtomatik to'ldiriladi — bu sahifani yopsangiz ham bo'ladi.")}</div>
-      </div>
-      <button className="btn danger full" onClick={async () => { if (await confirmDialog(t("So'rovni bekor qilasizmi? Agar pul o'tkazgan bo'lsangiz, bekor qilmang."))) onCancel(); }}>
+      <button className="btn full" disabled={busy} onClick={() => setSheet(true)}>✓ {t("To'ladim")}</button>
+      <button className="btn ghost full" onClick={async () => { if (await confirmDialog(t("So'rovni bekor qilasizmi? Agar pul o'tkazgan bo'lsangiz, bekor qilmang."))) onCancel(); }}>
         {t("Bekor qilish")}
       </button>
+      <Sheet open={sheet} onClose={() => setSheet(false)}>
+        <div className="sec-title" style={{ marginTop: 0 }}>{t("To'lovni tasdiqlash")}</div>
+        <div className="col">
+          <div className="sm">{t("{s} o'tkazganingizni tasdiqlaysizmi? Chek (skrinshot) yuklasangiz, tekshiruv tezroq o'tadi.", { s: som(topup.pay_amount) })}</div>
+          <label className="dashed-btn" style={{ display: "grid", placeItems: "center", cursor: "pointer" }}>
+            {file ? "✓ " + file.name.slice(0, 28) : "+ " + t("Chek yuklash (ixtiyoriy)")}
+            <input type="file" accept="image/*" hidden onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              if (f.size > 5 * 1024 * 1024) return toast(t("Rasm 5 MB dan oshmasin"), "err");
+              setFile(f);
+            }} />
+          </label>
+          <div className="mut xs">{t("Pul o'tkazmasdan «To'ladim» bosish hisobni bloklashga olib keladi.")}</div>
+          <button className="btn full" disabled={busy} onClick={paid}>{busy ? t("Yuborilmoqda...") : t("Ha, to'ladim")}</button>
+        </div>
+      </Sheet>
     </>
   );
 }

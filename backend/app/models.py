@@ -89,10 +89,27 @@ class Topup(TimestampMixin, Base):
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
     requested_amount: Mapped[int] = mapped_column(BigInteger)
     pay_amount: Mapped[int] = mapped_column(BigInteger)  # noyob summa, masalan 50 034
-    status: Mapped[str] = mapped_column(String(16), default="pending")  # pending | paid | expired | cancelled
+    status: Mapped[str] = mapped_column(String(16), default="pending")  # pending | checking | paid | rejected | expired | cancelled
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     incoming_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("incoming_payments.id"))
+    # «To'ladim» bosilgach: checking; admin yoki bank xabari tasdiqlaydi
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    has_receipt: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    reject_reason: Mapped[str | None] = mapped_column(String(300))
+
+
+class P2PCard(TimestampMixin, Base):
+    """To'lov qabul qilinadigan kartalar (admin paneldan boshqariladi)."""
+
+    __tablename__ = "p2p_cards"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    number: Mapped[str] = mapped_column(String(32))
+    holder: Mapped[str] = mapped_column(String(64), default="")
+    kind: Mapped[str] = mapped_column(String(16), default="")  # Uzcard | Humo | Visa ...
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class IncomingPayment(TimestampMixin, Base):

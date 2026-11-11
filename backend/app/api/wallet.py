@@ -1,11 +1,14 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Header
+import logging
+
+from fastapi import APIRouter, Header, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api import schemas as S
 from app.api.deps import CurrentUser, SessionDep, rate_limit
+from app.api.media import IMAGE_MAX, _read_limited
 from app.config import settings
 from app.errors import AppError, NotFound
 from app.models import LedgerEntry, PaymentCard, Topup, User, Withdrawal
@@ -15,11 +18,14 @@ from app.services import p2p
 from app.services.notify import Outbox
 from app.services.services import create_withdrawal
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/wallet", tags=["wallet"])
 
 
-def _topup(t: Topup) -> dict:
-    return S.topup(t, settings.p2p_card_number, settings.p2p_card_holder)
+async def _topup(session, t: Topup) -> dict:
+    cards = await p2p.active_cards(session)
+    first = cards[0] if cards else {"number": "", "holder": ""}
+    return S.topup(t, first["number"], first["holder"], cards)
 
 
 @router.get("")
@@ -28,15 +34,16 @@ async def wallet_info(user: CurrentUser, session: SessionDep, offset: int = 0):
         select(LedgerEntry).where(LedgerEntry.user_id == user.id).order_by(LedgerEntry.id.desc()).offset(max(0, offset)).limit(30)
     )
     pending = await session.scalar(
-        select(Topup).where(Topup.user_id == user.id, Topup.status == "pending").order_by(Topup.id.desc()).limit(1)
+        select(Topup).where(Topup.user_id == user.id, Topup.status.in_(("pending", "checking"))).order_by(Topup.id.desc()).limit(1)
     )
     return {
         "balance": user.balance,
         "entries": [S.ledger(e) for e in entries],
-        "pending_topup": _topup(pending) if pending else None,
+        "pending_topup": await _topup(session, pending) if pending else None,
         "limits": {"topup_min": settings.topup_min,
                    "topup_max": min(settings.topup_max, int(await app_settings.get_value(session, "topup_max_silver"))),
-                   "withdraw_min": settings.withdraw_min, "ttl_minutes": settings.topup_ttl_minutes},
+                   "withdraw_min": settings.withdraw_min,
+                   "ttl_minutes": int(await app_settings.get_value(session, "topup_timeout_minutes"))},
         "level": "Silver",
     }
 
@@ -49,8 +56,10 @@ class TopupIn(BaseModel):
 async def create_topup(body: TopupIn, user: CurrentUser, session: SessionDep):
     await rate_limit(f"topup:{user.id}", limit=5, window=60)
     async with session.begin():
+        if not await p2p.active_cards(session):
+            raise AppError("no_card", "To'lov kartasi sozlanmagan. Birozdan so'ng urinib ko'ring", 503)
         t = await p2p.create_topup(session, user.id, body.amount)
-    return _topup(t)
+    return await _topup(session, t)
 
 
 @router.get("/topup/{topup_id}")
@@ -59,7 +68,43 @@ async def get_topup(topup_id: int, user: CurrentUser, session: SessionDep):
     if t is None or t.user_id != user.id:
         raise NotFound("To'lov so'rovi")
     balance = await session.scalar(select(User.balance).where(User.id == user.id))
-    return {**_topup(t), "balance": balance}
+    return {**(await _topup(session, t)), "balance": balance}
+
+
+@router.post("/topup/{topup_id}/paid")
+async def topup_paid(topup_id: int, user: CurrentUser, session: SessionDep, receipt: UploadFile | None = None):
+    """«To'ladim»: so'rov tekshiruvga o'tadi, adminlarga xabar (chek bo'lsa — rasm bilan) boradi."""
+    await rate_limit(f"paid:{user.id}", limit=6, window=600)
+    image = None
+    if receipt is not None:
+        if not (receipt.content_type or "").startswith("image/"):
+            raise AppError("bad_image", "Chek rasm bo'lishi kerak")
+        image = await _read_limited(receipt, IMAGE_MAX)
+    async with session.begin():
+        was = await session.scalar(select(Topup.status).where(Topup.id == topup_id, Topup.user_id == user.id))
+        t = await p2p.claim_paid(session, user.id, topup_id, image is not None)
+    if was != "checking" and t.status == "checking":
+        await _notify_review(t, user, image)
+    return await _topup(session, t)
+
+
+async def _notify_review(t: Topup, user: User, image: bytes | None) -> None:
+    text, markup = p2p.review_text(t, user), p2p.review_markup(t.id)
+    if image is not None and settings.bot_token:
+        try:
+            from aiogram.types import BufferedInputFile
+
+            from app.bot.instance import get_bot
+
+            targets = [settings.admin_chat_id] if settings.admin_chat_id else list(settings.admin_ids)
+            for chat_id in targets:
+                await get_bot().send_photo(chat_id, BufferedInputFile(image, f"chek_{t.id}.jpg"), caption=text, reply_markup=markup)
+            return
+        except Exception:
+            log.warning("Chek rasmini adminlarga yuborib bo'lmadi", exc_info=True)
+    out = Outbox()
+    out.admins(text, markup)
+    await out.flush()
 
 
 @router.post("/topup/{topup_id}/cancel")

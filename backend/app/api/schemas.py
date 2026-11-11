@@ -95,10 +95,11 @@ def deal(d: Deal, me: int, credentials: str | None = None) -> dict:
     }
 
 
-def topup(t: Topup, card: str, holder: str) -> dict:
+def topup(t: Topup, card: str, holder: str, cards: list | None = None) -> dict:
     return {"id": t.id, "requested_amount": t.requested_amount, "pay_amount": t.pay_amount, "status": t.status,
             "expires_at": iso(t.expires_at), "paid_at": iso(t.paid_at), "card_number": card, "card_holder": holder,
-            "created_at": iso(t.created_at)}
+            "cards": cards or [], "has_receipt": t.has_receipt, "reject_reason": t.reject_reason,
+            "claimed_at": iso(t.claimed_at), "created_at": iso(t.created_at)}
 
 
 def ledger(e: LedgerEntry) -> dict:

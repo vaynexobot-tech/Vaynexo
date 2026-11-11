@@ -10,7 +10,7 @@ from app.api.donate import invalidate_packages_cache
 from app.errors import AppError, BadState, NotFound
 from app.models import (
     Rental, RentListing,
-    BoostOrder, Deal, DonateOrder, DonatePackage, IncomingPayment, Listing, TgOrder, Topup, Tournament,
+    BoostOrder, Deal, DonateOrder, DonatePackage, IncomingPayment, Listing, P2PCard, TgOrder, Topup, Tournament,
     TournamentEntry, User, Withdrawal,
 )
 from app.queue import enqueue
@@ -107,6 +107,82 @@ async def topups(admin: AdminUser, session: SessionDep, amount: int | None = Non
     if user_id:
         stmt = stmt.where(Topup.user_id == user_id)
     return [{**S.topup(t, "", ""), "user_id": t.user_id} for t in await session.scalars(stmt)]
+
+
+@router.get("/topups/checking")
+async def topups_checking(admin: AdminUser, session: SessionDep):
+    rows = list(await session.scalars(select(Topup).where(Topup.status == "checking").order_by(Topup.claimed_at).limit(100)))
+    users = {u.id: u for u in await session.scalars(select(User).where(User.id.in_({t.user_id for t in rows} or {0})))}
+    return [{**S.topup(t, "", ""), "user_id": t.user_id,
+             "user_name": (users[t.user_id].username or users[t.user_id].first_name) if t.user_id in users else ""} for t in rows]
+
+
+class RejectIn(BaseModel):
+    reason: str | None = Field(None, max_length=300)
+
+
+@router.post("/topups/{topup_id}/confirm")
+async def topup_confirm(topup_id: int, admin: AdminUser, session: SessionDep):
+    out = Outbox()
+    async with session.begin():
+        t = await p2p.admin_confirm(session, topup_id, out)
+    await out.flush()
+    return {**S.topup(t, "", ""), "user_id": t.user_id}
+
+
+@router.post("/topups/{topup_id}/reject")
+async def topup_reject(topup_id: int, body: RejectIn, admin: AdminUser, session: SessionDep):
+    out = Outbox()
+    async with session.begin():
+        t = await p2p.admin_reject(session, topup_id, body.reason, out)
+    await out.flush()
+    return {**S.topup(t, "", ""), "user_id": t.user_id}
+
+
+# ------------------------------------------------------------------ to'lov kartalari
+class P2PCardIn(BaseModel):
+    number: str = Field(max_length=32)
+    holder: str = Field("", max_length=64)
+    active: bool = True
+    sort: int = 0
+
+
+def _card(c: P2PCard) -> dict:
+    return {"id": c.id, "number": c.number, "holder": c.holder, "kind": c.kind, "active": c.active, "sort": c.sort}
+
+
+@router.get("/p2p-cards")
+async def p2p_cards(admin: AdminUser, session: SessionDep):
+    return [_card(c) for c in await session.scalars(select(P2PCard).order_by(P2PCard.sort, P2PCard.id))]
+
+
+@router.post("/p2p-cards")
+async def p2p_card_add(body: P2PCardIn, admin: AdminUser, session: SessionDep):
+    async with session.begin():
+        number = p2p.clean_card(body.number)
+        c = P2PCard(number=number, holder=body.holder.strip().upper(), kind=p2p.card_kind(number), active=body.active, sort=body.sort)
+        session.add(c)
+    return _card(c)
+
+
+@router.put("/p2p-cards/{card_id}")
+async def p2p_card_update(card_id: int, body: P2PCardIn, admin: AdminUser, session: SessionDep):
+    async with session.begin():
+        c = await session.get(P2PCard, card_id)
+        if c is None:
+            raise NotFound("Karta")
+        c.number = p2p.clean_card(body.number)
+        c.holder, c.kind, c.active, c.sort = body.holder.strip().upper(), p2p.card_kind(c.number), body.active, body.sort
+    return _card(c)
+
+
+@router.delete("/p2p-cards/{card_id}")
+async def p2p_card_delete(card_id: int, admin: AdminUser, session: SessionDep):
+    async with session.begin():
+        c = await session.get(P2PCard, card_id)
+        if c is not None:
+            await session.delete(c)
+    return {"ok": True}
 
 
 class ManualIncomingIn(BaseModel):

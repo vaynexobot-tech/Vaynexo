@@ -169,7 +169,8 @@ export interface Deal {
 }
 export interface Chat { id: number; listing: ListingCard; role: "buyer" | "seller"; buyer_id: number; seller_id: number; last_message_at: string }
 export interface Msg { id: number; sender_id: number | null; text: string; created_at: string }
-export interface Topup { id: number; requested_amount: number; pay_amount: number; status: string; expires_at: string; paid_at: string | null; card_number: string; card_holder: string; created_at: string; balance?: number; user_id?: number }
+export interface Topup { id: number; requested_amount: number; pay_amount: number; status: string; expires_at: string; paid_at: string | null; card_number: string; card_holder: string; created_at: string; balance?: number; user_id?: number;
+  cards?: { id: number; number: string; holder: string; kind: string }[]; has_receipt?: boolean; reject_reason?: string | null; user_name?: string }
 export interface Ledger { id: number; amount: number; balance_after: number; kind: string; note: string | null; created_at: string }
 export interface Withdrawal { id: number; user_id: number; amount: number; card: string; card_holder: string; status: string; admin_note: string | null; created_at: string }
 export interface TgOrder { id: number; ref: string; kind: string; title: string; target_username: string; details: Record<string, unknown>; price: number; status: string; admin_note: string | null; user_id: number; created_at: string }

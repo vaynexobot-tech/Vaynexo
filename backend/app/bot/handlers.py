@@ -305,3 +305,32 @@ async def kyc_callback(cb: CallbackQuery):
         await cb.message.edit_text(cb.message.text + ("\n\n✅ Tasdiqlandi" if action == "ok" else "\n\n❌ Rad etildi"))
     except Exception:
         pass
+
+
+@router.callback_query(F.data.startswith("topup:"))
+async def topup_callback(cb: CallbackQuery):
+    """Admin «To'ladim» so'rovini tasdiqlaydi yoki rad etadi."""
+    if cb.from_user.id not in settings.admin_ids:
+        await cb.answer("Faqat admin uchun", show_alert=True)
+        return
+    _, action, tid = cb.data.split(":")
+    out = Outbox()
+    try:
+        async with SessionLocal() as session, session.begin():
+            if action == "ok":
+                await p2p.admin_confirm(session, int(tid), out)
+            else:
+                await p2p.admin_reject(session, int(tid), None, out)
+    except AppError as e:
+        await cb.answer(e.message, show_alert=True)
+        return
+    await out.flush()
+    mark = "\n\n✅ Tasdiqlandi — balans to'ldirildi" if action == "ok" else "\n\n❌ Rad etildi"
+    await cb.answer("Tasdiqlandi ✅" if action == "ok" else "Rad etildi")
+    try:
+        if cb.message.photo:
+            await cb.message.edit_caption(caption=(cb.message.caption or "") + mark)
+        else:
+            await cb.message.edit_text((cb.message.text or "") + mark)
+    except Exception:
+        pass

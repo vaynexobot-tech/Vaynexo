@@ -12,12 +12,12 @@ import random
 import re
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import and_, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.errors import AppError, BadState, NotFound
-from app.models import IncomingPayment, Topup, User
+from app.models import IncomingPayment, P2PCard, Topup, User
 from app.services import app_settings, wallet
 from app.services.notify import Outbox, fmt, webapp_button
 
@@ -40,12 +40,15 @@ async def create_topup(session: AsyncSession, user_id: int, amount: int) -> Topu
     await session.execute(
         update(Topup).where(Topup.user_id == user_id, Topup.status == "pending").values(status="cancelled")
     )
+    checking = await session.scalar(select(func.count()).select_from(Topup).where(Topup.user_id == user_id, Topup.status == "checking"))
+    if checking >= 2:
+        raise BadState("Oldingi to'lovlaringiz tekshirilmoqda. Natijani kuting")
     window_start = now() - timedelta(hours=settings.topup_late_match_hours)
     busy = set(
         await session.scalars(
             select(Topup.pay_amount).where(
                 Topup.pay_amount.between(amount + 1, amount + 999),
-                Topup.status.in_(("pending", "expired", "cancelled")),
+                Topup.status.in_(("pending", "checking", "expired", "cancelled")),
                 Topup.created_at >= window_start,
             )
         )
@@ -59,7 +62,7 @@ async def create_topup(session: AsyncSession, user_id: int, amount: int) -> Topu
         requested_amount=amount,
         pay_amount=pay_amount,
         status="pending",
-        expires_at=now() + timedelta(minutes=settings.topup_ttl_minutes),
+        expires_at=now() + timedelta(minutes=int(await app_settings.get_value(session, "topup_timeout_minutes"))),
     )
     session.add(topup)
     await session.flush()
@@ -148,7 +151,8 @@ async def register_incoming(
     candidates = list(
         await session.scalars(
             select(Topup)
-            .where(Topup.pay_amount == amount, Topup.status == "pending", Topup.expires_at > now())
+            .where(Topup.pay_amount == amount,
+                   or_(and_(Topup.status == "pending", Topup.expires_at > now()), Topup.status == "checking"))
             .with_for_update().execution_options(populate_existing=True)
         )
     )
@@ -158,7 +162,7 @@ async def register_incoming(
                 select(Topup)
                 .where(
                     Topup.pay_amount == amount,
-                    Topup.status.in_(("pending", "expired", "cancelled")),
+                    Topup.status.in_(("pending", "checking", "expired", "cancelled")),
                     Topup.created_at >= now() - timedelta(hours=settings.topup_late_match_hours),
                 )
                 .with_for_update().execution_options(populate_existing=True)
@@ -198,3 +202,88 @@ async def expire_topups(session: AsyncSession) -> int:
 
 async def unmatched_count(session: AsyncSession) -> int:
     return await session.scalar(select(func.count()).select_from(IncomingPayment).where(IncomingPayment.status == "unmatched")) or 0
+
+
+# ------------------------------------------------------------------ kartalar
+async def active_cards(session: AsyncSession) -> list[dict]:
+    """Foydalanuvchiga ko'rsatiladigan kartalar. Admin panelda karta bo'lmasa — .env dagi karta."""
+    rows = list(await session.scalars(select(P2PCard).where(P2PCard.active.is_(True)).order_by(P2PCard.sort, P2PCard.id)))
+    if rows:
+        return [{"id": c.id, "number": c.number, "holder": c.holder, "kind": c.kind} for c in rows]
+    if settings.p2p_card_number:
+        return [{"id": 0, "number": settings.p2p_card_number, "holder": settings.p2p_card_holder, "kind": ""}]
+    return []
+
+
+def card_kind(number: str) -> str:
+    d = re.sub(r"\D", "", number)
+    if d.startswith(("8600", "5614", "6262")):
+        return "Uzcard"
+    if d.startswith("9860"):
+        return "Humo"
+    if d.startswith("4"):
+        return "Visa"
+    if d[:2] in ("51", "52", "53", "54", "55"):
+        return "Mastercard"
+    return "Karta"
+
+
+def clean_card(number: str) -> str:
+    d = re.sub(r"\D", "", number or "")
+    if len(d) != 16:
+        raise AppError("bad_card", "Karta raqami 16 ta raqam bo'lsin")
+    return " ".join(d[i:i + 4] for i in range(0, 16, 4))
+
+
+# ------------------------------------------------------------------ «To'ladim» va admin tekshiruvi
+def review_markup(topup_id: int) -> dict:
+    return {"inline_keyboard": [[
+        {"text": "✅ Tasdiqlash", "callback_data": f"topup:ok:{topup_id}"},
+        {"text": "❌ Rad etish", "callback_data": f"topup:no:{topup_id}"},
+    ]]}
+
+
+def review_text(t: Topup, user: User | None) -> str:
+    who = (f"@{user.username}" if user and user.username else (user.first_name if user else "")) or "—"
+    return (f"💳 To'lov tekshiruvi #{t.id}\n{who} · ID {t.user_id}\nSumma: {fmt(t.pay_amount)}\n"
+            f"Chek: {'bor' if t.has_receipt else 'yo\'q'}\nKartaga shu summa tushganini tekshiring.")
+
+
+async def claim_paid(session: AsyncSession, user_id: int, topup_id: int, has_receipt: bool) -> Topup:
+    """Foydalanuvchi «To'ladim» bosdi: so'rov tekshiruvga o'tadi (bank xabari kelsa, avtomatik tasdiqlanadi)."""
+    t = await session.scalar(select(Topup).where(Topup.id == topup_id, Topup.user_id == user_id)
+                             .with_for_update().execution_options(populate_existing=True))
+    if t is None:
+        raise NotFound("To'lov so'rovi")
+    if t.status == "paid":
+        return t
+    late_ok = t.status == "expired" and t.expires_at > now() - timedelta(minutes=30)
+    if t.status != "pending" and not late_ok:
+        raise BadState("Bu so'rov yopilgan. Yangi so'rov yarating")
+    t.status, t.claimed_at, t.has_receipt = "checking", now(), has_receipt
+    return t
+
+
+async def admin_confirm(session: AsyncSession, topup_id: int, out: Outbox) -> Topup:
+    t = await session.scalar(select(Topup).where(Topup.id == topup_id).with_for_update().execution_options(populate_existing=True))
+    if t is None:
+        raise NotFound("To'lov so'rovi")
+    if t.status == "paid":
+        raise BadState("Bu to'lov allaqachon tasdiqlangan")
+    if t.status == "rejected":
+        raise BadState("Bu to'lov rad etilgan")
+    await _credit_topup(session, t, None, out)
+    return t
+
+
+async def admin_reject(session: AsyncSession, topup_id: int, reason: str | None, out: Outbox) -> Topup:
+    t = await session.scalar(select(Topup).where(Topup.id == topup_id).with_for_update().execution_options(populate_existing=True))
+    if t is None:
+        raise NotFound("To'lov so'rovi")
+    if t.status != "checking":
+        raise BadState("Bu so'rov tekshiruvda emas")
+    t.status = "rejected"
+    t.reject_reason = (reason or "To'lov kartaga tushmagan").strip()[:300]
+    out.user(t.user_id, f"❌ {fmt(t.pay_amount)} to'lovingiz tasdiqlanmadi.\nSabab: {t.reject_reason}\n"
+             "Pul o'tkazgan bo'lsangiz, chekni @vaynexo_support ga yuboring.", webapp_button("Hamyon", "/wallet"))
+    return t

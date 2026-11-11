@@ -97,6 +97,8 @@ function Incoming() {
           setText(""); setAmount(""); st.reload();
         })}>Qayd etish</button>
       </div>
+      <CheckingTopups />
+      <P2PCards />
       <div className="sec-title">Biriktirilmagan kirimlar</div>
       <Loadable state={st}>
         {(list) => list.length === 0 ? <Empty icon="✅" text="Hammasi biriktirilgan" /> : list.map((i) => (
@@ -663,6 +665,74 @@ function MatchesAdmin() {
           </div>
         ))}
       </Loadable>
+    </>
+  );
+}
+
+
+function CheckingTopups() {
+  const { toast } = useApp();
+  const st = useLoad(() => api.get<Topup[]>("/admin/topups/checking"));
+  const { busy, run } = useAction();
+  return (
+    <>
+      <div className="sec-title">«To'ladim» — tekshiruvda</div>
+      <Loadable state={st}>
+        {(list) => list.length === 0 ? <div className="mut sm">Tekshiruvda to'lov yo'q</div> : list.map((x) => (
+          <div key={x.id} className="card col">
+            <div className="row between"><span className="bb mono y">{som(x.pay_amount)}</span><span className="mut xs">#{x.id} · {x.user_name} · ID {x.user_id}</span></div>
+            <div className="mut xs">{x.has_receipt ? "Chek botga yuborilgan" : "Chek yo'q"} · Kartaga aynan shu summa tushganini tekshiring</div>
+            <div className="row">
+              <button className="btn small danger grow" disabled={busy} onClick={() => run(async () => {
+                const reason = window.prompt("Rad etish sababi", "To'lov kartaga tushmagan") ?? "";
+                await api.post(`/admin/topups/${x.id}/reject`, { reason }); st.reload();
+              })}>Rad etish</button>
+              <button className="btn small green grow" disabled={busy} onClick={() => run(async () => {
+                if (!(await confirmDialog(`${money(x.pay_amount)} so'm kartaga tushganmi? Balans to'ldiriladi.`))) return;
+                await api.post(`/admin/topups/${x.id}/confirm`); toast("Balans to'ldirildi", "ok"); st.reload();
+              })}>Tasdiqlash</button>
+            </div>
+          </div>
+        ))}
+      </Loadable>
+    </>
+  );
+}
+
+interface P2PCardRow { id: number; number: string; holder: string; kind: string; active: boolean; sort: number }
+
+function P2PCards() {
+  const st = useLoad(() => api.get<P2PCardRow[]>("/admin/p2p-cards"));
+  const [num, setNum] = useState("");
+  const [holder, setHolder] = useState("");
+  const { busy, run } = useAction();
+  return (
+    <>
+      <div className="sec-title">To'lov kartalari</div>
+      <div className="mut xs">Foydalanuvchilar pulni shu kartalarga o'tkazadi. Faol kartalarning hammasi to'lov ekranida ko'rinadi.</div>
+      <Loadable state={st}>
+        {(list) => (
+          <>
+            {list.length === 0 && <div className="mut sm">Karta qo'shilmagan — hozircha server sozlamasidagi karta ishlatiladi.</div>}
+            {list.map((c) => (
+              <div key={c.id} className="card row tight" style={{ opacity: c.active ? 1 : 0.5 }}>
+                <div className="grow"><div className="b mono">{c.number}</div><div className="mut xs">{c.kind} · {c.holder || "—"}</div></div>
+                <Toggle on={c.active} onChange={(v) => run(async () => { await api.put(`/admin/p2p-cards/${c.id}`, { ...c, active: v }); st.reload(); })} />
+                <button className="iconbtn" aria-label="O'chirish" onClick={async () => { if (await confirmDialog("Kartani o'chirasizmi?")) run(async () => { await api.del(`/admin/p2p-cards/${c.id}`); st.reload(); }); }}>✕</button>
+              </div>
+            ))}
+          </>
+        )}
+      </Loadable>
+      <div className="card col">
+        <div className="b">Karta qo'shish</div>
+        <input className="input mono" inputMode="numeric" placeholder="8600 0000 0000 0000" value={num.replace(/(\d{4})(?=\d)/g, "$1 ")} onChange={(e) => setNum(e.target.value.replace(/\D/g, "").slice(0, 16))} />
+        <input className="input" placeholder="ISM FAMILIYA" value={holder} onChange={(e) => setHolder(e.target.value.toUpperCase())} />
+        <button className="btn full" disabled={busy || num.length !== 16} onClick={() => run(async () => {
+          await api.post("/admin/p2p-cards", { number: num, holder });
+          setNum(""); setHolder(""); st.reload();
+        })}>Qo'shish</button>
+      </div>
     </>
   );
 }

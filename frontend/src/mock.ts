@@ -198,26 +198,45 @@ on("GET", "/history", (_m, _b, q) => {
 });
 
 // hamyon
+const DEMO_CARDS = [
+  { id: 1, number: "8600 0000 0000 0001", holder: "VAYNEXO KASSA", kind: "Uzcard" },
+  { id: 2, number: "9860 0000 0000 0002", holder: "VAYNEXO KASSA", kind: "Humo" },
+  { id: 3, number: "4073 0000 0000 0003", holder: "VAYNEXO KASSA", kind: "Visa" },
+];
 const topupView = (t: Json) => {
-  if (t.status === "pending" && Date.now() - Date.parse(t.created_at) > 8000) {
+  // demo: «To'ladim» bosilgach 8 soniyadan keyin admin tasdiqlagandek bo'ladi
+  if (t.status === "checking" && Date.now() - Date.parse(t.claimed_at) > 8000) {
     t.status = "paid";
     t.paid_at = now();
-    money(t.pay_amount, "topup", "P2P (demo: avtomatik tasdiqlandi)");
+    money(t.pay_amount, "topup", "P2P (demo: tasdiqlandi)");
   }
-  return { ...t, card_number: "5614 6822 0915 5276", card_holder: "BOTIRALIYEV AZIZBEK", balance: state.me.balance };
+  return { ...t, card_number: DEMO_CARDS[0].number, card_holder: DEMO_CARDS[0].holder, cards: DEMO_CARDS, balance: state.me.balance };
 };
 on("GET", "/wallet", () => ({
   balance: state.me.balance, entries: state.ledger,
-  pending_topup: state.topups.find((t: Json) => t.status === "pending") ? topupView(state.topups.find((t: Json) => t.status === "pending")) : null,
-  limits: { topup_min: 1000, topup_max: 20_000_000, withdraw_min: 10_000, ttl_minutes: 30 },
+  pending_topup: state.topups.find((t: Json) => ["pending", "checking"].includes(t.status)) ? topupView(state.topups.find((t: Json) => ["pending", "checking"].includes(t.status))) : null,
+  limits: { topup_min: 1000, topup_max: 500_000, withdraw_min: 10_000, ttl_minutes: 10 },
 }));
 on("POST", "/wallet/topup", (_m, b) => {
   if (!(b.amount >= 1000)) throw new MockError("bad_amount", "Summa 1 000 so'mdan kam bo'lmasin");
   state.topups.forEach((t: Json) => t.status === "pending" && (t.status = "cancelled"));
-  const t = { id: nid(), requested_amount: b.amount, pay_amount: b.amount + 1 + Math.floor(Math.random() * 999), status: "pending", created_at: now(), expires_at: new Date(Date.now() + 30 * 60000).toISOString(), paid_at: null };
+  const t = { id: nid(), requested_amount: b.amount, pay_amount: b.amount + 1 + Math.floor(Math.random() * 99), status: "pending", created_at: now(), expires_at: new Date(Date.now() + 10 * 60000).toISOString(), paid_at: null, has_receipt: false, reject_reason: null };
   state.topups.unshift(t);
   return topupView(t);
 });
+on("POST", "/wallet/topup/:id/paid", (m, b) => {
+  const t = state.topups.find((x: Json) => x.id === +m[1]);
+  if (t.status === "pending") { t.status = "checking"; t.claimed_at = now(); t.has_receipt = b instanceof FormData && b.has("receipt"); }
+  return topupView(t);
+});
+on("GET", "/admin/topups/checking", () => state.topups.filter((t: Json) => t.status === "checking").map((t: Json) => ({ ...t, user_id: ME, user_name: "aziz_demo" })));
+on("POST", "/admin/topups/:id/confirm", (m) => { const t = state.topups.find((x: Json) => x.id === +m[1]); t.status = "paid"; money(t.pay_amount, "topup", "P2P"); return t; });
+on("POST", "/admin/topups/:id/reject", (m, b) => { const t = state.topups.find((x: Json) => x.id === +m[1]); t.status = "rejected"; t.reject_reason = b.reason; return t; });
+const adminCards: Json[] = DEMO_CARDS.map((c) => ({ ...c, active: true, sort: 0 }));
+on("GET", "/admin/p2p-cards", () => adminCards);
+on("POST", "/admin/p2p-cards", (_m, b) => { const n = String(b.number).replace(/(\d{4})(?=\d)/g, "$1 "); const c = { id: nid(), number: n, holder: b.holder, kind: n.startsWith("9860") ? "Humo" : "Uzcard", active: true, sort: 0 }; adminCards.push(c); return c; });
+on("PUT", "/admin/p2p-cards/:id", (m, b) => { const c = adminCards.find((x) => x.id === +m[1])!; c.active = b.active; return c; });
+on("DELETE", "/admin/p2p-cards/:id", (m) => { adminCards.splice(adminCards.findIndex((x) => x.id === +m[1]), 1); return {}; });
 on("GET", "/wallet/topup/:id", (m) => topupView(state.topups.find((t: Json) => t.id === +m[1])));
 on("POST", "/wallet/topup/:id/cancel", (m) => {
   const t = state.topups.find((x: Json) => x.id === +m[1]);

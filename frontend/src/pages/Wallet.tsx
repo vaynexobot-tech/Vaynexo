@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { api, type Ledger, type PayCard, type Topup, type Withdrawal } from "../api";
+import { api, type Ledger, type Topup } from "../api";
 import { t } from "../i18n";
 import { confirmDialog } from "../tg";
 import {
-  BottomBar, Copy, dateTime, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Status, useAction, useApp, useLoad,
+  BottomBar, Copy, dateTime, Empty, Header, Loadable, money, MoneyInput, Seg, Sheet, som, useAction, useApp, useLoad,
 } from "../ui";
 
 interface WalletInfo {
@@ -22,7 +22,7 @@ const KIND: Record<string, string> = {
 };
 
 export default function Wallet() {
-  const [tab, setTab] = useState<"topup" | "withdraw" | "history">("topup");
+  const [tab, setTab] = useState<"topup" | "history">("topup");
   const w = useLoad(() => api.get<WalletInfo>("/wallet"));
   return (
     <>
@@ -38,10 +38,10 @@ export default function Wallet() {
             </div>
           )}
         </div>
-        <Seg value={tab} onChange={setTab} options={[{ v: "topup", label: t("To'ldirish") }, { v: "withdraw", label: t("Yechish") }, { v: "history", label: t("Tarix") }]} />
+        <Seg value={tab} onChange={setTab} options={[{ v: "topup", label: t("To'ldirish") }, { v: "history", label: t("Tarix") }]} />
         <Loadable state={w}>
           {(d) =>
-            tab === "topup" ? <TopupFlow info={d} onDone={w.reload} /> : tab === "withdraw" ? <WithdrawForm info={d} onDone={w.reload} /> : <LedgerList entries={d.entries} />
+            tab === "topup" ? <TopupFlow info={d} onDone={w.reload} /> : <LedgerList entries={d.entries} />
           }
         </Loadable>
       </div>
@@ -224,85 +224,6 @@ function PayInstructions({ topup, app, onCancel, onChange }: { topup: Topup; app
           <button className="btn full" disabled={busy} onClick={paid}>{busy ? t("Yuborilmoqda...") : t("Ha, to'ladim")}</button>
         </div>
       </Sheet>
-    </>
-  );
-}
-
-function WithdrawForm({ info, onDone }: { info: WalletInfo; onDone: () => void }) {
-  const { refreshMe, toast } = useApp();
-  const [amount, setAmount] = useState<number | "">("");
-  const [card, setCard] = useState("");
-  const [holder, setHolder] = useState("");
-  const list = useLoad(() => api.get<Withdrawal[]>("/wallet/withdrawals"));
-  const cards = useLoad(() => api.get<PayCard[]>("/me/cards"));
-  const [cardId, setCardId] = useState<number | null>(null);
-  useEffect(() => {
-    const def = cards.data?.find((c) => c.is_default);
-    if (def && cardId === null) setCardId(def.id);
-  }, [cards.data]); // eslint-disable-line react-hooks/exhaustive-deps
-  const { busy, run } = useAction();
-  const digits = card.replace(/\D/g, "");
-  const useSaved = cardId !== null && cardId > 0;
-  const valid = typeof amount === "number" && amount >= info.limits.withdraw_min && amount <= info.balance && (useSaved || digits.length === 16);
-  return (
-    <>
-      <div className="card col">
-        <Field label={t("Summa (so'm)")}>
-          <MoneyInput value={amount} onChange={setAmount} placeholder={money(info.limits.withdraw_min)} />
-        </Field>
-        <button className="chip" style={{ alignSelf: "flex-start" }} onClick={() => setAmount(info.balance)}>{t("Hammasi")}: {money(info.balance)}</button>
-        {cards.data && cards.data.length > 0 && (
-          <Field label={t("Karta")}>
-            <div className="col">
-              {cards.data.map((c) => (
-                <button key={c.id} className={"payopt" + (cardId === c.id ? " on" : "")} onClick={() => setCardId(c.id)}>
-                  <span className="payico" style={{ background: "#2b2d45" }}><Icon name="card" size={16} /></span>
-                  <span className="grow b">{c.brand} •••• {c.last4}</span>
-                  {c.is_default && <span className="avto">{t("ASOSIY")}</span>}
-                </button>
-              ))}
-              <button className={"payopt" + (cardId === 0 ? " on" : "")} onClick={() => setCardId(0)}>
-                <span className="payico" style={{ background: "#2b2d45" }}>+</span>
-                <span className="grow b">{t("Boshqa karta")}</span>
-              </button>
-            </div>
-          </Field>
-        )}
-        {!useSaved && (
-          <>
-            <Field label={t("Karta raqami (Uzcard / Humo)")}>
-              <input className="input mono" inputMode="numeric" placeholder="8600 0000 0000 0000" value={digits.replace(/(\d{4})(?=\d)/g, "$1 ")} onChange={(e) => setCard(e.target.value.replace(/\D/g, "").slice(0, 16))} />
-            </Field>
-            <Field label={t("Karta egasi")}>
-              <input className="input" placeholder="ISM FAMILIYA" value={holder} onChange={(e) => setHolder(e.target.value.toUpperCase())} maxLength={64} />
-            </Field>
-          </>
-        )}
-        <div className="mut xs">{t("Eng kam yechish: {min}. So'rov admin tomonidan 24 soat ichida bajariladi.", { min: som(info.limits.withdraw_min) })}</div>
-        <button className="btn full" disabled={!valid || busy} onClick={() => run(async () => {
-          await api.post("/wallet/withdraw", useSaved ? { amount, card_id: cardId } : { amount, card_number: digits, card_holder: holder });
-          toast(t("So'rov yuborildi"), "ok");
-          setAmount("");
-          await refreshMe();
-          onDone();
-          list.reload();
-        })}>{t("Yechib olish")}</button>
-      </div>
-      {list.data && list.data.length > 0 && (
-        <div className="card">
-          <div className="b">{t("So'rovlar")}</div>
-          {list.data.map((w) => (
-            <div key={w.id} className="listrow">
-              <div className="grow">
-                <div className="b">{som(w.amount)}</div>
-                <div className="mut xs">{w.card} · {dateTime(w.created_at)}</div>
-                {w.admin_note && <div className="mut xs">{w.admin_note}</div>}
-              </div>
-              <Status s={w.status} />
-            </div>
-          ))}
-        </div>
-      )}
     </>
   );
 }

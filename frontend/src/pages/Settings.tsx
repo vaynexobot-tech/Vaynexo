@@ -165,7 +165,6 @@ const FAQ: [string, string][] = [
   ["Hamyonni qanday to'ldiraman?", "Hamyon → To'ldirish. Tizim bergan ANIQ summani ko'rsatilgan kartaga o'tkazing. To'lov avtomatik topiladi va 1–3 daqiqada balansga tushadi."],
   ["Noto'g'ri summa o'tkazib yubordim", "Xavotir olmang — @vaynexo_support ga chek (skrinshot) yuboring, admin qo'lda biriktiradi."],
   ["Almaz qancha vaqtda tushadi?", "Odatda 1–5 daqiqa. Agar provayder bajara olmasa, pul avtomatik hamyonga qaytariladi."],
-  ["Pulni qanday yechib olaman?", "Hamyon → Yechish. Karta raqamini kiriting, so'rov 24 soat ichida bajariladi."],
   ["Akkauntimni qanday sotaman?", "E'lon joylash → ma'lumotlarni to'ldiring → moderatsiyadan so'ng e'lon ko'rinadi. Sotilganda login/parolni bitim sahifasida yuborasiz."],
 ];
 
@@ -212,7 +211,7 @@ const TERMS = `1. Umumiy qoidalar
 2. Hamyon va to'lovlar
 2.1. Barcha hisob-kitoblar so'mda amalga oshiriladi.
 2.2. Hamyonni to'ldirishda tizim bergan aniq summani o'tkazish foydalanuvchi zimmasida.
-2.3. Pul yechish so'rovlari 24 soat ichida ko'rib chiqiladi.
+2.3. Hamyondagi pul faqat VAYNEXO xizmatlari uchun ishlatiladi.
 
 3. Akkaunt savdosi
 3.1. Har bir savdo garant orqali amalga oshiriladi: to'lov xaridor tasdiqlaguncha platformada saqlanadi.

@@ -2,14 +2,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, type Deal, type ListingCard, type ListingFull } from "../api";
 import { t } from "../i18n";
-import { haptic } from "../tg";
 import {
   BottomBar, BottomNav, Chips, KycBanner, Empty, Field, GAME_IMG, GameLogo, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Spinner, Status,
   useAction, useApp, useLoad,
 } from "../ui";
 
 const LEVELS = ["Junior", "Senior", "Expert", "Renowned", "Exalted", "Mega", "World"];
-type Cat = string; // all | fav | lv:<daraja>
+type Cat = string; // all | lv:<daraja>
 
 interface Filters {
   game: "" | "ML" | "MC";
@@ -34,15 +33,6 @@ export function Market() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [total, setTotal] = useState(0);
   const { fail } = useApp();
-  const toggleFav = async (x: ListingCard) => {
-    haptic();
-    setItems((p) => p && (cat === "fav" ? p.filter((i) => i.id !== x.id) : p.map((i) => (i.id === x.id ? { ...i, is_fav: !i.is_fav } : i))));
-    try {
-      await api.post(`/listings/${x.id}/favorite`);
-    } catch (e) {
-      fail(e);
-    }
-  };
 
   const params = (offset: number) => {
     const p = new URLSearchParams({ sort: f.sort, offset: String(offset), limit: "20" });
@@ -56,7 +46,6 @@ export function Market() {
     if (cat === "legend") p.set("rank", "Legend");
     if (cat === "epic") p.set("rank", "Epic");
     if (cat === "skins") p.set("min_skins", "100");
-    if (cat === "fav") p.set("favorites", "true");
     if (min) p.set("min_price", String(min));
     if (max) p.set("max_price", String(max));
     if (f.min_skins) p.set("min_skins", String(f.min_skins));
@@ -101,7 +90,7 @@ export function Market() {
           <button type="button" className="iconbtn" style={{ width: 48, height: 48 }} onClick={() => setShowFilter(true)} aria-label={t("Filtr")}><Icon name="filter" /></button>
         </form>
         <Chips value={cat} onChange={setCat} options={[
-          { v: "all", label: t("Hammasi") }, { v: "fav", label: "❤️ " + t("Sevimlilar") },
+          { v: "all", label: t("Hammasi") },
           ...[...LEVELS].reverse().map((l) => ({ v: "lv:" + l, label: l })),
         ]} />
         <div className="row between sm">
@@ -115,13 +104,13 @@ export function Market() {
         </div>
 
         {items === null ? <Spinner /> : items.length === 0 ? (
-          <Empty icon={cat === "fav" ? "❤️" : "🔍"} text={cat === "fav" ? t("Sevimlilar bo'sh. Yoqqan e'londagi ❤️ ni bosing") : t("Hech narsa topilmadi")}>
+          <Empty icon="🔍" text={t("Hech narsa topilmadi")}>
             <button className="btn small ghost" onClick={() => { setF(EMPTY); setCat("all"); setQ(""); setQuery(""); }}>{t("Filtrni tozalash")}</button>
           </Empty>
         ) : (
           <>
             <div className="mgrid">
-              {items.map((x) => <GridCard key={x.id} x={x} onClick={() => nav(`/listing/${x.id}`)} onFav={() => toggleFav(x)} />)}
+              {items.map((x) => <GridCard key={x.id} x={x} onClick={() => nav(`/listing/${x.id}`)} />)}
             </div>
             {hasMore && <button className="btn ghost full" disabled={loadingMore} onClick={() => load(items.length)}>{loadingMore ? "..." : t("Ko'proq ko'rsatish")}</button>}
           </>
@@ -135,15 +124,12 @@ export function Market() {
 
 const isNew = (iso: string) => Date.now() - Date.parse(iso) < 24 * 3600 * 1000;
 
-export function GridCard({ x, onClick, onFav }: { x: ListingCard; onClick: () => void; onFav: () => void }) {
+export function GridCard({ x, onClick }: { x: ListingCard; onClick: () => void }) {
   return (
     <div className={"gcard" + (x.vip ? " vip" : "")} onClick={onClick}>
       <div className="gcov">
         <img src={x.cover ?? GAME_IMG[x.game]} alt="" loading="lazy" />
         {x.vip ? <span className="gflag vip">VIP</span> : isNew(x.created_at) ? <span className="gflag new">{t("YANGI")}</span> : null}
-        <button className={"gheart" + (x.is_fav ? " on" : "")} aria-label={t("Sevimlilar")} onClick={(e) => { e.stopPropagation(); onFav(); }}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" /></svg>
-        </button>
         {x.rank && <span className="grank">{x.rank.toUpperCase()}</span>}
       </div>
       <div className="gbody">
@@ -211,11 +197,6 @@ export function ListingDetail() {
   const st = useLoad(() => api.get<ListingFull>(`/listings/${id}`), [id]);
   const [buyOpen, setBuyOpen] = useState(false);
   const { busy, run } = useAction();
-  const toggleFav = (l: ListingFull) => run(async () => {
-    haptic();
-    const r = await api.post<{ is_fav: boolean }>(`/listings/${l.id}/favorite`);
-    st.setData({ ...l, is_fav: r.is_fav });
-  });
 
   const openChat = (l: ListingFull) =>
     run(async () => {
@@ -242,12 +223,6 @@ export function ListingDetail() {
                   {l.vip && <span className="badge" style={{ background: "#ffb020", color: "#111" }}>VIP</span>}
                   {l.rank && <span className="badge y">{l.rank.toUpperCase()}</span>}
                   <span className="badge m mono">#VX-{l.id}</span>
-                  {!l.is_mine && (
-                    <button className={"gheart" + (l.is_fav ? " on" : "")} style={{ position: "static", marginLeft: "auto", background: "var(--card)", border: "1px solid var(--line)" }}
-                      aria-label={t("Sevimlilar")} disabled={busy} onClick={() => toggleFav(l)}>
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" /></svg>
-                    </button>
-                  )}
                   {l.status !== "active" && <Status s={l.status} />}
                 </div>
                 <div>

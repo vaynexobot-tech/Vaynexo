@@ -2,13 +2,12 @@ from typing import Annotated
 
 import logging
 
-from fastapi import APIRouter, Header, UploadFile
+from fastapi import APIRouter, Header, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api import schemas as S
 from app.api.deps import CurrentUser, SessionDep, rate_limit
-from app.api.media import IMAGE_MAX, _read_limited
 from app.config import settings
 from app.errors import AppError, NotFound
 from app.models import LedgerEntry, PaymentCard, Topup, User, Withdrawal
@@ -62,51 +61,6 @@ async def create_topup(body: TopupIn, user: CurrentUser, session: SessionDep):
     return await _topup(session, t)
 
 
-@router.get("/topup/{topup_id}")
-async def get_topup(topup_id: int, user: CurrentUser, session: SessionDep):
-    t = await session.get(Topup, topup_id)
-    if t is None or t.user_id != user.id:
-        raise NotFound("To'lov so'rovi")
-    balance = await session.scalar(select(User.balance).where(User.id == user.id))
-    return {**(await _topup(session, t)), "balance": balance}
-
-
-@router.post("/topup/{topup_id}/paid")
-async def topup_paid(topup_id: int, user: CurrentUser, session: SessionDep, receipt: UploadFile | None = None):
-    """«To'ladim»: so'rov tekshiruvga o'tadi, adminlarga xabar (chek bo'lsa — rasm bilan) boradi."""
-    await rate_limit(f"paid:{user.id}", limit=6, window=600)
-    image = None
-    if receipt is not None:
-        if not (receipt.content_type or "").startswith("image/"):
-            raise AppError("bad_image", "Chek rasm bo'lishi kerak")
-        image = await _read_limited(receipt, IMAGE_MAX)
-    async with session.begin():
-        was = await session.scalar(select(Topup.status).where(Topup.id == topup_id, Topup.user_id == user.id))
-        t = await p2p.claim_paid(session, user.id, topup_id, image is not None)
-    if was != "checking" and t.status == "checking":
-        await _notify_review(t, user, image)
-    return await _topup(session, t)
-
-
-async def _notify_review(t: Topup, user: User, image: bytes | None) -> None:
-    text, markup = p2p.review_text(t, user), p2p.review_markup(t.id)
-    if image is not None and settings.bot_token:
-        try:
-            from aiogram.types import BufferedInputFile
-
-            from app.bot.instance import get_bot
-
-            targets = [settings.admin_chat_id] if settings.admin_chat_id else list(settings.admin_ids)
-            for chat_id in targets:
-                await get_bot().send_photo(chat_id, BufferedInputFile(image, f"chek_{t.id}.jpg"), caption=text, reply_markup=markup)
-            return
-        except Exception:
-            log.warning("Chek rasmini adminlarga yuborib bo'lmadi", exc_info=True)
-    out = Outbox()
-    out.admins(text, markup)
-    await out.flush()
-
-
 @router.post("/topup/{topup_id}/cancel")
 async def cancel_topup(topup_id: int, user: CurrentUser, session: SessionDep):
     async with session.begin():
@@ -144,7 +98,54 @@ async def withdrawals(user: CurrentUser, session: SessionDep):
 
 
 # ------------------------------------------------------------------ kirim xabarlari (SMS-forwarder)
+@router.get("/topup/{topup_id}")
+async def get_topup(topup_id: int, user: CurrentUser, session: SessionDep):
+    t = await session.get(Topup, topup_id)
+    if t is None or t.user_id != user.id:
+        raise NotFound("To'lov so'rovi")
+    balance = await session.scalar(select(User.balance).where(User.id == user.id))
+    return {**(await _topup(session, t)), "balance": balance}
+
+
+@router.post("/topup/{topup_id}/paid")
+async def topup_paid(topup_id: int, user: CurrentUser, session: SessionDep):
+    """«To'ladim»: so'rov avtomatik tekshiruvga o'tadi (chek kerak emas)."""
+    await rate_limit(f"paid:{user.id}", limit=6, window=600)
+    async with session.begin():
+        t = await p2p.claim_paid(session, user.id, topup_id)
+    return await _topup(session, t)
+
+
 p2p_router = APIRouter(prefix="/p2p", tags=["p2p"])
+
+
+async def _incoming_body(request: Request) -> "IncomingIn":
+    raw = (await request.body())[:20_000]
+    data: dict = {}
+    ctype = request.headers.get("content-type", "")
+    try:
+        if "json" in ctype or raw[:1] in (b"{", b"["):
+            import json
+
+            parsed = json.loads(raw or b"{}")
+            data = parsed if isinstance(parsed, dict) else {}
+        elif "form" in ctype:
+            from urllib.parse import parse_qsl
+
+            data = dict(parse_qsl(raw.decode("utf-8", "ignore")))
+        else:
+            data = {"text": raw.decode("utf-8", "ignore")}
+    except ValueError:
+        data = {"text": raw.decode("utf-8", "ignore")}
+    text = next((str(data[k]) for k in ("text", "message", "msg", "body", "sms", "content") if data.get(k)), None)
+    amount = data.get("amount")
+    ext = next((str(data[k]) for k in ("external_id", "id", "sentStamp", "receivedStamp", "timestamp") if data.get(k)), None)
+    try:
+        amount = int(amount) if amount not in (None, "") else None
+    except (TypeError, ValueError):
+        amount = None
+    return IncomingIn(text=(text or None) and text[:2000], amount=amount if amount and amount > 0 else None,
+                      external_id=(ext or None) and ext[:128])
 
 
 class IncomingIn(BaseModel):
@@ -154,15 +155,18 @@ class IncomingIn(BaseModel):
 
 
 @p2p_router.post("/incoming")
-async def incoming(body: IncomingIn, session: SessionDep, x_p2p_secret: Annotated[str | None, Header()] = None):
+async def incoming(request: Request, session: SessionDep, x_p2p_secret: Annotated[str | None, Header()] = None, key: str | None = None):
     """Android SMS-forwarder ilovasi (yoki boshqa manba) shu manzilga POST qiladi.
 
-    Sarlavha: X-P2P-Secret: <P2P_SECRET>
+    Kalit: sarlavha X-P2P-Secret yoki ?key=... (ba'zi ilovalar sarlavha qo'sha olmaydi).
+    Tana: JSON {"text": "..."} (yoki message / msg / body / sms), shuningdek oddiy matn yoki forma.
     """
     import hmac
 
-    if not x_p2p_secret or not hmac.compare_digest(x_p2p_secret, settings.p2p_secret) or settings.p2p_secret == "change-me":
+    secret = x_p2p_secret or key
+    if not secret or settings.p2p_secret == "change-me" or not hmac.compare_digest(secret, settings.p2p_secret):
         raise AppError("unauthorized", "Noto'g'ri kalit", 401)
+    body = await _incoming_body(request)
     amount = body.amount or (p2p.parse_bank_message(body.text) if body.text else None)
     if not amount:
         return {"ok": True, "matched": False, "reason": "kirim emas yoki summa topilmadi"}

@@ -243,14 +243,34 @@ def review_markup(topup_id: int) -> dict:
     ]]}
 
 
-def review_text(t: Topup, user: User | None) -> str:
+def review_text(t: Topup, user: User | None, minutes: int | None = None) -> str:
     who = (f"@{user.username}" if user and user.username else (user.first_name if user else "")) or "—"
-    return (f"💳 To'lov tekshiruvi #{t.id}\n{who} · ID {t.user_id}\nSumma: {fmt(t.pay_amount)}\n"
-            f"Chek: {'bor' if t.has_receipt else 'yo\'q'}\nKartaga shu summa tushganini tekshiring.")
+    head = f"⏳ {minutes} daqiqada bank xabari kelmadi" if minutes else "💳 To'lov tekshiruvi"
+    return (f"{head} — #{t.id}\n{who} · ID {t.user_id}\nSumma: {fmt(t.pay_amount)}\n"
+            "Bank ilovasida aynan shu summa kartaga tushganini tekshiring.")
 
 
-async def claim_paid(session: AsyncSession, user_id: int, topup_id: int, has_receipt: bool) -> Topup:
-    """Foydalanuvchi «To'ladim» bosdi: so'rov tekshiruvga o'tadi (bank xabari kelsa, avtomatik tasdiqlanadi)."""
+async def remind_unmatched(session: AsyncSession, out: Outbox) -> int:
+    """«To'ladim» bosilgan, lekin bank xabari kelmagan to'lovlar haqida adminga bir marta xabar."""
+    minutes = int(await app_settings.get_value(session, "topup_review_after_minutes"))
+    rows = list(await session.scalars(
+        select(Topup).where(Topup.status == "checking", Topup.review_sent.is_(False),
+                            Topup.claimed_at <= now() - timedelta(minutes=minutes))
+        .with_for_update(skip_locked=True).limit(50)
+    ))
+    for t in rows:
+        t.review_sent = True
+        user = await session.get(User, t.user_id)
+        out.admins(review_text(t, user, minutes), review_markup(t.id))
+    return len(rows)
+
+
+async def claim_paid(session: AsyncSession, user_id: int, topup_id: int, has_receipt: bool = False) -> Topup:
+    """Foydalanuvchi «To'ladim» bosdi: so'rov avtomatik tekshiruvga o'tadi.
+
+    Bank xabari (SMS-forwarder yoki botga forward) kelishi bilan balans o'zi to'ldiriladi.
+    Belgilangan vaqtda kelmasa — remind_unmatched() adminga tasdiqlash tugmalari bilan xabar yuboradi.
+    """
     t = await session.scalar(select(Topup).where(Topup.id == topup_id, Topup.user_id == user_id)
                              .with_for_update().execution_options(populate_existing=True))
     if t is None:

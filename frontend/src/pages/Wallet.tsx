@@ -151,7 +151,6 @@ function PayInstructions({ topup, app, onCancel, onChange }: { topup: Topup; app
   const { toast } = useApp();
   const [left, setLeft] = useState(() => Math.max(0, new Date(topup.expires_at).getTime() - Date.now()));
   const [sheet, setSheet] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
   const { busy, run } = useAction();
   useEffect(() => {
     const id = setInterval(() => setLeft(Math.max(0, new Date(topup.expires_at).getTime() - Date.now())), 1000);
@@ -162,9 +161,7 @@ function PayInstructions({ topup, app, onCancel, onChange }: { topup: Topup; app
   const cards = topup.cards?.length ? topup.cards : [{ id: 0, number: topup.card_number, holder: topup.card_holder, kind: "" }];
   const checking = topup.status === "checking";
   const paid = () => run(async () => {
-    const fd = new FormData();
-    if (file) fd.append("receipt", file);
-    onChange(await api.form<Topup>(`/wallet/topup/${topup.id}/paid`, fd));
+    onChange(await api.post<Topup>(`/wallet/topup/${topup.id}/paid`));
     setSheet(false);
     toast(t("To'lov tekshiruvga yuborildi"), "ok");
   });
@@ -176,11 +173,10 @@ function PayInstructions({ topup, app, onCancel, onChange }: { topup: Topup; app
           <div className="spinner" style={{ margin: 0, width: 40, height: 40 }} />
           <div className="bb" style={{ fontSize: 18 }}>{t("Tekshirilmoqda")}</div>
           <div className="y bb mono" style={{ fontSize: 22 }}>{som(topup.pay_amount)}</div>
-          <div className="mut sm">{t("To'lovingiz tekshirilmoqda. Odatda 1–10 daqiqa. Tasdiqlangach balans to'ldiriladi va botda xabar keladi — sahifani yopsangiz ham bo'ladi.")}</div>
+          <div className="mut sm">{t("To'lov avtomatik tekshirilmoqda — bank xabari kelishi bilan balans o'zi to'ldiriladi va botda xabar keladi. Odatda 1–3 daqiqa. Sahifani yopsangiz ham bo'ladi.")}</div>
         </div>
         <div className="card">
           <div className="kv"><span>{t("Summa")}</span><span className="mono">{som(topup.pay_amount)}</span></div>
-          <div className="kv"><span>{t("Chek")}</span><span>{topup.has_receipt ? "✓ " + t("yuborilgan") : t("yuborilmagan")}</span></div>
           <div className="kv"><span>{t("Holati")}</span><span className="y">{t("Tekshirilmoqda")}</span></div>
         </div>
         <div className="note sm">{t("Pul o'tkazmagan bo'lsangiz, to'lov tasdiqlanmaydi. Savol bo'lsa: @vaynexo_support")}</div>
@@ -211,7 +207,7 @@ function PayInstructions({ topup, app, onCancel, onChange }: { topup: Topup; app
           app === "card" ? t("Istalgan bank ilovasini oching") : t("{a} ilovasini oching", { a: app }),
           t("«Kartaga o'tkazma» bo'limini tanlang va karta raqamini kiriting"),
           t("Aynan {s} so'm o'tkazing va to'lovni tasdiqlang", { s: money(topup.pay_amount) }),
-          t("«To'ladim» tugmasini bosing — balans tekshiruvdan so'ng to'ldiriladi"),
+          t("«To'ladim» ni bosing — to'lov avtomatik tekshiriladi va balans o'zi to'ldiriladi"),
         ].map((x, i) => (
           <div key={i} className="row sm"><span className={"stepnum" + (i === 0 ? " on" : "")}>{i + 1}</span><span>{x}</span></div>
         ))}
@@ -223,16 +219,7 @@ function PayInstructions({ topup, app, onCancel, onChange }: { topup: Topup; app
       <Sheet open={sheet} onClose={() => setSheet(false)}>
         <div className="sec-title" style={{ marginTop: 0 }}>{t("To'lovni tasdiqlash")}</div>
         <div className="col">
-          <div className="sm">{t("{s} o'tkazganingizni tasdiqlaysizmi? Chek (skrinshot) yuklasangiz, tekshiruv tezroq o'tadi.", { s: som(topup.pay_amount) })}</div>
-          <label className="dashed-btn" style={{ display: "grid", placeItems: "center", cursor: "pointer" }}>
-            {file ? "✓ " + file.name.slice(0, 28) : "+ " + t("Chek yuklash (ixtiyoriy)")}
-            <input type="file" accept="image/*" hidden onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (!f) return;
-              if (f.size > 5 * 1024 * 1024) return toast(t("Rasm 5 MB dan oshmasin"), "err");
-              setFile(f);
-            }} />
-          </label>
+          <div className="sm">{t("Aynan {s} o'tkazganingizni tasdiqlaysizmi? Chek kerak emas — to'lov bank xabari orqali avtomatik tekshiriladi.", { s: som(topup.pay_amount) })}</div>
           <div className="mut xs">{t("Pul o'tkazmasdan «To'ladim» bosish hisobni bloklashga olib keladi.")}</div>
           <button className="btn full" disabled={busy} onClick={paid}>{busy ? t("Yuborilmoqda...") : t("Ha, to'ladim")}</button>
         </div>

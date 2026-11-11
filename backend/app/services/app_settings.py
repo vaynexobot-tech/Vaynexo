@@ -33,6 +33,8 @@ SCHEMA: dict[str, Spec] = {
     # Hamyon
     "topup_max_silver": Spec("money", 500_000, "Bir martalik to'ldirish limiti — Silver (so'm)", "Hamyon", 1_000, 1_000_000_000),
     "topup_timeout_minutes": Spec("money", 10, "To'lov taymeri (daqiqa)", "Hamyon", 3, 120),
+    "topup_review_after_minutes": Spec("money", 15, "«To'ladim» bosilib, bank xabari kelmasa — necha daqiqadan keyin adminga xabar",
+                                       "Hamyon", 1, 1440),
     # KYC
     "kyc_marketplace": Spec("choice", "on", "Account savdo uchun identifikatsiya", "Identifikatsiya (KYC)",
                             choices={"on": "Majburiy", "off": "Ixtiyoriy"}),

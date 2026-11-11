@@ -224,14 +224,15 @@ on("POST", "/wallet/topup", (_m, b) => {
   state.topups.unshift(t);
   return topupView(t);
 });
-on("POST", "/wallet/topup/:id/paid", (m, b) => {
+on("POST", "/wallet/topup/:id/paid", (m) => {
   const t = state.topups.find((x: Json) => x.id === +m[1]);
-  if (t.status === "pending") { t.status = "checking"; t.claimed_at = now(); t.has_receipt = b instanceof FormData && b.has("receipt"); }
+  if (t.status === "pending") { t.status = "checking"; t.claimed_at = now(); }
   return topupView(t);
 });
 on("GET", "/admin/topups/checking", () => state.topups.filter((t: Json) => t.status === "checking").map((t: Json) => ({ ...t, user_id: ME, user_name: "aziz_demo" })));
 on("POST", "/admin/topups/:id/confirm", (m) => { const t = state.topups.find((x: Json) => x.id === +m[1]); t.status = "paid"; money(t.pay_amount, "topup", "P2P"); return t; });
 on("POST", "/admin/topups/:id/reject", (m, b) => { const t = state.topups.find((x: Json) => x.id === +m[1]); t.status = "rejected"; t.reject_reason = b.reason; return t; });
+on("GET", "/admin/p2p/sms-setup", () => ({ url: "https://vaynexo.example/api/p2p/incoming", url_with_key: "https://vaynexo.example/api/p2p/incoming?key=DEMO-KEY", secret: "DEMO-KEY", header: "X-P2P-Secret", ready: true, body_template: '{"text": "%text%", "from": "%from%", "id": "%sentStamp%"}', last_sms_at: null, last_sms_amount: null, last_24h: {} }));
 const adminCards: Json[] = DEMO_CARDS.map((c) => ({ ...c, active: true, sort: 0 }));
 on("GET", "/admin/p2p-cards", () => adminCards);
 on("POST", "/admin/p2p-cards", (_m, b) => { const n = String(b.number).replace(/(\d{4})(?=\d)/g, "$1 "); const c = { id: nid(), number: n, holder: b.holder, kind: n.startsWith("9860") ? "Humo" : "Uzcard", active: true, sort: 0 }; adminCards.push(c); return c; });

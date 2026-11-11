@@ -81,6 +81,10 @@ async def update_boost_post(ctx, order_id: int):
 async def cron_expire_topups(ctx):
     async with SessionLocal() as session, session.begin():
         await p2p.expire_topups(session)
+    out = Outbox()
+    async with SessionLocal() as session, session.begin():
+        await p2p.remind_unmatched(session, out)
+    await out.flush()
 
 
 async def cron_auto_release(ctx):

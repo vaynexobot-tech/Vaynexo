@@ -843,4 +843,7 @@ export const en: Record<string, string> = {
   "To'lov kartaga tushmagan": "The payment didn't arrive on the card",
   "Bu so'rov yopilgan. Yangi so'rov yarating": "This request is closed. Create a new one",
   "Oldingi to'lovlaringiz tekshirilmoqda. Natijani kuting": "Your previous payments are under review. Please wait",
+  "To'lov avtomatik tekshirilmoqda — bank xabari kelishi bilan balans o'zi to'ldiriladi va botda xabar keladi. Odatda 1–3 daqiqa. Sahifani yopsangiz ham bo'ladi.": "Your payment is being checked automatically — as soon as the bank notification arrives, your balance is topped up and the bot notifies you. Usually 1–3 minutes. You can close this page.",
+  "Aynan {s} o'tkazganingizni tasdiqlaysizmi? Chek kerak emas — to'lov bank xabari orqali avtomatik tekshiriladi.": "Do you confirm you transferred exactly {s}? No receipt needed — the payment is checked automatically via the bank notification.",
+  "«To'ladim» ni bosing — to'lov avtomatik tekshiriladi va balans o'zi to'ldiriladi": "Tap «I've paid» — the payment is checked automatically and the balance is topped up",
 };

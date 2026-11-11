@@ -7,6 +7,7 @@ from sqlalchemy import func, or_, select
 from app.api import schemas as S
 from app.api.deps import AdminUser, SessionDep
 from app.api.donate import invalidate_packages_cache
+from app.config import settings
 from app.errors import AppError, BadState, NotFound
 from app.models import (
     Rental, RentListing,
@@ -107,6 +108,23 @@ async def topups(admin: AdminUser, session: SessionDep, amount: int | None = Non
     if user_id:
         stmt = stmt.where(Topup.user_id == user_id)
     return [{**S.topup(t, "", ""), "user_id": t.user_id} for t in await session.scalars(stmt)]
+
+
+@router.get("/p2p/sms-setup")
+async def sms_setup(admin: AdminUser, session: SessionDep):
+    """SMS-forwarder ilovasini ulash uchun ma'lumot (faqat admin ko'radi)."""
+    base = settings.webapp_url.rstrip("/")
+    last = await session.scalar(select(IncomingPayment).where(IncomingPayment.source == "sms").order_by(IncomingPayment.id.desc()).limit(1))
+    since = datetime.now(timezone.utc) - timedelta(days=1)
+    rows = (await session.execute(
+        select(IncomingPayment.source, func.count()).where(IncomingPayment.created_at >= since).group_by(IncomingPayment.source)
+    )).all()
+    ready = settings.p2p_secret != "change-me"
+    return {"url": f"{base}/api/p2p/incoming", "url_with_key": f"{base}/api/p2p/incoming?key={settings.p2p_secret}" if ready else None,
+            "secret": settings.p2p_secret if ready else None, "header": "X-P2P-Secret", "ready": ready,
+            "body_template": '{"text": "%text%", "from": "%from%", "id": "%sentStamp%"}',
+            "last_sms_at": S.iso(last.created_at) if last else None, "last_sms_amount": last.amount if last else None,
+            "last_24h": {src: n for src, n in rows}}
 
 
 @router.get("/topups/checking")

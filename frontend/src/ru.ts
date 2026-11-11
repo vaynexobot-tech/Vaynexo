@@ -856,4 +856,7 @@ export const ru: Record<string, string> = {
   "To'lov kartaga tushmagan": "Платёж не поступил на карту",
   "Bu so'rov yopilgan. Yangi so'rov yarating": "Запрос закрыт. Создайте новый",
   "Oldingi to'lovlaringiz tekshirilmoqda. Natijani kuting": "Ваши предыдущие платежи на проверке. Дождитесь результата",
+  "To'lov avtomatik tekshirilmoqda — bank xabari kelishi bilan balans o'zi to'ldiriladi va botda xabar keladi. Odatda 1–3 daqiqa. Sahifani yopsangiz ham bo'ladi.": "Платёж проверяется автоматически — как только придёт уведомление банка, баланс пополнится и бот пришлёт сообщение. Обычно 1–3 минуты. Страницу можно закрыть.",
+  "Aynan {s} o'tkazganingizni tasdiqlaysizmi? Chek kerak emas — to'lov bank xabari orqali avtomatik tekshiriladi.": "Подтверждаете перевод ровно {s}? Чек не нужен — платёж проверяется автоматически по уведомлению банка.",
+  "«To'ladim» ni bosing — to'lov avtomatik tekshiriladi va balans o'zi to'ldiriladi": "Нажмите «Я оплатил» — платёж проверится автоматически, баланс пополнится сам",
 };

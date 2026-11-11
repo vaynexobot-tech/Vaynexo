@@ -97,6 +97,7 @@ function Incoming() {
           setText(""); setAmount(""); st.reload();
         })}>Qayd etish</button>
       </div>
+      <SmsSetup />
       <CheckingTopups />
       <P2PCards />
       <div className="sec-title">Biriktirilmagan kirimlar</div>
@@ -681,7 +682,7 @@ function CheckingTopups() {
         {(list) => list.length === 0 ? <div className="mut sm">Tekshiruvda to'lov yo'q</div> : list.map((x) => (
           <div key={x.id} className="card col">
             <div className="row between"><span className="bb mono y">{som(x.pay_amount)}</span><span className="mut xs">#{x.id} · {x.user_name} · ID {x.user_id}</span></div>
-            <div className="mut xs">{x.has_receipt ? "Chek botga yuborilgan" : "Chek yo'q"} · Kartaga aynan shu summa tushganini tekshiring</div>
+            <div className="mut xs">Bank xabari hali kelmagan · kartaga aynan shu summa tushganini bank ilovasida tekshiring</div>
             <div className="row">
               <button className="btn small danger grow" disabled={busy} onClick={() => run(async () => {
                 const reason = window.prompt("Rad etish sababi", "To'lov kartaga tushmagan") ?? "";
@@ -734,5 +735,45 @@ function P2PCards() {
         })}>Qo'shish</button>
       </div>
     </>
+  );
+}
+
+
+interface SmsInfo { url: string; url_with_key: string | null; secret: string | null; header: string; ready: boolean; body_template: string; last_sms_at: string | null; last_sms_amount: number | null; last_24h: Record<string, number> }
+
+function SmsSetup() {
+  const st = useLoad(() => api.get<SmsInfo>("/admin/p2p/sms-setup"));
+  const [open, setOpen] = useState(false);
+  return (
+    <Loadable state={st}>
+      {(d) => (
+        <div className="card col" style={{ borderColor: d.last_sms_at ? "rgba(29,233,182,.45)" : "rgba(255,214,10,.45)" }}>
+          <div className="row between">
+            <span className="b">📲 Avtomatik tasdiqlash (SMS)</span>
+            <span className={"pill-b " + (d.last_sms_at ? "g" : "y")}>{d.last_sms_at ? "Ulangan" : "Ulanmagan"}</span>
+          </div>
+          <div className="mut xs">
+            {d.last_sms_at ? `Oxirgi SMS: ${dateTime(d.last_sms_at)} · ${money(d.last_sms_amount ?? 0)} so'm` : "Hali bironta bank SMS'i kelmagan."}
+            {" "}· 24 soatda: SMS {d.last_24h.sms ?? 0}, bot {d.last_24h.bot_forward ?? 0}, qo'lda {d.last_24h.admin ?? 0}
+          </div>
+          <button className="btn small ghost" onClick={() => setOpen(!open)}>{open ? "Yopish" : "Qanday ulash"}</button>
+          {open && (
+            <div className="col sm">
+              {!d.ready && <div className="r b">Serverda P2P_SECRET sozlanmagan — Render → Environment.</div>}
+              <div><b>1.</b> Karta SIM-kartasi turgan Android telefonga <b>«SMS Forwarder»</b> ilovasini o'rnating (Google Play: «SMS to URL Forwarder» yoki shunga o'xshash webhook ilova).</div>
+              <div><b>2.</b> Yangi qoida: yuboruvchi — bankingiz (masalan HUMO, UZCARD, 900…), usul — <b>POST</b>, manzil:</div>
+              {d.url_with_key && <Copy value={d.url_with_key} />}
+              <div className="mut xs">Ilova sarlavha (header) qo'sha olsa, kalitni manzilga emas, sarlavhaga qo'ying: {d.header}</div>
+              {d.secret && <Copy label={d.header} value={d.secret} />}
+              <div><b>3.</b> Tana (JSON) shablon:</div>
+              <Copy value={d.body_template} />
+              <div><b>4.</b> Telefon internetga ulangan va ilova fonda ishlashiga ruxsat berilgan bo'lsin (batareya tejash o'chirilgan).</div>
+              <div><b>5.</b> Sinov: kartaga kichik summa tushiring — bu yerda «Oxirgi SMS» paydo bo'ladi.</div>
+              <div className="mut xs">SMS ulanmaguncha: bank xabarini (SMS yoki bank botidagi xabar) shu botga forward qilsangiz ham to'lov avtomatik topiladi. Kalitni hech kimga bermang.</div>
+            </div>
+          )}
+        </div>
+      )}
+    </Loadable>
   );
 }

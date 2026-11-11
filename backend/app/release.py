@@ -11,22 +11,19 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-12.karta-otkazma"
-NOTES = """🆕 VAYNEXO yangilandi: to'lov tizimi
+RELEASE = "2026-11-12.p2p-avto"
+NOTES = """🆕 To'lov endi to'liq avtomatik — chek kerak emas
 
-💳 Hamyon → «Karta orqali o'tkazma»
-  • taymer (standart 10 daqiqa) va noyob summa
-  • kartalar ro'yxati, nusxa olish tugmasi bilan
-  • «To'ladim» tugmasi va chek yuklash → «Tekshirilmoqda» holati
-  • chek sizga botda keladi: ✅ Tasdiqlash / ❌ Rad etish
-  • bank SMS'ini botga forward qilsangiz, to'lov avvalgidek avtomatik tasdiqlanadi
+💳 Foydalanuvchi: summa → noyob summa (masalan 50 037) → kartaga o'tkazadi → «To'ladim»
+✅ Bank xabari kelishi bilan balans o'zi to'ldiriladi va botda xabar boradi
 
-⚙️ Admin panel → 💳 Kirimlar:
-  • «To'lov kartalari» — kartalarni shu yerda qo'shing/o'chiring
-  • «To'ladim — tekshiruvda» ro'yxati
-⚙️ Sozlamalar → Hamyon → «To'lov taymeri (daqiqa)»
+Bank xabari qanday keladi (bittasi yetarli):
+📲 1) SMS-forwarder: karta SIM'i turgan Android telefonga ilova o'rnatiladi, bank SMS'larini serverga yuboradi.
+   Sozlash: Admin panel → 💳 Kirimlar → «Avtomatik tasdiqlash (SMS)» → «Qanday ulash»
+🤖 2) Bank SMS'i yoki bank botidagi xabarni shu botga forward qilish — darhol topiladi
 
-❗️ Tasdiqlashdan oldin kartaga aynan shu summa tushganini bank ilovasida tekshiring — chek soxta bo'lishi mumkin."""
+⏳ «To'ladim» bosilib, 15 daqiqada bank xabari kelmasa — sizga ✅/❌ tugmalari bilan xabar keladi
+(vaqtni Sozlamalar → Hamyon'da o'zgartirasiz)"""
 
 
 async def notify_admins_once() -> None:

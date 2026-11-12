@@ -47,10 +47,14 @@ ADMIN_CHAT_KEY = "_admin_chat_id"
 TOPIC_KEY = "_topic:"  # + mavzu kaliti → "chat_id:thread_id"
 # Guruh mavzulari (Telegram forum topics). Kalit → tavsif. Mavzuda «/mavzu kalit» yoziladi.
 TOPICS = {
-    "elon": "Yangi e'lonlar (moderatsiya)",
-    "tolov": "Tasdiqlanmagan to'lovlar va kirimlar",
+    "elon": "Akkaunt e'lonlari (moderatsiya)",
+    "ijara_elon": "Ijara e'lonlari (moderatsiya)",
+    "tolov": "«To'ladim» — tasdiqlanmagan to'lovlar",
+    "kirim": "Biriktirilmagan kirimlar (bank)",
     "yechish": "Pul yechish so'rovlari",
-    "nizo": "Nizolar",
+    "nizo": "Akkaunt savdosi nizolari",
+    "ijara_nizo": "Ijara nizolari",
+    "boost_nizo": "Boost nizolari",
     "kyc": "Identifikatsiya so'rovlari",
     "tg": "Telegram xizmatlari (Stars, Premium)",
     "donat": "Donat (almaz) buyurtmalari",
@@ -60,6 +64,11 @@ TOPICS = {
     "boshqa": "Qolgan barcha xabarlar",
     "barcha": "Hamma xabarlarning nusxasi",
 }
+
+
+# Yangi ajratilgan turlar ulanmagan bo'lsa — avvalgi umumiy mavzuga tushadi
+FALLBACK = {"ijara_elon": "elon", "ijara_nizo": "nizo", "boost_nizo": "nizo", "kirim": "tolov",
+            "tg": "buyurtma", "donat": "buyurtma", "boost": "buyurtma"}
 
 
 async def get_topics() -> dict[str, tuple[int, int | None]]:
@@ -107,7 +116,7 @@ def with_thread(markup: dict | None, thread_id: int | None) -> dict | None:
 async def admin_targets(topic: str) -> list[tuple[int, int | None]]:
     """Admin xabari qayerlarga ketadi: mavzu → «boshqa» mavzu → admin kanali → shaxsiy. + «barcha» nusxasi."""
     topics = await get_topics()
-    main = topics.get(topic) or (topics.get("buyurtma") if topic in ("tg", "donat", "boost") else None) or topics.get("boshqa")
+    main = topics.get(topic) or topics.get(FALLBACK.get(topic, "")) or topics.get("boshqa")
     if not main:
         chat = await get_admin_chat()
         if not chat and topics:

@@ -243,7 +243,7 @@ def _topics_kb(bound: dict) -> InlineKeyboardMarkup:
     rows, row = [], []
     for k, v in notify.TOPICS.items():
         row.append(InlineKeyboardButton(text=("✅ " if k in bound else "") + v, callback_data=f"mavzu:{k}"))
-        if len(row) == 2:
+        if len(row) == 1:
             rows.append(row)
             row = []
     if row:

@@ -215,7 +215,7 @@ async def register_incoming(
         out.admins(
             f"⚠️ Kirim avtomatik biriktirilmadi ({reason}).\nSumma: {fmt(amount)}\nManba: {source}\n"
             f"ID: {incoming.id}\nAdmin paneldan qo'lda biriktiring.",
-            webapp_button("Admin panel", "/admin"), topic="tolov",
+            webapp_button("Admin panel", "/admin"), topic="kirim",
         )
     return incoming
 

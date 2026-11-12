@@ -254,7 +254,7 @@ async def boost_client_action(session: AsyncSession, order_id: int, user_id: int
     elif action == "dispute" and order.status in ("accepted", "in_progress", "finished"):
         order.status = "disputed"
         order.note = (order.note + f"\n[Nizo] {reason}")[:500]
-        out.admins(f"⚖️ Boost nizosi #{order.id}: {reason[:300]}", webapp_button("Admin panel", "/admin"), topic="nizo")
+        out.admins(f"⚖️ Boost nizosi #{order.id}: {reason[:300]}", webapp_button("Admin panel", "/admin"), topic="boost_nizo")
     else:
         raise BadState()
     return order

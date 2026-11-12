@@ -62,23 +62,7 @@ export function Sell() {
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  const [aiBusy, setAiBusy] = useState(false);
-  const aiFill = async () => {
-    if (!f.rank) return toast(t("Avval rankni tanlang"), "info");
-    setAiBusy(true);
-    try {
-      const r = await api.post<{ title: string; description: string }>("/ai/describe", {
-        game: f.game, rank: f.rank, server: f.server, collection_level: f.collection_level,
-        skins: f.skins || 0, heroes: f.heroes || 0, notes: f.description.slice(0, 500),
-      });
-      setF((p) => ({ ...p, title: r.title, description: r.description }));
-      toast(t("AI sarlavha va tavsifni yozdi. Tekshirib, kerak bo'lsa tuzating"), "ok");
-    } catch (e) {
-      fail(e);
-    } finally {
-      setAiBusy(false);
-    }
-  };
+
 
   const valid = f.title.trim().length >= 3 && typeof f.price === "number" && f.price >= 1000 && f.rank && uploading === 0;
 
@@ -112,13 +96,6 @@ export function Sell() {
     <>
       <Header title={editId ? t("E'lonni tahrirlash") : t("E'lon joylash")} sub={t("Akkaunt sotish uchun ma'lumotlarni kiriting")} />
       <div className="page">
-        <button className="card click row ai-fill" disabled={aiBusy} onClick={aiFill}>
-          <span className="hd-ico" style={{ width: 36, height: 36 }}><Icon name="ai" size={18} /></span>
-          <div className="grow" style={{ textAlign: "left" }}>
-            <div className="b">{aiBusy ? t("AI yozmoqda...") : t("AI bilan to'ldirish")}</div>
-            <div className="mut xs">{t("Rank va skinlarni tanlang — AI sarlavha va tavsifni yozib beradi")}</div>
-          </div>
-        </button>
         <Field label={t("O'yin")}>
           <Seg value={f.game} onChange={(v) => set("game", v)} options={[{ v: "ML", label: "Mobile Legends" }, { v: "MC", label: "Magic Chess" }]} />
         </Field>

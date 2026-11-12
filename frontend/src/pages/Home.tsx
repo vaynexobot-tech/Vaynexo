@@ -118,7 +118,7 @@ export default function Home() {
           <span className="y"><Icon name="right" /></span>
         </div>
 
-        <div className="card click row between" onClick={() => nav("/ai")}>
+        <div className="card row between" style={{ opacity: 0.7 }}>
           <div className="row">
             <div className="iconbtn y" style={{ width: 44, height: 44, background: "rgba(255,214,10,.08)" }}><Icon name="ai" /></div>
             <div>
@@ -126,7 +126,7 @@ export default function Home() {
               <div className="mut xs">{t("Akkaunt topish va savollarga javob")}</div>
             </div>
           </div>
-          <span className="y"><Icon name="right" /></span>
+          <span className="pill-b y">{t("Tez kunda")}</span>
         </div>
       </div>
       <BottomNav />

@@ -365,3 +365,27 @@ async def test_market_grid_favorites_vip(api):
     assert [x["id"] for x in feed["items"]] == [lid, lid2] and feed["items"][0]["vip"] is True
     d = (await buyer.get(f"/listings/{lid}")).json()
     assert d["seller_verified"] is False and d["is_fav"] is False
+
+
+async def test_manual_donate_goes_to_admin(api, ctx):
+    from app.config import settings
+    from app.providers.manual import ManualProvider
+
+    set_provider(ManualProvider())
+    try:
+        pkg = await make_package()
+        await set_balance(60, 100_000)
+        r = await api(60).post("/donate/orders", {"package_id": pkg, "player_id": "12345678", "zone_id": "1234"})
+        assert r.status_code == 200, r.text
+        oid = r.json()["id"]
+        await run_donate(oid)
+        assert any("Almazni tashlang" in m[1] for m in ctx["sent"])
+        assert await get_balance(60) < 100_000
+        from app.db import SessionLocal
+        from app.models import DonateOrder
+
+        async with SessionLocal() as s:
+            assert (await s.get(DonateOrder, oid)).status == "review"
+    finally:
+        set_provider(MockProvider())
+    assert settings.donate_provider == "manual"

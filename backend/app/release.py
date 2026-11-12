@@ -11,8 +11,14 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-12.mavzular"
-NOTES = """🗂 Admin guruhida mavzular: har bir mavzuga o'z xabarlari
+RELEASE = "2026-11-12.donat-qolda"
+NOTES = """💎 Donat endi QO'LDA bajariladi (API ulanguncha)
+   Har buyurtma guruhdagi «buyurtma» mavzusiga keladi: almazni tashlang → «✅ Bajarildi» yoki «↩️ Pulni qaytarish»
+   (avval sinov rejimi edi — pul yechilib, almaz yuborilmas edi)
+
+🤖 AI bo'limi «Tez kunda» qilib qo'yildi
+
+🗂 Admin guruhida mavzular: har bir mavzuga o'z xabarlari
    Botni guruhga admin qiling, har mavzuda yozing: /mavzu elon, /mavzu tolov, /mavzu yechish, /mavzu nizo, /mavzu kyc, /mavzu barcha …
    Ro'yxat: guruhda /mavzu
 

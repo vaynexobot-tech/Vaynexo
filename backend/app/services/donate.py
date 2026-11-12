@@ -127,6 +127,17 @@ async def fulfil_step(sessions: async_sessionmaker, order_id: int, mode: str, ou
         if result.status == "failed":
             await refund(session, order, result.message or "provayder rad etdi", out)
             return None
+        if result.status == "manual":
+            order.status = "review"
+            out.admins(
+                f"💎 Donat buyurtma {ref}\n{order.title}\nO'yin: {order.game} · ID {pid}" + (f" ({zid})" if zid else "")
+                + f"\nSumma: {fmt(order.price)}\n\nAlmazni tashlang va natijani bosing:",
+                {"inline_keyboard": [[{"text": "✅ Bajarildi", "callback_data": f"donate:done:{order.id}"},
+                                      {"text": "↩️ Pulni qaytarish", "callback_data": f"donate:refund:{order.id}"}]]},
+                topic="buyurtma",
+            )
+            out.user(order.user_id, f"⏳ {order.title} buyurtmangiz qabul qilindi. Odatda 5–30 daqiqada tushadi.")
+            return None
         if result.status == "pending":
             if attempts >= MAX_STATUS_CHECKS:
                 order.status = "review"

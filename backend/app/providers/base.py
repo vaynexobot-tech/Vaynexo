@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-Status = Literal["success", "pending", "failed", "unknown"]
+Status = Literal["success", "pending", "failed", "unknown", "manual"]
 
 
 @dataclass

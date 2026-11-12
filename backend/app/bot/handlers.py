@@ -413,6 +413,32 @@ async def kyc_callback(cb: CallbackQuery):
         pass
 
 
+@router.callback_query(F.data.startswith("donate:"))
+async def donate_callback(cb: CallbackQuery):
+    """Admin qo'lda bajarilgan donatni tasdiqlaydi yoki pulni qaytaradi."""
+    if cb.from_user.id not in settings.admin_ids:
+        await cb.answer("Faqat admin uchun", show_alert=True)
+        return
+    from app.services import donate as donate_svc
+
+    _, action, oid = cb.data.split(":")
+    out = Outbox()
+    try:
+        async with SessionLocal() as session, session.begin():
+            await donate_svc.admin_resolve(session, int(oid), action, out)
+    except AppError as e:
+        await cb.answer(e.message, show_alert=True)
+        return
+    await out.flush()
+    who = cb.from_user.username or cb.from_user.first_name
+    mark = f"\n\n✅ Bajarildi ({who})" if action == "done" else f"\n\n↩️ Pul qaytarildi ({who})"
+    await cb.answer("Bajarildi ✅" if action == "done" else "Pul qaytarildi")
+    try:
+        await cb.message.edit_text((cb.message.text or "") + mark)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 @router.callback_query(F.data.startswith("topup:"))
 async def topup_callback(cb: CallbackQuery):
     """Admin «To'ladim» so'rovini tasdiqlaydi yoki rad etadi."""

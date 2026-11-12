@@ -11,10 +11,14 @@ def get_provider() -> DonateProvider:
             from app.providers.http import HttpProvider
 
             _provider = HttpProvider(settings.donate_provider_url, settings.donate_provider_key)
-        else:
+        elif settings.donate_provider == "mock" and settings.dev_mode:
             from app.providers.mock import MockProvider
 
             _provider = MockProvider()
+        else:  # API ulanmaguncha — admin qo'lda bajaradi (mock jonli serverda hech qachon ishlamaydi)
+            from app.providers.manual import ManualProvider
+
+            _provider = ManualProvider()
     return _provider
 
 

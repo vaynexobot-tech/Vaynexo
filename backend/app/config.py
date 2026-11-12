@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     stars_rate: int = 220  # 1 Star narxi (so'm)
 
     # --- Donat provayder ---
-    donate_provider: str = "mock"  # mock | http
+    donate_provider: str = "manual"  # manual | http | mock (faqat DEV_MODE)
     donate_provider_url: str = ""
     donate_provider_key: str = ""
 

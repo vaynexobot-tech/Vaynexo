@@ -29,9 +29,12 @@ async def _wid(session, uid: int) -> str:
 
 
 async def _topup(session, t: Topup) -> dict:
+    if t.card_number:  # so'rovga biriktirilgan bitta karta
+        card = {"id": 0, "number": t.card_number, "holder": t.card_holder or "", "kind": p2p.card_kind(t.card_number)}
+        return S.topup(t, card["number"], card["holder"], [card])
     cards = await p2p.active_cards(session)
     first = cards[0] if cards else {"number": "", "holder": ""}
-    return S.topup(t, first["number"], first["holder"], cards)
+    return S.topup(t, first["number"], first["holder"], cards[:1])
 
 
 @router.get("")
@@ -64,8 +67,6 @@ class TopupIn(BaseModel):
 async def create_topup(body: TopupIn, user: CurrentUser, session: SessionDep):
     await rate_limit(f"topup:{user.id}", limit=5, window=60)
     async with session.begin():
-        if not await p2p.active_cards(session):
-            raise AppError("no_card", "To'lov kartasi sozlanmagan. Birozdan so'ng urinib ko'ring", 503)
         t = await p2p.create_topup(session, user.id, body.amount)
     return await _topup(session, t)
 

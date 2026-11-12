@@ -50,7 +50,7 @@ async def test_topup_auto_match(api, ctx):
     r = await u.post("/wallet/topup", {"amount": 50_000})
     assert r.status_code == 200, r.text
     t = r.json()
-    assert 50_001 <= t["pay_amount"] <= 50_999 and t["status"] == "pending"
+    assert t["pay_amount"] == 50_000 and t["status"] == "pending"  # summa o'zgarmaydi
 
     sms = f"HUMOCARD *1234: Popolnenie {t['pay_amount']:,}.00 UZS".replace(",", " ")
     bad = await u.c.post("/api/p2p/incoming", json={"text": sms}, headers={"X-P2P-Secret": "wrong"})
@@ -67,15 +67,49 @@ async def test_topup_auto_match(api, ctx):
 
 
 async def test_unique_amounts_and_unmatched(api, ctx):
-    amounts = set()
-    for uid in range(100, 130):
+    for n in ("8600000000000001", "9860000000000002", "4073000000000003"):
+        await api(1).post("/admin/p2p-cards", {"number": n, "holder": "KASSA"})
+    pairs = set()
+    for uid in range(100, 130):  # 3 karta × (10 000 … 10 900) = 30 ta juftlik
         r = await api(uid).post("/wallet/topup", {"amount": 10_000})
-        amounts.add(r.json()["pay_amount"])
-    assert len(amounts) == 30  # hech biri takrorlanmaydi
+        assert r.status_code == 200, r.text
+        t = r.json()
+        assert t["pay_amount"] % 100 == 0 and len(t["cards"]) == 1  # faqat yaxlit summa, bitta karta
+        pairs.add((t["cards"][0]["number"], t["pay_amount"]))
+    assert len(pairs) == 30  # karta+summa hech qachon takrorlanmaydi
+    assert {a for _, a in pairs} == {10_000 + 100 * k for k in range(10)}
+    assert (await api(131).post("/wallet/topup", {"amount": 10_000})).status_code == 409  # hammasi band
 
     r = await api(100).c.post("/api/p2p/incoming", json={"amount": 77_777}, headers={"X-P2P-Secret": "test-secret"})
     assert r.json()["matched"] is False
     assert any("biriktirilmadi" in m[1] for m in ctx["sent"])  # admin ogohlantirildi
+
+
+async def test_same_amount_on_two_cards_matched_by_card(api):
+    for n in ("8600000000001111", "9860000000002222"):
+        await api(1).post("/admin/p2p-cards", {"number": n, "holder": "KASSA"})
+    a = (await api(140).post("/wallet/topup", {"amount": 50_000})).json()
+    b = (await api(141).post("/wallet/topup", {"amount": 50_000})).json()
+    assert a["pay_amount"] == b["pay_amount"] == 50_000 and a["cards"][0]["number"] != b["cards"][0]["number"]
+    b4 = b["cards"][0]["number"][-4:]
+    sms = f"HUMOCARD *{b4}: Popolnenie 50 000.00 UZS"
+    r = await api(1).c.post("/api/p2p/incoming", json={"text": sms}, headers={"X-P2P-Secret": "test-secret"})
+    assert r.json()["matched"] is True
+    assert await get_balance(141) == 50_000 and await get_balance(140) == 0
+    # kartasiz xabar: ikkita mos so'rov bor — avtomatik biriktirilmaydi
+    c = (await api(142).post("/wallet/topup", {"amount": 50_000})).json()
+    assert c["cards"][0]["number"][-4:] == b4  # bo'shagan karta qayta ishlatiladi
+    r = await api(1).c.post("/api/p2p/incoming", json={"amount": 50_000, "id": "x1"}, headers={"X-P2P-Secret": "test-secret"})
+    assert r.json()["matched"] is False
+
+
+def test_parse_card_last4():
+    from app.services.p2p import parse_card_last4
+
+    assert parse_card_last4("HUMOCARD *5276: Popolnenie 50 000 UZS") == "5276"
+    assert parse_card_last4("Karta 5614***5276 kirim 20 000 so'm") == "5276"
+    assert parse_card_last4("UZCARD ••1234 +10 000 UZS") == "1234"
+    assert parse_card_last4("Kirim 50 000 UZS") is None
 
 
 async def test_late_payment_after_new_request(api):

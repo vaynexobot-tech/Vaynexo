@@ -98,6 +98,10 @@ class Topup(TimestampMixin, Base):
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     has_receipt: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     review_sent: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # adminga eslatma ketganmi
+    # Biriktirilgan karta: summa + karta oxirgi 4 raqami birga noyob (bank SMS'ida *1234 bo'ladi)
+    card_number: Mapped[str | None] = mapped_column(String(32))
+    card_holder: Mapped[str | None] = mapped_column(String(64))
+    card_last4: Mapped[str | None] = mapped_column(String(4), index=True)
     reject_reason: Mapped[str | None] = mapped_column(String(300))
 
 

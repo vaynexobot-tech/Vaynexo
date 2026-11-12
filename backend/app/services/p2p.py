@@ -22,6 +22,24 @@ from app.services import app_settings, wallet
 from app.services.notify import Outbox, fmt, webapp_button
 
 P2P_LOCK_ID = 7_201_001  # pg_advisory_xact_lock uchun
+STEPS = 9  # hamma kartada band bo'lsa: +100 … +900 so'm
+
+
+def last4(number: str | None) -> str:
+    return re.sub(r"\D", "", number or "")[-4:]
+
+
+_CARD_RE = re.compile(r"(?:\*{1,}|•+|x{2,}|X{2,}|\.{2,})\s?(\d{4})(?!\d)|\b\d{4,6}[*•xX]{2,}\d{0,4}?(\d{4})\b")
+
+
+def parse_card_last4(raw: str | None) -> str | None:
+    """Bank xabaridagi karta oxirgi 4 raqami: «*5276», «5614***5276», «••5276»."""
+    if not raw:
+        return None
+    m = _CARD_RE.search(raw)
+    if not m:
+        return None
+    return m.group(1) or m.group(2)
 
 
 def now() -> datetime:
@@ -43,26 +61,37 @@ async def create_topup(session: AsyncSession, user_id: int, amount: int) -> Topu
     checking = await session.scalar(select(func.count()).select_from(Topup).where(Topup.user_id == user_id, Topup.status == "checking"))
     if checking >= 2:
         raise BadState("Oldingi to'lovlaringiz tekshirilmoqda. Natijani kuting")
+    cards = await active_cards(session)
+    if not cards:
+        raise AppError("no_card", "To'lov kartasi sozlanmagan. Birozdan so'ng urinib ko'ring", 503)
     window_start = now() - timedelta(hours=settings.topup_late_match_hours)
-    busy = set(
-        await session.scalars(
-            select(Topup.pay_amount).where(
-                Topup.pay_amount.between(amount + 1, amount + 999),
-                Topup.status.in_(("pending", "checking", "expired", "cancelled")),
-                Topup.created_at >= window_start,
-            )
+    # Band juftliklar: (karta, summa). Kech to'lov ham topilishi uchun yaqinda bekor bo'lganlar ham hisobga olinadi.
+    busy = set((await session.execute(
+        select(Topup.card_last4, Topup.pay_amount).where(
+            Topup.pay_amount.between(amount, amount + 100 * STEPS),
+            Topup.status.in_(("pending", "checking", "expired", "cancelled")),
+            Topup.created_at >= window_start,
         )
-    )
-    free = [s for s in range(1, 1000) if amount + s not in busy]
-    if not free:
-        raise AppError("busy", "Hozir bu summa band, boshqa summani tanlang yoki birozdan so'ng urining", 409)
-    pay_amount = amount + random.choice(free)
+    )).all())
+    # Avval aynan so'ralgan summa — bo'sh kartaga; hamma kartada band bo'lsa +100, +200 ... (yaxlit summalar)
+    random.shuffle(cards)
+    pick = None
+    for k in range(STEPS + 1):
+        pay = amount + 100 * k
+        card = next((c for c in cards if (last4(c["number"]), pay) not in busy), None)
+        if card:
+            pick = (card, pay)
+            break
+    if pick is None:
+        raise AppError("busy", "Hozir bu summa band, birozdan so'ng urining yoki boshqa summa tanlang", 409)
+    card, pay_amount = pick
     topup = Topup(
         user_id=user_id,
         requested_amount=amount,
         pay_amount=pay_amount,
         status="pending",
         expires_at=now() + timedelta(minutes=int(await app_settings.get_value(session, "topup_timeout_minutes"))),
+        card_number=card["number"], card_holder=card["holder"], card_last4=last4(card["number"]),
     )
     session.add(topup)
     await session.flush()
@@ -147,11 +176,15 @@ async def register_incoming(
     incoming = IncomingPayment(amount=amount, source=source, raw_text=raw_text, dedupe_key=key)
     session.add(incoming)
     await session.flush()
+    card4 = parse_card_last4(raw_text)
+    if card4 and card4 not in {last4(c["number"]) for c in await active_cards(session)}:
+        card4 = None  # xabardagi karta bizniki emas (yoki boshqa raqam) — faqat summa bo'yicha
+    by_card = (or_(Topup.card_last4 == card4, Topup.card_last4.is_(None)),) if card4 else ()
 
     candidates = list(
         await session.scalars(
             select(Topup)
-            .where(Topup.pay_amount == amount,
+            .where(Topup.pay_amount == amount, *by_card,
                    or_(and_(Topup.status == "pending", Topup.expires_at > now()), Topup.status == "checking"))
             .with_for_update().execution_options(populate_existing=True)
         )
@@ -161,7 +194,7 @@ async def register_incoming(
             await session.scalars(
                 select(Topup)
                 .where(
-                    Topup.pay_amount == amount,
+                    Topup.pay_amount == amount, *by_card,
                     Topup.status.in_(("pending", "checking", "expired", "cancelled")),
                     Topup.created_at >= now() - timedelta(hours=settings.topup_late_match_hours),
                 )

@@ -11,17 +11,15 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-12.wallet-id"
-NOTES = """🆕 Hamyon yangilandi
+RELEASE = "2026-11-12.multi-card"
+NOTES = """🆕 To'lov kartalari: summa o'zgarmaydi
 
-🆔 Har bir foydalanuvchiga hamyon ID berildi (masalan VX 4821 7730) — Hamyon va Sozlamalarda ko'rinadi
-   Admin panel → Foydalanuvchilar: hamyon ID bo'yicha qidirish mumkin
+💳 Har bir to'ldirishga bitta bo'sh karta beriladi — foydalanuvchi aynan o'zi yozgan summani o'tkazadi (50 000 → 50 000)
+   • bir xil summa bir vaqtda turli kartalarga taqsimlanadi
+   • faqat hamma kartada shu summa band bo'lsa: +100 so'm qadam (50 100, 50 200 …), mayda summa yo'q
+   • kartalarni qo'shish: Admin panel → To'lov kartalari (18 ta va undan ko'p)
 
-💼 Pul yechish qaytdi — faqat ishlab topilgan pul uchun:
-   • sotuvchi (akkaunt sotuvi), ijaraga beruvchi, booster daromadi yechiladi
-   • to'ldirilgan pul yechilmaydi (kartadan kartaga «yuvish»ga yo'l qo'yilmaydi)
-   • «Yechish» tabi faqat daromadi bor foydalanuvchilarga ko'rinadi
-   • so'rovlar avvalgidek Admin panel → 💸 Yechish'da"""
+📩 SMS'da kartaning oxirgi 4 raqami bo'lsa, kirim aynan o'sha kartadagi so'rovga biriktiriladi"""
 
 
 async def notify_admins_once() -> None:

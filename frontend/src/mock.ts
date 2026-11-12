@@ -210,7 +210,7 @@ const topupView = (t: Json) => {
     t.paid_at = now();
     money(t.pay_amount, "topup", "P2P (demo: tasdiqlandi)");
   }
-  return { ...t, card_number: DEMO_CARDS[0].number, card_holder: DEMO_CARDS[0].holder, cards: DEMO_CARDS, balance: state.me.balance };
+  return { ...t, card_number: DEMO_CARDS[0].number, card_holder: DEMO_CARDS[0].holder, cards: [DEMO_CARDS[0]], balance: state.me.balance };
 };
 on("GET", "/wallet", () => ({
   balance: state.me.balance, entries: state.ledger,

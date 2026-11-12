@@ -1,3 +1,4 @@
+import hmac
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -23,6 +24,11 @@ async def lifespan(app: FastAPI):
     global dp
     logging.basicConfig(level=logging.INFO)
     from app.queue import LITE, lite_cron_loop
+
+    if settings.dev_mode and settings.bot_webhook_url:
+        log.warning("DEV_MODE yoqilgan, lekin bot webhook ham sozlangan — productionda DEV_MODE=false bo'lishi shart (X-Dev-User orqali kirish mumkin)")
+    if "*" in settings.cors_origins and not settings.dev_mode:
+        log.warning("CORS_ORIGINS=* — productionda aniq domenni bering")
 
     cron_task = None
     if LITE:
@@ -92,7 +98,8 @@ async def health():
 
 @app.post("/tg/webhook", include_in_schema=False)
 async def tg_webhook(request: Request, x_telegram_bot_api_secret_token: str | None = Header(None)):
-    if dp is None or x_telegram_bot_api_secret_token != settings.bot_webhook_secret:
+    got = x_telegram_bot_api_secret_token or ""
+    if dp is None or settings.bot_webhook_secret == "change-me" or not hmac.compare_digest(got, settings.bot_webhook_secret):
         return JSONResponse({"ok": False}, status_code=403)
     from app.bot.instance import get_bot
 

@@ -88,6 +88,11 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _platform_defaults(self):
+        # Webhook kaliti berilmasa, standart "change-me" taxmin qilinadi — bot tokenidan barqaror kalit hosil qilamiz
+        if self.bot_webhook_secret == "change-me" and self.bot_token:
+            import hashlib
+
+            self.bot_webhook_secret = hashlib.sha256(("wh:" + self.bot_token).encode()).hexdigest()[:64]
         # Render saytning tashqi manzilini RENDER_EXTERNAL_URL orqali beradi
         ext = os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")
         if ext:

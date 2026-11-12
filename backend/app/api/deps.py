@@ -53,8 +53,9 @@ async def rate_limit(key: str, limit: int, window: int) -> None:
         if n == 1:
             await r.expire(k, window)
     except Exception:
-        log.debug("rate limit o'tkazib yuborildi", exc_info=True)
-        return
+        # Redis ishlamasa limitsiz qoldirmaymiz: jarayon xotirasidagi hisoblagichga o'tamiz
+        log.warning("Redis rate-limit ishlamadi, xotira hisoblagichiga o'tildi", exc_info=True)
+        n = _mem_incr(f"rl:{key}:{int(time.time()) // window}")
     if n > limit:
         raise AppError("rate_limited", "Juda ko'p so'rov. Birozdan so'ng urinib ko'ring", 429)
 

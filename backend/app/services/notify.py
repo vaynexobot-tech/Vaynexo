@@ -52,7 +52,9 @@ TOPICS = {
     "yechish": "Pul yechish so'rovlari",
     "nizo": "Nizolar",
     "kyc": "Identifikatsiya so'rovlari",
-    "buyurtma": "TG / donat / boost buyurtmalari",
+    "tg": "Telegram xizmatlari (Stars, Premium)",
+    "donat": "Donat (almaz) buyurtmalari",
+    "boost": "Boost buyurtmalari",
     "hamkor": "Hamkor videolari",
     "yordam": "Yordam so'rovlari",
     "boshqa": "Qolgan barcha xabarlar",
@@ -105,7 +107,7 @@ def with_thread(markup: dict | None, thread_id: int | None) -> dict | None:
 async def admin_targets(topic: str) -> list[tuple[int, int | None]]:
     """Admin xabari qayerlarga ketadi: mavzu → «boshqa» mavzu → admin kanali → shaxsiy. + «barcha» nusxasi."""
     topics = await get_topics()
-    main = topics.get(topic) or topics.get("boshqa")
+    main = topics.get(topic) or (topics.get("buyurtma") if topic in ("tg", "donat", "boost") else None) or topics.get("boshqa")
     if not main:
         chat = await get_admin_chat()
         if not chat and topics:

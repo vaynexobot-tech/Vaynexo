@@ -410,7 +410,7 @@ async def boost_callback(cb: CallbackQuery):
         except Exception:
             log.warning("Boosterga DM yuborilmadi (botni /start qilmagan bo'lishi mumkin)")
             await cb.answer("Buyurtma sizniki, lekin shaxsiy xabar yuborilmadi: botga /start yozing va adminga murojaat qiling.", show_alert=True)
-            out.admins(f"⚠️ Booster {booster.id} buyurtma #{order_id} ni oldi, lekin DM yuborilmadi.", topic="buyurtma")
+            out.admins(f"⚠️ Booster {booster.id} buyurtma #{order_id} ni oldi, lekin DM yuborilmadi.", topic="boost")
             await out.flush()
     else:
         await cb.answer("Bajarildi ✅")

@@ -56,7 +56,7 @@ async def fulfil_donate(ctx, order_id: int, mode: str = "create"):
 async def post_boost(ctx, order_id: int):
     if not settings.booster_group_id:
         out = Outbox()
-        out.admins(f"🚀 Yangi boost buyurtma #{order_id} (BOOSTER_GROUP_ID sozlanmagan — admin paneldan kuzating).", topic="buyurtma")
+        out.admins(f"🚀 Yangi boost buyurtma #{order_id} (BOOSTER_GROUP_ID sozlanmagan — admin paneldan kuzating).", topic="boost")
         await out.flush()
         return
     await get_share_pct()

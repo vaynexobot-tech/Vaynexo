@@ -76,7 +76,7 @@ async def create_tg_order(session: AsyncSession, user: User, data: dict, out: Ou
     session.add(order)
     await session.flush()
     await wallet.debit(session, user.id, price, "tg_service", f"tg:{order.id}", ref_type="tg", ref_id=order.id)
-    out.admins(f"⭐️ Yangi TG buyurtma #{order.id}\n{title}\nKimga: {target}\nSumma: {fmt(price)}", webapp_button("Bajarish", "/admin"), topic="buyurtma")
+    out.admins(f"⭐️ Yangi TG buyurtma #{order.id}\n{title}\nKimga: {target}\nSumma: {fmt(price)}", webapp_button("Bajarish", "/admin"), topic="tg")
     return order
 
 

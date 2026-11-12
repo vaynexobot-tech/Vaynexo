@@ -11,8 +11,11 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-12.admin-menyu"
-NOTES = """🛠 Admin panel yangilandi: bosh sahifada «Navbat» (ishlar soni bilan) va «Boshqaruv» bo'limlari
+RELEASE = "2026-11-12.kirim-idga"
+NOTES = """💳 Kirimni aniq odamga yozish: Admin → Kirimlar → «Kimga» (VX hamyon ID yoki Telegram ID) → summa
+   Biriktirilmagan kirimlarda ham «Odamga yozish» tugmasi bor
+
+🛠 Admin panel yangilandi: bosh sahifada «Navbat» (ishlar soni bilan) va «Boshqaruv» bo'limlari
    Navbatga qo'shildi: «To'ladim» to'lovlari, identifikatsiya, hamkor videolari, ijara
 
 🐞 Tuzatildi: bot tugmasidan TG buyurtma sahifasi ochilmasligi (404), xaridlar tarixidagi jami summa,

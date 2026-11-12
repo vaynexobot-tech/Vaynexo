@@ -98,3 +98,25 @@ async def test_withdraw_only_earnings_and_wallet_id(api):
     wid = (await v.get("/me")).json()["wallet_id"]
     found = (await api(1).get(f"/admin/users?q={wid.replace(' ', '%20')}")).json()
     assert [x["id"] for x in found] == [94]
+
+
+async def test_admin_credit_by_wallet_id(api, ctx):
+    from tests.conftest import get_balance
+
+    me = (await api(70).get("/me")).json()
+    w = (await api(70).get("/wallet")).json()["wallet_id"]
+    found = (await api(1).get(f"/admin/users?q={w.replace(' ', '%20')}")).json()
+    assert [u["id"] for u in found] == [70]
+    r = await api(1).post("/admin/incoming", {"amount": 25_000, "text": "Click orqali", "user_id": 70})
+    assert r.status_code == 200 and r.json()["status"] == "matched"
+    assert await get_balance(70) == 25_000
+    hist = (await api(70).get("/history")).json()["items"]
+    assert hist[0]["amount"] == 25_000
+    # biriktirilmagan bank kirimini odamga yozish
+    inc = (await api(1).post("/admin/incoming", {"amount": 13_000})).json()
+    assert inc["status"] == "unmatched"
+    assert (await api(1).post(f"/admin/incoming/{inc['id']}/to-user", {"user_id": 70})).json()["amount"] == 13_000
+    assert await get_balance(70) == 38_000
+    assert (await api(1).post(f"/admin/incoming/{inc['id']}/to-user", {"user_id": 70})).status_code == 409
+    assert (await api(70).post("/admin/incoming", {"amount": 1000, "user_id": 70})).status_code == 403
+    assert me["id"] == 70

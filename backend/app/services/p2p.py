@@ -220,6 +220,41 @@ async def register_incoming(
     return incoming
 
 
+async def credit_to_user(session: AsyncSession, user_id: int, amount: int, raw_text: str | None, admin_id: int,
+                         out: Outbox, incoming_id: int | None = None) -> Topup:
+    """Admin kirimni aniq foydalanuvchiga yozadi (hamyon ID yoki Telegram ID bo'yicha).
+
+    Foydalanuvchining shu summadagi ochiq so'rovi bo'lsa — o'sha yopiladi, bo'lmasa yangi to'ldirish yoziladi.
+    Pul oddiy to'ldirish kabi tushadi (tarixda ko'rinadi, referal bonusi ishlaydi, yechib bo'lmaydi).
+    """
+    user = await session.get(User, user_id)
+    if user is None:
+        raise NotFound("Foydalanuvchi")
+    if incoming_id:  # biriktirilmagan bank kirimini shu odamga yozish
+        incoming = await session.scalar(select(IncomingPayment).where(IncomingPayment.id == incoming_id)
+                                        .with_for_update().execution_options(populate_existing=True))
+        if incoming is None or incoming.status != "unmatched":
+            raise BadState("Kirim allaqachon ishlatilgan")
+        amount = incoming.amount
+    else:
+        incoming = IncomingPayment(amount=amount, source="admin", raw_text=raw_text,
+                                   dedupe_key=f"admin-user:{admin_id}:{user_id}:{amount}:{now().isoformat()}")
+        session.add(incoming)
+        await session.flush()
+    topup = await session.scalar(
+        select(Topup).where(Topup.user_id == user_id, Topup.pay_amount == amount,
+                            Topup.status.in_(("pending", "checking", "expired", "cancelled")),
+                            Topup.created_at >= now() - timedelta(hours=settings.topup_late_match_hours))
+        .order_by(Topup.id.desc()).limit(1).with_for_update().execution_options(populate_existing=True)
+    )
+    if topup is None:
+        topup = Topup(user_id=user_id, requested_amount=amount, pay_amount=amount, status="pending", expires_at=now())
+        session.add(topup)
+        await session.flush()
+    await _credit_topup(session, topup, incoming, out)
+    return topup
+
+
 async def assign_incoming(session: AsyncSession, incoming_id: int, topup_id: int, out: Outbox) -> None:
     """Admin: biriktirilmagan kirimni so'rovga qo'lda biriktirish."""
     incoming = await session.scalar(select(IncomingPayment).where(IncomingPayment.id == incoming_id).with_for_update().execution_options(populate_existing=True))

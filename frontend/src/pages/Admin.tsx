@@ -106,19 +106,24 @@ function Incoming() {
   const [text, setText] = useState("");
   const [amount, setAmount] = useState<number | "">("");
   const [assign, setAssign] = useState<Incoming | null>(null);
+  const [who, setWho] = useState<PickedUser | null>(null);
+  const [toUser, setToUser] = useState<Incoming | null>(null);
+  const [toWho, setToWho] = useState<PickedUser | null>(null);
   const { busy, run } = useAction();
   return (
     <>
       <div className="card col">
         <div className="b">Kirimni qo'lda kiritish</div>
-        <div className="mut xs">Bank SMS/bildirishnoma matnini qo'ying yoki summani yozing. Mos so'rov topilsa, balans avtomatik to'ldiriladi. (Bank xabarini botga forward qilsangiz ham bo'ladi.)</div>
-        <textarea className="input" placeholder="HUMOCARD *1234: Popolnenie 50 034.00 UZS" value={text} onChange={(e) => setText(e.target.value)} />
-        <MoneyInput value={amount} onChange={setAmount} placeholder="yoki summa" />
-        <button className="btn full" disabled={busy || (!text.trim() && !amount)} onClick={() => run(async () => {
-          const r = await api.post<{ status: string; amount: number }>("/admin/incoming", { text: text || null, amount: amount || null });
-          toast(r.status === "matched" ? `✅ ${money(r.amount)} biriktirildi` : `⚠️ ${money(r.amount)} — mos so'rov yo'q`, r.status === "matched" ? "ok" : "info");
-          setText(""); setAmount(""); st.reload();
-        })}>Qayd etish</button>
+        <div className="mut xs">Kimga tushganini bilsangiz — hamyon ID (VX …) yoki Telegram ID ni yozing, pul aynan o'sha odamga tushadi. Bo'sh qoldirsangiz, summa bo'yicha mos so'rov qidiriladi.</div>
+        <UserPicker value={who} onChange={setWho} />
+        <textarea className="input" placeholder="Izoh yoki bank xabari (ixtiyoriy): HUMOCARD *1234: Popolnenie 50 000.00 UZS" value={text} onChange={(e) => setText(e.target.value)} />
+        <MoneyInput value={amount} onChange={setAmount} placeholder="Summa" />
+        <button className="btn full" disabled={busy || (!text.trim() && !amount) || (who !== null && !amount)} onClick={() => run(async () => {
+          if (who && !(await confirmDialog(`${money(Number(amount))} so'm ${who.name} (${who.wallet_id}) hamyoniga yozilsinmi?`))) return;
+          const r = await api.post<{ status: string; amount: number }>("/admin/incoming", { text: text || null, amount: amount || null, user_id: who?.id ?? null });
+          toast(r.status === "matched" ? `✅ ${money(r.amount)} so'm ${who ? who.name + " hamyoniga yozildi" : "biriktirildi"}` : `⚠️ ${money(r.amount)} — mos so'rov yo'q`, r.status === "matched" ? "ok" : "info");
+          setText(""); setAmount(""); setWho(null); st.reload();
+        })}>{who ? `${who.name} ga yozish` : "Qayd etish"}</button>
       </div>
       <TgBank />
       <SmsSetup />
@@ -131,14 +136,57 @@ function Incoming() {
             <div className="row between"><span className="bb mono y">{som(i.amount)}</span><span className="mut xs">#{i.id} · {i.source} · {dateTime(i.created_at)}</span></div>
             {i.raw_text && <div className="mut xs pre">{i.raw_text}</div>}
             <div className="row">
-              <button className="btn small grow" onClick={() => setAssign(i)}>So'rovga biriktirish</button>
+              <button className="btn small grow" onClick={() => { setToUser(i); setToWho(null); }}>Odamga yozish</button>
+              <button className="btn small ghost" onClick={() => setAssign(i)}>So'rovga</button>
               <button className="btn small ghost" onClick={async () => { if (await confirmDialog("E'tiborsiz qoldirasizmi?")) run(async () => { await api.post(`/admin/incoming/${i.id}/ignore`); st.reload(); }); }}>E'tiborsiz</button>
             </div>
           </div>
         ))}
       </Loadable>
       <AssignSheet inc={assign} onClose={() => setAssign(null)} onDone={() => { setAssign(null); st.reload(); }} />
+      <Sheet open={!!toUser} onClose={() => setToUser(null)}>
+        <div className="sec-title">{toUser ? som(toUser.amount) : ""} — kimga tushgan?</div>
+        <UserPicker value={toWho} onChange={setToWho} />
+        <button className="btn full" disabled={!toWho || busy} onClick={() => run(async () => {
+          await api.post(`/admin/incoming/${toUser!.id}/to-user`, { user_id: toWho!.id });
+          toast(`✅ ${toWho!.name} hamyoniga yozildi`, "ok"); setToUser(null); st.reload();
+        })}>Hamyonga yozish</button>
+      </Sheet>
     </>
+  );
+}
+
+interface PickedUser { id: number; name: string; wallet_id: string; balance: number }
+
+/** Hamyon ID / Telegram ID / @username bo'yicha foydalanuvchini topib tanlash. */
+function UserPicker({ value, onChange }: { value: PickedUser | null; onChange: (u: PickedUser | null) => void }) {
+  const [q, setQ] = useState("");
+  const [list, setList] = useState<PickedUser[] | null>(null);
+  const { busy, run } = useAction();
+  if (value) return (
+    <div className="card tight row" style={{ borderColor: "rgba(29,233,182,.45)" }}>
+      <span className="g">✓</span>
+      <div className="grow"><div className="b sm">{value.name}</div><div className="mut xs mono">{value.wallet_id} · ID {value.id} · {som(value.balance)}</div></div>
+      <button className="btn small ghost" onClick={() => onChange(null)}>✕</button>
+    </div>
+  );
+  const search = () => run(async () => {
+    const r = await api.get<(Me & { wallet_id: string })[]>(`/admin/users?q=${encodeURIComponent(q.trim())}`);
+    const found = r.map((u) => ({ id: u.id, name: u.username ? "@" + u.username : u.name, wallet_id: u.wallet_id, balance: u.balance }));
+    if (found.length === 1) { onChange(found[0]); setList(null); } else setList(found);
+  });
+  return (
+    <div className="col" style={{ gap: 6 }}>
+      <div className="row">
+        <input className="input mono grow" placeholder="Kimga: VX 1234 5678 yoki Telegram ID" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && q.trim() && search()} />
+        <button className="btn small" disabled={busy || !q.trim()} onClick={search}>Topish</button>
+      </div>
+      {list && (list.length === 0 ? <div className="r xs">Topilmadi</div> : list.slice(0, 6).map((u) => (
+        <button key={u.id} className="card tight row click" style={{ textAlign: "left" }} onClick={() => { onChange(u); setList(null); }}>
+          <div className="grow"><div className="b sm">{u.name}</div><div className="mut xs mono">{u.wallet_id} · ID {u.id}</div></div>
+        </button>
+      )))}
+    </div>
   );
 }
 

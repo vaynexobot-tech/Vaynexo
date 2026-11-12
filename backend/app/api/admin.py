@@ -209,6 +209,7 @@ async def p2p_card_delete(card_id: int, admin: AdminUser, session: SessionDep):
 class ManualIncomingIn(BaseModel):
     amount: int | None = Field(None, gt=0)
     text: str | None = Field(None, max_length=2000)
+    user_id: int | None = None  # berilsa — aynan shu foydalanuvchiga yoziladi
 
 
 @router.post("/incoming")
@@ -217,7 +218,14 @@ async def add_incoming(body: ManualIncomingIn, admin: AdminUser, session: Sessio
     amount = body.amount or (p2p.parse_bank_message(body.text) if body.text else None)
     if not amount:
         raise AppError("bad_amount", "Matndan kirim summasi topilmadi — summani qo'lda kiriting")
+    if amount > 50_000_000:
+        raise AppError("bad_amount", "Summa juda katta")
     out = Outbox()
+    if body.user_id:
+        async with session.begin():
+            t = await p2p.credit_to_user(session, body.user_id, amount, body.text, admin.id, out)
+        await out.flush()
+        return {"id": t.incoming_id, "amount": amount, "status": "matched", "user_id": body.user_id}
     async with session.begin():
         inc = await p2p.register_incoming(session, amount, "admin", out, raw_text=body.text,
                                           external_id=f"admin:{admin.id}:{amount}:{body.text or datetime.now().isoformat()}")
@@ -238,6 +246,19 @@ async def assign(incoming_id: int, body: AssignIn, admin: AdminUser, session: Se
         await p2p.assign_incoming(session, incoming_id, body.topup_id, out)
     await out.flush()
     return {"ok": True}
+
+
+class ToUserIn(BaseModel):
+    user_id: int
+
+
+@router.post("/incoming/{incoming_id}/to-user")
+async def incoming_to_user(incoming_id: int, body: ToUserIn, admin: AdminUser, session: SessionDep):
+    out = Outbox()
+    async with session.begin():
+        t = await p2p.credit_to_user(session, body.user_id, 0, None, admin.id, out, incoming_id=incoming_id)
+    await out.flush()
+    return {"ok": True, "amount": t.pay_amount}
 
 
 @router.post("/incoming/{incoming_id}/ignore")

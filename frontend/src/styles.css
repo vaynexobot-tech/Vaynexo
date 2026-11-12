@@ -361,3 +361,11 @@ textarea.input { height: auto; min-height: 90px; padding: 12px 14px; resize: ver
 .tg4.tg3 { grid-template-columns: repeat(3, 1fr); }
 .stepnum.ok { background: var(--g); color: #06261e; }
 .wid-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; color: #fff; font-weight: 700; font-size: 12px; }
+.pm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pm-opt { display: flex; align-items: center; gap: 10px; padding: 14px 12px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); color: inherit; min-width: 0; }
+.pm-opt.on { border-color: var(--y); background: rgba(255,214,10,.06); }
+.pm-logo { width: 48px; height: 36px; border-radius: 8px; display: grid; place-items: center; font-weight: 900; flex-shrink: 0; font-size: 12px; letter-spacing: .03em; }
+.pm-logo.uz { background: #1a3a8f; color: #fff; font-size: 20px; border-bottom: 4px solid #f7941d; }
+.pm-logo.humo { background: linear-gradient(135deg, #2c3a3f, #4a5559); color: #e9c46a; border: 1px solid #c9a227; font-style: italic; }
+.pm-logo.atm { background: linear-gradient(180deg, #dfe7f5, #9fb3d6); color: #1b3d8f; }
+.pm-logo.visa { background: #fff; color: #1a1f71; font-size: 15px; font-style: italic; }

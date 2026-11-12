@@ -863,4 +863,12 @@ export const ru: Record<string, string> = {
   "Yechish mumkin: {s}. Faqat sotuv, ijara va boost daromadi yechiladi — hamyonga to'ldirilgan pul yechilmaydi.": "Доступно к выводу: {s}. Выводится только доход от продаж, аренды и буста — пополненные деньги не выводятся.",
   "Pul yechish faqat sotuvchi, ijaraga beruvchi va boosterlar uchun: sotuv, ijara va boost daromadi Hamyon → Yechish orqali kartaga chiqariladi (24 soat ichida). To'ldirilgan pul yechilmaydi — u xizmatlar uchun.": "Вывод доступен продавцам, арендодателям и бустерам: доход от продаж, аренды и буста выводится на карту через Кошелёк → Вывод (в течение 24 часов). Пополненные деньги не выводятся — они для услуг.",
   "Pul yechish faqat sotuvchi, ijaraga beruvchi va boosterlar uchun — ishlab topilgan pul yechiladi": "Вывод только для продавцов, арендодателей и бустеров — выводится только заработанное",
+  "Kartaga o'tkazma": "Перевод на карту",
+  "Terminal orqali": "Через терминал",
+  "Visa / Mastercard": "Visa / Mastercard",
+  "Eng kam: {m}": "Минимум: {m}",
+  "Bankomat yoki to'lov terminaliga kartangizni qo'ying": "Вставьте карту в банкомат или терминал",
+  "Visa/Mastercard ilovangiz yoki bankingiz orqali o'tkazmani oching": "Откройте перевод в приложении банка Visa/Mastercard",
+  "Bank ilovangizni oching (Click, Payme, Uzum va boshqalar)": "Откройте банковское приложение (Click, Payme, Uzum и др.)",
+  "«Kartaga o'tkazma» ni tanlab, karta raqamini kiriting": "Выберите «Перевод на карту» и введите номер карты",
 };

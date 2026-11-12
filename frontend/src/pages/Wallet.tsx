@@ -58,16 +58,18 @@ export default function Wallet() {
   );
 }
 
-const APPS: [string, string, string][] = [
-  ["Click", "C", "#2f6bff"], ["Payme", "P", "#14b8c4"], ["Xazna", "X", "#1f8a5b"], ["Zoomrad", "Z", "#8bc34a"],
-  ["Paynet", "PN", "#16a34a"], ["Beepul", "B", "#f59e0b"], ["Oson", "O", "#2563eb"], ["Uzum", "U", "#7c3aed"],
-  ["Alif", "A", "#4caf50"], ["Humo", "H", "#c9a227"],
+// To'lov usullari: 4 ta (hammasi kartamizga o'tkazma, avtomatik topiladi)
+const METHODS: { v: string; title: string; sub: string; logo: JSX.Element }[] = [
+  { v: "uzcard", title: "UZCARD", sub: "Kartaga o'tkazma", logo: <span className="pm-logo uz">U</span> },
+  { v: "humo", title: "HUMO", sub: "Kartaga o'tkazma", logo: <span className="pm-logo humo">HUMO</span> },
+  { v: "atm", title: "BANKOMAT", sub: "Terminal orqali", logo: <span className="pm-logo atm">ATM</span> },
+  { v: "visa", title: "INTERNATIONAL", sub: "Visa / Mastercard", logo: <span className="pm-logo visa">VISA</span> },
 ];
 
 function TopupFlow({ info, onDone }: { info: WalletInfo; onDone: () => void }) {
   const { refreshMe, toast } = useApp();
   const [amount, setAmount] = useState<number | "">("");
-  const [app, setApp] = useState("card");
+  const [app, setApp] = useState("uzcard");
   const [topup, setTopup] = useState<Topup | null>(info.pending_topup);
   const { busy, run } = useAction();
 
@@ -128,20 +130,18 @@ function TopupFlow({ info, onDone }: { info: WalletInfo; onDone: () => void }) {
         ))}
       </div>
       <div className="sec-title">{t("To'lov usuli")}</div>
-      <div className="paygrid">
-        {APPS.map(([name, l, c]) => (
-          <button key={name} className={"payopt" + (app === name ? " on" : "")} onClick={() => setApp(name)}>
-            <span className="payico" style={{ background: c }}>{l}</span>
-            <span className="grow b ell">{name}</span>
-            <span className="avto">{t("AVTO")}</span>
+      <div className="pm-grid">
+        {METHODS.map((m) => (
+          <button key={m.v} className={"pm-opt" + (app === m.v ? " on" : "")} onClick={() => setApp(m.v)}>
+            {m.logo}
+            <div className="grow" style={{ minWidth: 0, textAlign: "left" }}>
+              <div className="bb ell">{m.title}</div>
+              <div className="mut xs ell">{t(m.sub)}</div>
+            </div>
           </button>
         ))}
-        <button className={"payopt wide" + (app === "card" ? " on" : "")} onClick={() => setApp("card")}>
-          <span className="payico" style={{ background: "var(--y)", color: "#111" }}>—</span>
-          <span className="grow b ell">{t("Istalgan bank karta")}</span>
-          <span className="avto">{t("AVTO")}</span>
-        </button>
       </div>
+      <div className="mut xs">{t("Eng kam: {m}", { m: som(info.limits.topup_min) })}</div>
       <div className="note sm">
         🔒 {t("Istalgan ilova yoki karta orqali kartamizga o'tkazasiz — to'lov avtomatik topiladi va balans 1–3 daqiqada to'ldiriladi. Balansdagi pul faqat VAYNEXO xizmatlari uchun ishlatiladi.")}
       </div>
@@ -213,8 +213,8 @@ function PayInstructions({ topup, app, onCancel, onChange }: { topup: Topup; app
       <div className="card col">
         <div className="mut xs mono b">{t("TO'LDIRISH BOSQICHLARI")}</div>
         {[
-          app === "card" ? t("Istalgan bank ilovasini oching") : t("{a} ilovasini oching", { a: app }),
-          t("«Kartaga o'tkazma» bo'limini tanlang va karta raqamini kiriting"),
+          app === "atm" ? t("Bankomat yoki to'lov terminaliga kartangizni qo'ying") : app === "visa" ? t("Visa/Mastercard ilovangiz yoki bankingiz orqali o'tkazmani oching") : t("Bank ilovangizni oching (Click, Payme, Uzum va boshqalar)"),
+          app === "atm" ? t("«Kartaga o'tkazma» ni tanlab, karta raqamini kiriting") : t("«Kartaga o'tkazma» bo'limini tanlang va karta raqamini kiriting"),
           t("Aynan {s} so'm o'tkazing va to'lovni tasdiqlang", { s: money(topup.pay_amount) }),
           t("«To'ladim» ni bosing — to'lov avtomatik tekshiriladi va balans o'zi to'ldiriladi"),
         ].map((x, i) => (

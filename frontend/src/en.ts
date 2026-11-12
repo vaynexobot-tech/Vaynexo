@@ -850,4 +850,12 @@ export const en: Record<string, string> = {
   "Yechish mumkin: {s}. Faqat sotuv, ijara va boost daromadi yechiladi — hamyonga to'ldirilgan pul yechilmaydi.": "Available to withdraw: {s}. Only sales, rental and boost earnings can be withdrawn — topped-up money can't.",
   "Pul yechish faqat sotuvchi, ijaraga beruvchi va boosterlar uchun: sotuv, ijara va boost daromadi Hamyon → Yechish orqali kartaga chiqariladi (24 soat ichida). To'ldirilgan pul yechilmaydi — u xizmatlar uchun.": "Withdrawals are for sellers, owners renting out accounts and boosters: sales, rental and boost earnings go to your card via Wallet → Withdraw (within 24 hours). Topped-up money can't be withdrawn — it's for services.",
   "Pul yechish faqat sotuvchi, ijaraga beruvchi va boosterlar uchun — ishlab topilgan pul yechiladi": "Withdrawals are only for sellers, owners renting out accounts and boosters — only earned money can be withdrawn",
+  "Kartaga o'tkazma": "Card transfer",
+  "Terminal orqali": "Via terminal",
+  "Visa / Mastercard": "Visa / Mastercard",
+  "Eng kam: {m}": "Min: {m}",
+  "Bankomat yoki to'lov terminaliga kartangizni qo'ying": "Insert your card into an ATM or payment terminal",
+  "Visa/Mastercard ilovangiz yoki bankingiz orqali o'tkazmani oching": "Open a transfer in your Visa/Mastercard bank app",
+  "Bank ilovangizni oching (Click, Payme, Uzum va boshqalar)": "Open your banking app (Click, Payme, Uzum, etc.)",
+  "«Kartaga o'tkazma» ni tanlab, karta raqamini kiriting": "Choose «Transfer to card» and enter the card number",
 };

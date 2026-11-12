@@ -31,7 +31,7 @@ SCHEMA: dict[str, Spec] = {
     "referral_bonus": Spec("money", None, "Taklif bonusi (so'm). 0 — o'chiq", "Referal", 0, 10_000_000),
     "referral_min_topup": Spec("money", 10_000, "Bonus uchun do'stning eng kam to'ldirishi (so'm)", "Referal", 1_000),
     # Hamyon
-    "topup_max_silver": Spec("money", 500_000, "Bir martalik to'ldirish limiti — Silver (so'm)", "Hamyon", 1_000, 1_000_000_000),
+    "topup_max_silver": Spec("money", 20_000_000, "Bir martalik to'ldirish limiti — Silver (so'm)", "Hamyon", 1_000, 1_000_000_000),
     "topup_timeout_minutes": Spec("money", 10, "To'lov taymeri (daqiqa)", "Hamyon", 3, 120),
     "topup_review_after_minutes": Spec("money", 15, "«To'ladim» bosilib, bank xabari kelmasa — necha daqiqadan keyin adminga xabar",
                                        "Hamyon", 1, 1440),

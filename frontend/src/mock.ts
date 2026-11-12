@@ -215,7 +215,7 @@ const topupView = (t: Json) => {
 on("GET", "/wallet", () => ({
   balance: state.me.balance, entries: state.ledger,
   pending_topup: state.topups.find((t: Json) => ["pending", "checking"].includes(t.status)) ? topupView(state.topups.find((t: Json) => ["pending", "checking"].includes(t.status))) : null,
-  limits: { topup_min: 1000, topup_max: 500_000, withdraw_min: 10_000, ttl_minutes: 10 },
+  limits: { topup_min: 1000, topup_max: 20_000_000, withdraw_min: 10_000, ttl_minutes: 10 },
   wallet_id: "VX 4821 7730", withdraw: { earned: 120_000, withdrawn: 0, available: Math.min(state.me.balance, 120_000) },
 }));
 on("POST", "/wallet/topup", (_m, b) => {

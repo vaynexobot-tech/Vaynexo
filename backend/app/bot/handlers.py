@@ -252,6 +252,51 @@ def _topics_kb(bound: dict) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+ELON_TEXT = ("✅ Bu kanal endi «Account savdo» e'lonlari kanali.\n\n"
+             "• Admin tasdiqlagan har bir e'lon shu yerga post bo'ladi («🛒 Sotib olish» tugmasi bilan)\n"
+             "• Xaridor to'lasa — «BAND», sotilsa — «SOTILDI» ga o'zgaradi, o'chirilsa post ham o'chadi\n"
+             "• Hozirgi faol e'lonlar ham daqiqasiga 5 tadan chiqariladi\n\nO'chirish: /elon_kanal_ochir")
+
+
+@router.channel_post(Command("elon_kanal"))
+async def listing_channel_here(post: Message):
+    from app.services import channel
+
+    if not await _channel_owned_by_admin(post.chat.id):
+        await post.answer("⛔ Bu kanalda bot admini (ADMIN_IDS) kanal admini emas.")
+        return
+    await channel.set_channel(post.chat.id)
+    await post.answer(ELON_TEXT)
+
+
+@router.message(Command("elon_kanal"), F.chat.type.in_({"group", "supergroup"}))
+async def listing_channel_group(message: Message):
+    from app.services import channel
+
+    if not is_admin(message.from_user.id):
+        return
+    await channel.set_channel(message.chat.id)
+    await message.answer(ELON_TEXT.replace("kanal", "guruh"))
+
+
+@router.channel_post(Command("elon_kanal_ochir"))
+async def listing_channel_off_ch(post: Message):
+    from app.services import channel
+
+    if await _channel_owned_by_admin(post.chat.id):
+        await channel.set_channel(None)
+        await post.answer("E'lonlar kanali uzildi. Yangi e'lonlar endi bu yerga chiqmaydi.")
+
+
+@router.message(Command("elon_kanal_ochir"))
+async def listing_channel_off(message: Message):
+    from app.services import channel
+
+    if is_admin(message.from_user.id):
+        await channel.set_channel(None)
+        await message.answer("E'lonlar kanali uzildi.")
+
+
 @router.message(Command("booster_guruh"), F.chat.type.in_({"group", "supergroup"}))
 async def booster_group_here(message: Message):
     """Admin guruhda yozadi: yangi boost buyurtmalar shu guruhga tushadi, a'zolari booster hisoblanadi."""

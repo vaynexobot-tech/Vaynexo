@@ -71,6 +71,12 @@ async def moderate(listing_id: int, body: ModerateIn, admin: AdminUser, session:
     async with session.begin():
         item = await market.moderate_listing(session, listing_id, body.approve, body.reason, out)
     await out.flush()
+    if body.approve and not settings.dev_mode:  # kanalga darhol (aks holda 1 daqiqa ichida cron chiqaradi)
+        import asyncio
+
+        from app.services import channel
+
+        asyncio.create_task(channel.sync_batch())
     return S.listing_card(item)
 
 

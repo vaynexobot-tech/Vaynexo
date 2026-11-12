@@ -205,6 +205,8 @@ class Listing(TimestampMixin, Base):
     reject_reason: Mapped[str | None] = mapped_column(String(300))
     views: Mapped[int] = mapped_column(Integer, default=0)
     vip_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # pullik: ro'yxat tepasida
+    channel_msg_id: Mapped[int | None] = mapped_column(BigInteger)  # e'lonlar kanalidagi post
+    channel_state: Mapped[str | None] = mapped_column(String(160))  # post qaysi holatda chiqarilgan
 
     seller: Mapped[User] = relationship(lazy="selectin")
 

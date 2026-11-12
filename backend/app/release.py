@@ -11,8 +11,11 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-12.admin-vositalar"
-NOTES = """🛠 Admin panelga yangi bo'limlar (Admin → Boshqaruv):
+RELEASE = "2026-11-12.elon-kanal"
+NOTES = """📢 Akkaunt e'lonlari kanalga avtomatik: botni kanalga admin qiling va kanalda yozing /elon_kanal
+   Tasdiqlangan e'lon → kanalda post («🛒 Sotib olish»), to'lansa «BAND», sotilsa «SOTILDI»
+
+🛠 Admin panelga yangi bo'limlar (Admin → Boshqaruv):
    📈 Daromad va grafik — kunlik daromad, to'ldirish, aylanma, yangi foydalanuvchilar
    📣 Ommaviy xabar — hammaga / faollarga / sotuvchilarga…, avval o'zingizga sinov
    🎟 Promo-kodlar — hamyonga bonus (foydalanuvchi: Hamyon → «Promo-kod bormi?»)

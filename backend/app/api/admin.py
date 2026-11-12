@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 
 from app.api import schemas as S
-from app.api.deps import AdminUser, SessionDep
+from app.api.deps import AdminUser, SessionDep, rate_limit
 from app.api.donate import invalidate_packages_cache
 from app.config import settings
 from app.errors import AppError, BadState, NotFound
@@ -470,3 +470,71 @@ async def put_setting(body: SettingIn, admin: AdminUser, session: SessionDep):
     async with session.begin():
         await app_settings.set_value(session, body.key, body.value)
     return await app_settings.get_all(session)
+
+
+# ------------------------------------------------------------------ bank botlari (Telegram, telefonsiz)
+class TgApiIn(BaseModel):
+    api_id: str = Field(max_length=20)
+    api_hash: str = Field(max_length=64)
+
+
+class TgPhoneIn(BaseModel):
+    phone: str = Field(max_length=20)
+
+
+class TgCodeIn(BaseModel):
+    code: str | None = Field(None, max_length=10)
+    password: str | None = Field(None, max_length=200)
+
+
+class TgBotsIn(BaseModel):
+    bots: list[str] = Field(max_length=10)
+
+
+@router.get("/tg-bank")
+async def tg_bank_status(admin: AdminUser):
+    from app.services import tg_bank
+
+    return await tg_bank.status()
+
+
+@router.post("/tg-bank/api")
+async def tg_bank_api(body: TgApiIn, admin: AdminUser):
+    from app.services import tg_bank
+
+    await tg_bank.save_api(body.api_id, body.api_hash)
+    return await tg_bank.status()
+
+
+@router.post("/tg-bank/code")
+async def tg_bank_code(body: TgPhoneIn, admin: AdminUser):
+    from app.services import tg_bank
+
+    await rate_limit(f"tgcode:{admin.id}", limit=5, window=3600)
+    await tg_bank.send_code(body.phone)
+    return await tg_bank.status()
+
+
+@router.post("/tg-bank/login")
+async def tg_bank_login(body: TgCodeIn, admin: AdminUser):
+    from app.services import tg_bank
+
+    await rate_limit(f"tglogin:{admin.id}", limit=10, window=3600)
+    r = await tg_bank.sign_in(body.code, body.password)
+    return {**await tg_bank.status(), **r}
+
+
+@router.post("/tg-bank/logout")
+async def tg_bank_logout(admin: AdminUser):
+    from app.services import tg_bank
+
+    await tg_bank.logout()
+    return await tg_bank.status()
+
+
+@router.put("/tg-bank/bots")
+async def tg_bank_bots(body: TgBotsIn, admin: AdminUser):
+    from app.services import tg_bank
+
+    await tg_bank.set_bots(body.bots)
+    return await tg_bank.status()

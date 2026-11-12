@@ -39,7 +39,9 @@ class Settings(BaseSettings):
     # --- P2P to'ldirish ---
     p2p_card_number: str = "8600 0000 0000 0000"
     p2p_card_holder: str = "VAYNEXO"
-    p2p_secret: str = "change-me"  # SMS-forwarder /api/p2p/incoming uchun
+    p2p_secret: str = "change-me"
+    tg_api_id: int = 0  # bank botlarini o'qish uchun (my.telegram.org); admin paneldan ham kiritsa bo'ladi
+    tg_api_hash: str = ""  # SMS-forwarder /api/p2p/incoming uchun
     topup_min: int = 1_000
     topup_max: int = 20_000_000
     topup_ttl_minutes: int = 30

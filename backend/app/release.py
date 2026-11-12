@@ -11,13 +11,16 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-12.multi-card"
+RELEASE = "2026-11-12.tg-bank"
 NOTES = """🆕 To'lov kartalari: summa o'zgarmaydi
 
 💳 Har bir to'ldirishga bitta bo'sh karta beriladi — foydalanuvchi aynan o'zi yozgan summani o'tkazadi (50 000 → 50 000)
    • bir xil summa bir vaqtda turli kartalarga taqsimlanadi
    • faqat hamma kartada shu summa band bo'lsa: +100 so'm qadam (50 100, 50 200 …), mayda summa yo'q
    • kartalarni qo'shish: Admin panel → To'lov kartalari (18 ta va undan ko'p)
+
+🤖 Telefonsiz avtomatik tasdiqlash: Admin panel → To'lovlar → «Bank botlari (Telegram)»
+   server @HUMOcardbot va @CardXabarBot xabarlarini o'zi o'qiydi («To'ladim» bosilsa darhol)
 
 📩 SMS'da kartaning oxirgi 4 raqami bo'lsa, kirim aynan o'sha kartadagi so'rovga biriktiriladi"""
 

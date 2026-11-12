@@ -30,6 +30,11 @@ async def lifespan(app: FastAPI):
 
         log.info("Yengil rejim: fon ishlari va cron API jarayonida (Redis'siz)")
         cron_task = asyncio.create_task(lite_cron_loop())
+    import asyncio as _aio
+
+    from app.services import tg_bank
+
+    tg_task = _aio.create_task(tg_bank.run_forever())  # bank botlari (Telegram) — sozlanmagan bo'lsa kutib turadi
     if settings.bot_webhook_url and settings.bot_token:
         from app.bot.handlers import router as bot_router
         from app.bot.instance import get_bot
@@ -49,6 +54,7 @@ async def lifespan(app: FastAPI):
         except Exception:  # Telegram vaqtincha javob bermasa ham API ishlayversin
             log.exception("Webhook o'rnatilmadi — tokenni va internetni tekshiring, so'ng saytni qayta ishga tushiring")
     yield
+    tg_task.cancel()
     if cron_task:
         cron_task.cancel()
 

@@ -97,6 +97,7 @@ function Incoming() {
           setText(""); setAmount(""); st.reload();
         })}>Qayd etish</button>
       </div>
+      <TgBank />
       <SmsSetup />
       <CheckingTopups />
       <P2PCards />
@@ -738,6 +739,81 @@ function P2PCards() {
   );
 }
 
+
+interface TgInfo { api_ready: boolean; logged_in: boolean; account: string | null; connected: boolean; error: string | null; bots: string[]; seen: Record<string, { at: string; amount: number }>; login_step: "code" | "password" | null }
+
+function TgBank() {
+  const { toast } = useApp();
+  const st = useLoad(() => api.get<TgInfo>("/admin/tg-bank"));
+  const { busy, run } = useAction();
+  const [apiId, setApiId] = useState("");
+  const [apiHash, setApiHash] = useState("");
+  const [phone, setPhone] = useState("+998");
+  const [code, setCode] = useState("");
+  const [pw, setPw] = useState("");
+  const [bots, setBots] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const call = (p: Promise<TgInfo>, msg?: string) => run(async () => { await p; if (msg) toast(msg, "ok"); st.reload(); });
+  return (
+    <Loadable state={st}>
+      {(d) => {
+        const ok = d.logged_in && d.connected;
+        return (
+          <div className="card col" style={{ borderColor: ok ? "rgba(29,233,182,.45)" : "rgba(255,214,10,.45)" }}>
+            <div className="row between">
+              <span className="b">🤖 Bank botlari (Telegram)</span>
+              <span className={"pill-b " + (ok ? "g" : "y")}>{ok ? "Ishlayapti" : d.logged_in ? "Ulanmoqda…" : "Ulanmagan"}</span>
+            </div>
+            <div className="mut xs">Server sizning Telegram akkauntingizdagi bank botlari xabarlarini o'qiydi va to'lovni o'zi biriktiradi. Telefon kerak emas.</div>
+            {d.account && <div className="sm">Akkaunt: <b>{d.account}</b></div>}
+            {d.error && <div className="r xs">⚠️ {d.error}</div>}
+            {d.bots.map((b) => (
+              <div key={b} className="row between sm"><span>@{b}</span><span className="mut xs">{d.seen[b] ? `oxirgi kirim: ${money(d.seen[b].amount)} · ${dateTime(d.seen[b].at)}` : "hali kirim yo'q"}</span></div>
+            ))}
+            {!d.logged_in && !d.api_ready && (
+              <div className="col">
+                <div className="sm"><b>1.</b> <a href="https://my.telegram.org/apps" target="_blank" rel="noreferrer">my.telegram.org</a> → kartalar ulangan Telegram raqam bilan kiring → «API development tools» → ilova yarating (nomi ixtiyoriy). <b>api_id</b> va <b>api_hash</b> ni shu yerga kiriting:</div>
+                <input className="input mono" inputMode="numeric" placeholder="api_id" value={apiId} onChange={(e) => setApiId(e.target.value)} />
+                <input className="input mono" placeholder="api_hash" value={apiHash} onChange={(e) => setApiHash(e.target.value)} />
+                <button className="btn full" disabled={busy || !apiId || apiHash.length < 32} onClick={() => call(api.post("/admin/tg-bank/api", { api_id: apiId, api_hash: apiHash }), "Saqlandi")}>Saqlash</button>
+              </div>
+            )}
+            {!d.logged_in && d.api_ready && d.login_step == null && (
+              <div className="col">
+                <div className="sm"><b>2.</b> @HUMOcardbot va @CardXabarBot ulangan Telegram raqamingiz:</div>
+                <input className="input mono" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <button className="btn full" disabled={busy || phone.replace(/\D/g, "").length < 10} onClick={() => call(api.post("/admin/tg-bank/code", { phone }), "Kod Telegramga yuborildi")}>Kod olish</button>
+              </div>
+            )}
+            {!d.logged_in && d.login_step === "code" && (
+              <div className="col">
+                <div className="sm"><b>3.</b> Telegram'ga kelgan kodni kiriting. <span className="r">Kodni hech kimga yubormang va forward qilmang.</span></div>
+                <input className="input mono" inputMode="numeric" placeholder="12345" value={code} onChange={(e) => setCode(e.target.value)} />
+                <button className="btn full" disabled={busy || code.length < 5} onClick={() => run(async () => { const r = await api.post<TgInfo & { need_password?: boolean }>("/admin/tg-bank/login", { code }); setCode(""); toast(r.need_password ? "Ikki bosqichli parolni kiriting" : "✅ Ulandi", "ok"); st.reload(); })}>Kirish</button>
+              </div>
+            )}
+            {!d.logged_in && d.login_step === "password" && (
+              <div className="col">
+                <div className="sm">Akkauntda ikki bosqichli parol (2FA) bor — uni kiriting:</div>
+                <input className="input" type="password" value={pw} onChange={(e) => setPw(e.target.value)} />
+                <button className="btn full" disabled={busy || !pw} onClick={() => run(async () => { await api.post("/admin/tg-bank/login", { password: pw }); setPw(""); toast("✅ Ulandi", "ok"); st.reload(); })}>Kirish</button>
+              </div>
+            )}
+            <button className="btn small ghost" onClick={() => setOpen(!open)}>{open ? "Yopish" : "Sozlamalar"}</button>
+            {open && (
+              <div className="col">
+                <div className="mut xs">Kuzatiladigan botlar (vergul bilan). Visa yoki boshqa bank boti bo'lsa — nomini qo'shing.</div>
+                <input className="input" value={bots ?? d.bots.map((b) => "@" + b).join(", ")} onChange={(e) => setBots(e.target.value)} />
+                <button className="btn small" disabled={busy || bots == null} onClick={() => call(api.put("/admin/tg-bank/bots", { bots: (bots ?? "").split(/[,\s]+/).filter(Boolean) }), "Saqlandi")}>Botlarni saqlash</button>
+                {d.logged_in && <button className="btn small danger" disabled={busy} onClick={async () => { if (await confirmDialog("Akkauntni uzasizmi? Avtomatik tasdiqlash to'xtaydi.")) call(api.post("/admin/tg-bank/logout"), "Uzildi"); }}>Akkauntni uzish</button>}
+              </div>
+            )}
+          </div>
+        );
+      }}
+    </Loadable>
+  );
+}
 
 interface SmsInfo { url: string; url_with_key: string | null; secret: string | null; header: string; ready: boolean; body_template: string; last_sms_at: string | null; last_sms_amount: number | null; last_24h: Record<string, number> }
 

@@ -123,6 +123,9 @@ async def topup_paid(topup_id: int, user: CurrentUser, session: SessionDep):
     await rate_limit(f"paid:{user.id}", limit=6, window=600)
     async with session.begin():
         t = await p2p.claim_paid(session, user.id, topup_id)
+    from app.services import tg_bank
+
+    tg_bank.wake()  # bank botlari darhol tekshiriladi
     return await _topup(session, t)
 
 

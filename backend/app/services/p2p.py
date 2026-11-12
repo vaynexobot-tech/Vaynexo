@@ -109,9 +109,13 @@ async def cancel_topup(session: AsyncSession, user_id: int, topup_id: int) -> No
 # ------------------------------------------------------------------ bank xabarini o'qish
 _INCOME_WORDS = (
     "popolnen", "пополнен", "zachislen", "зачислен", "postuplen", "поступлен", "kirim", "tushdi",
-    "perevod na kartu", "перевод на карту", "p2p", "o'tkazma", "otkazma", "received", "credit",
+    "perevod na kartu", "перевод на карту", "to'ldirildi", "toldirildi", "to'ldirish", "received", "credit", "➕",
 )
-_EXPENSE_WORDS = ("spisan", "списан", "oplata", "оплата", "pokupka", "покупка", "chiqim", "yechildi", "snyat", "снят")
+_WEAK_INCOME = ("p2p", "o'tkazma", "otkazma", "perevod", "перевод")
+_EXPENSE_WORDS = (
+    "spisan", "списан", "oplata", "оплата", "pokupka", "покупка", "chiqim", "yechildi", "snyat", "снят",
+    "perevod s kart", "перевод с карт", "platezh", "платеж", "платёж", "➖",
+)
 _AMOUNT_RE = re.compile(
     r"(?<![\d*•])([+]?\s?\d{1,3}(?:[ \u00a0.,]\d{3})+|\d+)(?:[.,](\d{1,2}))?\s*(?:uzs|сум|so['ʻ’]?m|sum)(?!\w)",
     re.IGNORECASE,
@@ -121,9 +125,12 @@ _AMOUNT_RE = re.compile(
 def parse_bank_message(raw: str) -> int | None:
     """Bank SMS / bildirishnomasidan kirim summasini oladi. Kirim bo'lmasa — None."""
     low = raw.lower()
-    if any(w in low for w in _EXPENSE_WORDS) and not any(w in low for w in _INCOME_WORDS):
+    if "➖" in raw:  # bank botlari chiqimni ➖ bilan belgilaydi
         return None
-    if not any(w in low for w in _INCOME_WORDS) and "+" not in raw:
+    strong = "➕" in raw or any(w in low for w in _INCOME_WORDS)
+    if any(w in low for w in _EXPENSE_WORDS) and not strong:
+        return None
+    if not strong and "+" not in raw and not any(w in low for w in _WEAK_INCOME):
         return None
     m = _AMOUNT_RE.search(raw)
     if not m:

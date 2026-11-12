@@ -39,7 +39,7 @@ export function Settings() {
               {photo ? <img src={photo} alt="" style={{ width: "100%", height: "100%", borderRadius: "50%" }} /> : <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "linear-gradient(135deg,#3a2f6b,#e7a84a)" }} />}
             </div>
             <div className="grow">
-              <div className="bb ell" style={{ fontSize: 17 }}>{me.name || "—"}</div>
+              <div className="bb ell" style={{ fontSize: 18 }}>{me.name || "—"}</div>
               <div className="mut xs mono">{me.wallet_id ? `${t("Hamyon ID")}: ${me.wallet_id}` : `ID: ${me.id}`}</div>
               <span className="balchip mono" onClick={() => nav("/wallet")}>● {money(me.balance)} so'm</span>
             </div>
@@ -141,7 +141,7 @@ export function Kyc() {
     <>
       <Header title={t("Identifikatsiya")} sub={t("Bir martalik jarayon")} />
       <div className="page withbar">
-        <div className="hf bb" style={{ fontSize: 24 }}>{t("Verifikatsiya")}</div>
+        <div className="hf bb" style={{ fontSize: 26 }}>{t("Verifikatsiya")}</div>
         {status === "verified" && <div className="card g b">✅ {t("Shaxsingiz tasdiqlangan. Profilingizda «Ishonchli» belgisi ko'rinadi.")}</div>}
         {status === "pending" && <div className="card y">⏳ {t("Rasmlar tekshirilmoqda. Natija haqida bot orqali xabar beramiz.")}</div>}
         {status === "rejected" && <div className="card r">❌ {t("Rad etildi")}: {me.kyc_note ? t(me.kyc_note) : ""}. {t("Rasmlarni qaytadan yuborishingiz mumkin.")}</div>}
@@ -429,7 +429,7 @@ export function PinPad({ title, error, busy, onComplete, extra }: { title: strin
   };
   return (
     <div className="pinpad">
-      <div className="b center" style={{ fontSize: 17 }}>{title}</div>
+      <div className="b center" style={{ fontSize: 18 }}>{title}</div>
       <div className="pindots">{[0, 1, 2, 3].map((i) => <span key={i} className={i < pin.length ? "on" : ""} />)}</div>
       <div className="r sm center" style={{ minHeight: 18 }}>{error}</div>
       <div className="pinkeys">

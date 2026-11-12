@@ -36,12 +36,44 @@ async def send_kyc_to_admins(user: User, images: list[bytes]) -> None:
         InlineKeyboardButton(text="❌ Rad etish", callback_data=f"kyc:no:{user.id}"),
     ]])
     who = f"@{user.username}" if user.username else user.first_name
-    targets = [settings.admin_chat_id] if settings.admin_chat_id else list(settings.admin_ids)
+    group = await get_kyc_chat()
+    targets = [group] if group else ([settings.admin_chat_id] if settings.admin_chat_id else list(settings.admin_ids))
     if not targets:
         raise AppError("no_admin", "Admin sozlanmagan, keyinroq urinib ko'ring", 503)
     for chat_id in targets:
         await bot.send_media_group(chat_id, media)
         await bot.send_message(chat_id, f"🪪 Identifikatsiya so'rovi\n{who} · ID {user.id}", reply_markup=kb)
+
+
+KYC_CHAT_KEY = "_kyc_chat_id"
+
+
+async def get_kyc_chat() -> int | None:
+    """Identifikatsiya so'rovlari yuboriladigan guruh/kanal (admin /kyc_guruh bilan belgilaydi)."""
+    from app.db import SessionLocal
+    from app.models import AppSetting
+
+    async with SessionLocal() as s:
+        v = await s.scalar(select(AppSetting.value).where(AppSetting.key == KYC_CHAT_KEY))
+    try:
+        return int(v) if v else None
+    except ValueError:
+        return None
+
+
+async def set_kyc_chat(chat_id: int | None) -> None:
+    from sqlalchemy import delete
+    from sqlalchemy.dialects.postgresql import insert
+
+    from app.db import SessionLocal
+    from app.models import AppSetting
+
+    async with SessionLocal() as s, s.begin():
+        if chat_id is None:
+            await s.execute(delete(AppSetting).where(AppSetting.key == KYC_CHAT_KEY))
+        else:
+            await s.execute(insert(AppSetting).values(key=KYC_CHAT_KEY, value=str(chat_id))
+                            .on_conflict_do_update(index_elements=["key"], set_={"value": str(chat_id)}))
 
 
 async def kyc_submit(session: AsyncSession, user_id: int, images: list[bytes]) -> User:

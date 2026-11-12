@@ -96,7 +96,7 @@ export function Sell() {
       <>
         <div className="page center" style={{ alignItems: "center", paddingTop: 90 }}>
           <div className="okcircle"><Icon name="check" size={40} /></div>
-          <div className="hf bb" style={{ fontSize: 24 }}>{t("E'lon yuborildi")}</div>
+          <div className="hf bb" style={{ fontSize: 26 }}>{t("E'lon yuborildi")}</div>
           <div className="mut sm">{t("E'lon moderatsiyaga yuborildi. Tasdiqlangach Account savdo bo'limida ko'rinadi va bot orqali xabar beramiz.")}</div>
         </div>
         <BottomBar>

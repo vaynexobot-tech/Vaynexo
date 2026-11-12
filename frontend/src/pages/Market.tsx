@@ -229,7 +229,7 @@ export function ListingDetail() {
                   <div className="hf bb" style={{ fontSize: 20 }}>{l.title}</div>
                   <div className="mut sm">{l.game === "ML" ? "Mobile Legends" : "Magic Chess"}{l.server ? ` · ${t("Server")}: ${l.server}` : ""}</div>
                 </div>
-                <div className="y bb mono" style={{ fontSize: 24 }}>{som(l.price)}</div>
+                <div className="y bb mono" style={{ fontSize: 26 }}>{som(l.price)}</div>
                 {l.collection_level ? <CollectionCard level={l.collection_level} skins={l.skins} heroes={l.heroes} /> : (
                   <div className="card">
                     <div className="kv"><span>{t("Skinlar")}</span><span>{l.skins}</span></div>
@@ -288,10 +288,10 @@ function CollectionCard({ level, skins, heroes }: { level: string; skins: number
         <div className="hd-ico" style={{ width: 40, height: 40, background: "rgba(255,214,10,.15)", color: "var(--y)" }}><Icon name="trophy" /></div>
         <div className="grow">
           <div className="mut xs">{t("Kolleksiya darajasi")}</div>
-          <div className="y bb" style={{ fontSize: 17 }}>{level}</div>
+          <div className="y bb" style={{ fontSize: 18 }}>{level}</div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div className="hf bb" style={{ fontSize: 22 }}>{skins}</div>
+          <div className="hf bb" style={{ fontSize: 20 }}>{skins}</div>
           <div className="mut xs">{t("jami skin")}</div>
         </div>
       </div>

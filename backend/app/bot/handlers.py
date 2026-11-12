@@ -153,6 +153,37 @@ async def progress_cmd(message: Message, command: CommandObject):
     await message.answer(f"✅ Yuborildi: {o.progress_stars}/{o.stars}★ — mijozga xabar ketdi.")
 
 
+@router.message(Command("kyc_guruh"), F.chat.type.in_({"group", "supergroup"}))
+async def kyc_here(message: Message):
+    """Admin guruhda yozadi: identifikatsiya so'rovlari shu guruhga keladi."""
+    if not is_admin(message.from_user.id):
+        return
+    await account.set_kyc_chat(message.chat.id)
+    await message.answer("✅ Identifikatsiya so'rovlari endi shu guruhga keladi.\n"
+                         "⚠️ Guruhda pasport rasmlari bo'ladi — faqat ishonchli adminlarni qo'shing.\nBekor qilish: /kyc_ochir")
+
+
+@router.channel_post(Command("kyc_guruh"))
+async def kyc_here_channel(post: Message):
+    """Kanalda faqat adminlar post yoza oladi — kanal ham qabul qilinadi."""
+    await account.set_kyc_chat(post.chat.id)
+    await post.answer("✅ Identifikatsiya so'rovlari endi shu kanalga keladi. Bekor qilish: /kyc_ochir")
+
+
+@router.message(Command("kyc_ochir"))
+async def kyc_off(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+    await account.set_kyc_chat(None)
+    await message.answer("Identifikatsiya so'rovlari yana adminlarga shaxsiy xabarda keladi.")
+
+
+@router.channel_post(Command("kyc_ochir"))
+async def kyc_off_channel(post: Message):
+    await account.set_kyc_chat(None)
+    await post.answer("Identifikatsiya so'rovlari yana adminlarga shaxsiy xabarda keladi.")
+
+
 @router.message(Command("stats"), F.chat.type == "private")
 async def stats(message: Message):
     if not is_admin(message.from_user.id):

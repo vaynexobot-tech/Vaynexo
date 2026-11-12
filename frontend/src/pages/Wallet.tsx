@@ -33,7 +33,7 @@ export default function Wallet() {
       <div className="page withbar">
         <div className="hero">
           <div className="row between"><span className="mut xs mono">{t("JORIY BALANS")}</span><span className="pill-b" style={{ color: "#dfe3ef", borderColor: "rgba(255,255,255,.25)" }}>🥈 Silver</span></div>
-          <div className="hf bb y" style={{ fontSize: 30 }}>{money(w.data?.balance ?? 0)} <span className="mut sm">so'm</span></div>
+          <div className="hf bb y" style={{ fontSize: 26 }}>{money(w.data?.balance ?? 0)} <span className="mut sm">so'm</span></div>
           {w.data?.wallet_id && (
             <div className="row between xs" style={{ marginTop: 8 }}>
               <span className="mut">{t("Hamyon ID")}</span>
@@ -114,7 +114,7 @@ function TopupFlow({ info, onDone }: { info: WalletInfo; onDone: () => void }) {
       <div className="card center col" style={{ alignItems: "center", padding: 24 }}>
         <div style={{ fontSize: 46 }}>✅</div>
         <div className="bb" style={{ fontSize: 18 }}>{t("Balans to'ldirildi")}</div>
-        <div className="g bb mono" style={{ fontSize: 22 }}>+{som(topup.pay_amount)}</div>
+        <div className="g bb mono" style={{ fontSize: 20 }}>+{som(topup.pay_amount)}</div>
         <button className="btn ghost full" onClick={() => setTopup(null)}>{t("Yana to'ldirish")}</button>
       </div>
     );
@@ -181,7 +181,7 @@ function PayInstructions({ topup, app, onCancel, onChange }: { topup: Topup; app
         <div className="card center col" style={{ alignItems: "center", padding: 22, borderColor: "rgba(255,214,10,.45)" }}>
           <div className="spinner" style={{ margin: 0, width: 40, height: 40 }} />
           <div className="bb" style={{ fontSize: 18 }}>{t("Tekshirilmoqda")}</div>
-          <div className="y bb mono" style={{ fontSize: 22 }}>{som(topup.pay_amount)}</div>
+          <div className="y bb mono" style={{ fontSize: 20 }}>{som(topup.pay_amount)}</div>
           <div className="mut sm">{t("To'lov avtomatik tekshirilmoqda — bank xabari kelishi bilan balans o'zi to'ldiriladi va botda xabar keladi. Odatda 1–3 daqiqa. Sahifani yopsangiz ham bo'ladi.")}</div>
         </div>
         <div className="card">

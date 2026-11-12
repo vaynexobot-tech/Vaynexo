@@ -31,7 +31,7 @@ export default function Partner() {
           {(d) => (
             <>
               <div className="hero col" style={{ gap: 8, borderColor: "rgba(255,214,10,.45)" }}>
-                <div className="hf bb" style={{ fontSize: 21 }}>{t("Video qil — mukofot ol")}</div>
+                <div className="hf bb" style={{ fontSize: 20 }}>{t("Video qil — mukofot ol")}</div>
                 <div className="sm" style={{ color: "#d6dbe8" }}>{t("VAYNEXO haqida video joylang — ko'rishlar uchun mukofot oling.")}</div>
                 <span className="pill-y">{t("Eng kami: {v} ko'rish · {d} kun ichida", { v: fmtN(d.rules.min_views), d: d.rules.count_days })}</span>
               </div>

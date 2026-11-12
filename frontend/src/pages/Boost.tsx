@@ -133,7 +133,7 @@ export function Boost() {
           </div>
         )}
         <div className="card total-card row">
-          <div className="grow"><div className="mut xs">{t("Jami narx")}</div><div className="y bb mono" style={{ fontSize: 22 }}>{quote ? som(quote.price) : "—"}</div></div>
+          <div className="grow"><div className="mut xs">{t("Jami narx")}</div><div className="y bb mono" style={{ fontSize: 20 }}>{quote ? som(quote.price) : "—"}</div></div>
           <button className="btn" disabled={!quote || !!extraInvalid} onClick={() => setConfirm(true)}>{t("Buyurtma berish")}</button>
         </div>
       </div>

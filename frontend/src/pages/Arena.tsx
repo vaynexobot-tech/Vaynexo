@@ -86,7 +86,7 @@ function TourCard({ x, onClick }: { x: Tournament; onClick: () => void }) {
         </>
       )}
       <div className="row between">
-        <div><div className="y mono bb" style={{ fontSize: 17 }}>{money(x.prize_fund)} UZS</div><div className="mut xs">{t("sovrin")}</div></div>
+        <div><div className="y mono bb" style={{ fontSize: 18 }}>{money(x.prize_fund)} UZS</div><div className="mut xs">{t("sovrin")}</div></div>
         <button className={"btn small" + (x.status === "open" ? "" : " ghost")} onClick={onClick}>
           {x.joined ? "✓ " + t("Qatnashyapsiz") : x.status === "open" ? t("Qatnashish") : t("Batafsil")}
         </button>
@@ -167,9 +167,9 @@ function Rating({ rules }: { rules?: Record<string, number> }) {
           <div className="hero col" style={{ gap: 10 }}>
             <div className="row between"><span className="pill-y">{t("{n}-SEZON", { n: d.season.number })}</span><span className="mut xs">{t("{d} kun qoldi", { d: d.season.days_left })}</span></div>
             <div className="row" style={{ gap: 22 }}>
-              <div><div className="y hf bb" style={{ fontSize: 24 }}>#{d.me.place ?? "—"}</div><div className="mut xs">{t("o'rningiz")}</div></div>
-              <div><div className="hf bb" style={{ fontSize: 24 }}>{money(d.me.points)}</div><div className="mut xs">{t("ball")}</div></div>
-              <div><div className="g hf bb" style={{ fontSize: 24 }}>+{money(d.week)}</div><div className="mut xs">{t("bu hafta")}</div></div>
+              <div><div className="y hf bb" style={{ fontSize: 26 }}>#{d.me.place ?? "—"}</div><div className="mut xs">{t("o'rningiz")}</div></div>
+              <div><div className="hf bb" style={{ fontSize: 26 }}>{money(d.me.points)}</div><div className="mut xs">{t("ball")}</div></div>
+              <div><div className="g hf bb" style={{ fontSize: 26 }}>+{money(d.week)}</div><div className="mut xs">{t("bu hafta")}</div></div>
             </div>
             <div className="mut xs">{t("Sezon mukofotlari: 1-o'rin — olmos paketi, Top 10 — «Sezon chempioni» nishoni, Top 100 — VIP e'lon 3 kun.")}</div>
           </div>
@@ -274,7 +274,7 @@ export function TournamentPage() {
             <>
               <div className="page center" style={{ alignItems: "center", paddingTop: 60 }}>
                 <div className="okcircle"><Icon name="check" size={40} /></div>
-                <div className="hf bb" style={{ fontSize: 24 }}>{t("Ro'yxatdan o'tdingiz")}</div>
+                <div className="hf bb" style={{ fontSize: 26 }}>{t("Ro'yxatdan o'tdingiz")}</div>
                 <div className="mut sm">{t("Siz turnirga qo'shildingiz. Boshlanishidan oldin Telegram orqali eslatma yuboramiz.")}</div>
                 <div className="card" style={{ width: "100%", textAlign: "left" }}>
                   <div className="kv"><span>{t("Turnir")}</span><span className="b">{x.title}</span></div>

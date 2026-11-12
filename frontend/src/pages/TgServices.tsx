@@ -105,7 +105,7 @@ export default function TgServices() {
                     <div className="grid3">
                       {c.gifts.map((g) => (
                         <button key={g.code} className={"pkg center" + (gift === g.code ? " on" : "")} onClick={() => setGift(g.code)}>
-                          <div style={{ fontSize: 28 }}>{GIFT_EMOJI[g.code] ?? "🎁"}</div>
+                          <div style={{ fontSize: 26 }}>{GIFT_EMOJI[g.code] ?? "🎁"}</div>
                           <div className="sm b">{t(g.name)}</div>
                           <div className="y mono xs">{money(g.price)}</div>
                         </button>
@@ -157,7 +157,7 @@ export default function TgServices() {
                 )}
               </div>
               <BottomBar aboveNav>
-                <div className="grow card tight" style={{ padding: "6px 12px" }}><div className="mut xs ell">{summary}</div><div className="y bb mono" style={{ fontSize: 17 }}>{som(price)}</div></div>
+                <div className="grow card tight" style={{ padding: "6px 12px" }}><div className="mut xs ell">{summary}</div><div className="y bb mono" style={{ fontSize: 18 }}>{som(price)}</div></div>
                 {enough || !valid ? (
                   <button className="btn" disabled={!valid || busy} onClick={() => run(async () => {
                     const o = await api.post<TgOrder>("/tg/orders", { kind, months, stars, gift, nft, for_self: selfAllowed && forSelf, target_username: username, message, anonymous, link });
@@ -203,7 +203,7 @@ export function TgOrderPage() {
             <div className="page">
               <div className="tghero center" style={{ padding: 18 }}>
                 <div style={{ fontSize: 34 }}>{refunded ? "↩️" : icon[o.kind] ?? "⭐"}</div>
-                <div className="bb" style={{ fontSize: 16, marginTop: 4 }}>{done ? t("Yetkazildi!") : refunded ? t("Pul qaytarildi") : t("Bajarilmoqda...")}</div>
+                <div className="bb" style={{ fontSize: 15, marginTop: 4 }}>{done ? t("Yetkazildi!") : refunded ? t("Pul qaytarildi") : t("Bajarilmoqda...")}</div>
                 <div className="xs">{o.title} · {o.target_username}</div>
               </div>
               <div className="card col">

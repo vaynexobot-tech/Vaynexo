@@ -139,7 +139,7 @@ export function RentDetail() {
                   <div className="hf bb" style={{ fontSize: 20 }}>{l.title}</div>
                   <div className="mut sm">{l.game === "ML" ? "Mobile Legends" : "Magic Chess"}{l.server ? ` · ${t("Server")}: ${l.server}` : ""}</div>
                 </div>
-                <div className="y bb mono" style={{ fontSize: 22 }}>{som(l.price_per_hour)} <span className="mut sm">/ {t("soat")}</span></div>
+                <div className="y bb mono" style={{ fontSize: 20 }}>{som(l.price_per_hour)} <span className="mut sm">/ {t("soat")}</span></div>
                 <div className="card">
                   <div className="kv"><span>{t("Skinlar")}</span><span>{l.skins}</span></div>
                   {l.heroes > 0 && <div className="kv"><span>{t("Qahramonlar")}</span><span>{l.heroes}</span></div>}
@@ -349,7 +349,7 @@ export function RentalPage() {
                 {r.status === "active" && (
                   <div className="hero center">
                     <div className="mut xs mono">{t("IJARA TUGASHIGA")}</div>
-                    <div className="hf bb mono" style={{ fontSize: 30 }}>{endsLeft ?? "00:00:00"}</div>
+                    <div className="hf bb mono" style={{ fontSize: 26 }}>{endsLeft ?? "00:00:00"}</div>
                     <div className="mut xs">{dateTime(r.ends_at)} {t("gacha")}</div>
                   </div>
                 )}

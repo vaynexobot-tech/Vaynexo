@@ -18,7 +18,7 @@ export function Referral() {
       <div className="page">
         <div className="hero">
           <span className="badge g">REFERAL</span>
-          <div className="hf bb" style={{ fontSize: 19, margin: "10px 0 4px" }}>{t("Do'stlaringizni taklif qiling")}</div>
+          <div className="hf bb" style={{ fontSize: 18, margin: "10px 0 4px" }}>{t("Do'stlaringizni taklif qiling")}</div>
           <div className="sm" style={{ color: "#d6dbe8" }}>
             {me.referral_bonus > 0
               ? <>{t("Do'stingiz ro'yxatdan o'tib, hamyonini kamida {m} to'ldirsa, sizga", { m: som(me.referral_min_topup) })} <b className="y">{som(me.referral_bonus)}</b> {t("bonus tushadi.")}</>
@@ -95,7 +95,7 @@ export function History() {
         {st.data && (
           <div className="hero row between">
             <div><div className="mut xs">{t("Jami sarflangan")}</div><div className="y hf bb" style={{ fontSize: 26 }}>{money(st.data.spent)} <span className="mut sm">so'm</span></div></div>
-            <div style={{ textAlign: "right" }}><div className="hf bb" style={{ fontSize: 22 }}>{st.data.count}</div><div className="mut xs">{t("ta xarid")}</div></div>
+            <div style={{ textAlign: "right" }}><div className="hf bb" style={{ fontSize: 20 }}>{st.data.count}</div><div className="mut xs">{t("ta xarid")}</div></div>
           </div>
         )}
         <Chips wrap value={type} onChange={setType} options={[

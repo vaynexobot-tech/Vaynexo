@@ -20,7 +20,7 @@ export default function Home() {
           <div className="hf" style={{ width: 36, height: 36, borderRadius: 10, background: "var(--y)", color: "#111", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>VX</div>
           <div>
             <div className="row" style={{ gap: 6 }}>
-              <span className="hf bb" style={{ fontSize: 17, letterSpacing: ".03em" }}>VAYNEXO</span>
+              <span className="hf bb" style={{ fontSize: 18, letterSpacing: ".03em" }}>VAYNEXO</span>
               <span className="badge y mono" style={{ height: 18, fontSize: 9 }}>MINI</span>
             </div>
             <div className="mut xs">{t("Raqamli o'yin bozori")}</div>

@@ -39,7 +39,7 @@ export default function Donate() {
   const checkPlayer = () =>
     run(async () => {
       const r = await api.post<{ found: boolean; nickname: string | null }>("/donate/check-player", { game, player_id: uid, zone_id: zid });
-      setNick(r.found ? r.nickname : "");
+      setNick(r.found ? r.nickname || "✓" : "");
       if (r.found) setStep(2);
     });
 
@@ -63,7 +63,7 @@ export default function Donate() {
           <GameLogo game={game} />
           <div>
             <div className="b">{t("Almaz to'ldirish")}</div>
-            <div className="mut xs">⚡ {t("1–5 daqiqada")} · 🔒 {t("Rasmiy usul")}</div>
+            <div className="mut xs">⚡ {t("5–30 daqiqada")} · 🔒 {t("Kafolatlangan")}</div>
           </div>
         </div>
 
@@ -98,7 +98,7 @@ export default function Donate() {
 
         {step === 2 && (
           <>
-            {nick && <div className="card tight row"><span className="g">✓</span><span className="sm">{t("O'yinchi")}: <b>{nick}</b> · {uid}{zid ? ` (${zid})` : ""}</span></div>}
+            {nick && <div className="card tight row"><span className="g">✓</span><span className="sm">{nick !== "✓" ? <>{t("O'yinchi")}: <b>{nick}</b> · </> : <>ID: </>}<b>{uid}{zid ? ` (${zid})` : ""}</b></span></div>}
             <div className="sec-title">{t("Paketni tanlang")}</div>
             <Loadable state={pkgs}>
               {(list) => (
@@ -124,7 +124,7 @@ export default function Donate() {
             <div className="kv"><span>{t("O'yin")}</span><span>{game === "ML" ? "Mobile Legends" : "Magic Chess"}</span></div>
             <div className="kv"><span>{t("Paket")}</span><span>💎 {pick.name}</span></div>
             <div className="kv"><span>ID</span><span className="mono">{uid}{zid ? ` (${zid})` : ""}</span></div>
-            {nick && <div className="kv"><span>{t("Nik")}</span><span>{nick}</span></div>}
+            {nick && nick !== "✓" && <div className="kv"><span>{t("Nik")}</span><span>{nick}</span></div>}
             <div className="divider" />
             <div className="kv"><span>{t("To'lov usuli")}</span><span>{t("Hamyon balansi")}</span></div>
             <div className="kv"><span>{t("Balans")}</span><span className={enough ? "" : "r"}>{som(balance)}</span></div>

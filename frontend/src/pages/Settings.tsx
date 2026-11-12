@@ -165,7 +165,7 @@ const FAQ: [string, string][] = [
   ["Hamyonni qanday to'ldiraman?", "Hamyon → To'ldirish. Tizim bergan ANIQ summani ko'rsatilgan kartaga o'tkazing. To'lov avtomatik topiladi va 1–3 daqiqada balansga tushadi."],
   ["Pulni qanday yechib olaman?", "Pul yechish faqat sotuvchi, ijaraga beruvchi va boosterlar uchun: sotuv, ijara va boost daromadi Hamyon → Yechish orqali kartaga chiqariladi (24 soat ichida). To'ldirilgan pul yechilmaydi — u xizmatlar uchun."],
   ["Noto'g'ri summa o'tkazib yubordim", "Xavotir olmang — @vaynexo_support ga chek (skrinshot) yuboring, admin qo'lda biriktiradi."],
-  ["Almaz qancha vaqtda tushadi?", "Odatda 1–5 daqiqa. Agar provayder bajara olmasa, pul avtomatik hamyonga qaytariladi."],
+  ["Almaz qancha vaqtda tushadi?", "Odatda 5–30 daqiqa. Bajarib bo'lmasa, pul to'liq hamyonga qaytariladi."],
   ["Akkauntimni qanday sotaman?", "E'lon joylash → ma'lumotlarni to'ldiring → moderatsiyadan so'ng e'lon ko'rinadi. Sotilganda login/parolni bitim sahifasida yuborasiz."],
 ];
 

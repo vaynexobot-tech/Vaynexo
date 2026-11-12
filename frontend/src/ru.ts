@@ -115,6 +115,8 @@ export const ru: Record<string, string> = {
   // donat
   "Almaz to'ldirish": "Пополнение алмазов",
   "1–5 daqiqada": "За 1–5 минут",
+  "5–30 daqiqada": "За 5–30 минут",
+  "Kafolatlangan": "Гарантировано",
   "Rasmiy usul": "Официально",
   "ID": "ID",
   "Paket": "Пакет",
@@ -398,7 +400,7 @@ export const ru: Record<string, string> = {
   "Noto'g'ri summa o'tkazib yubordim": "Я перевёл не ту сумму",
   "Xavotir olmang — @vaynexo_support ga chek (skrinshot) yuboring, admin qo'lda biriktiradi.": "Не волнуйтесь — отправьте чек (скриншот) в @vaynexo_support, админ зачислит вручную.",
   "Almaz qancha vaqtda tushadi?": "Как быстро приходят алмазы?",
-  "Odatda 1–5 daqiqa. Agar provayder bajara olmasa, pul avtomatik hamyonga qaytariladi.": "Обычно 1–5 минут. Если провайдер не выполнит заказ, деньги автоматически вернутся в кошелёк.",
+  "Odatda 5–30 daqiqa. Bajarib bo'lmasa, pul to'liq hamyonga qaytariladi.": "Обычно 5–30 минут. Если выполнить не удастся, деньги полностью вернутся в кошелёк.",
   "Pulni qanday yechib olaman?": "Как вывести деньги?",
   "Hamyon → Yechish. Karta raqamini kiriting, so'rov 24 soat ichida bajariladi.": "Кошелёк → Вывод. Укажите номер карты, заявка выполняется в течение 24 часов.",
   "Akkauntimni qanday sotaman?": "Как продать аккаунт?",

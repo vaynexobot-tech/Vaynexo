@@ -11,8 +11,14 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-12.donat-qolda"
-NOTES = """💎 Donat endi QO'LDA bajariladi (API ulanguncha)
+RELEASE = "2026-11-12.admin-menyu"
+NOTES = """🛠 Admin panel yangilandi: bosh sahifada «Navbat» (ishlar soni bilan) va «Boshqaruv» bo'limlari
+   Navbatga qo'shildi: «To'ladim» to'lovlari, identifikatsiya, hamkor videolari, ijara
+
+🐞 Tuzatildi: bot tugmasidan TG buyurtma sahifasi ochilmasligi (404), xaridlar tarixidagi jami summa,
+   e'lon berishda identifikatsiya ogohlantirishi oldindan ko'rinadi
+
+💎 Donat endi QO'LDA bajariladi (API ulanguncha)
    Har buyurtma guruhdagi «buyurtma» mavzusiga keladi: almazni tashlang → «✅ Bajarildi» yoki «↩️ Pulni qaytarish»
    (avval sinov rejimi edi — pul yechilib, almaz yuborilmas edi)
 

@@ -7,21 +7,37 @@ import { Chips, Copy, dateTime, Empty, Field, Header, Loadable, money, MoneyInpu
 
 type Tab = "stats" | "settings" | "rent" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments" | "kyc" | "partner" | "matches";
 
+type Section = { v: Tab; icon: string; label: string; count?: string[] };
+const QUEUE: Section[] = [
+  { v: "incoming", icon: "💳", label: "Kirimlar va to'lovlar", count: ["unmatched", "topup_checking"] },
+  { v: "withdraw", icon: "💸", label: "Pul yechish", count: ["withdrawals"] },
+  { v: "moderation", icon: "📝", label: "E'lonlar", count: ["moderation"] },
+  { v: "rent", icon: "🔑", label: "Ijara", count: ["rent_moderation", "rent_disputes"] },
+  { v: "disputes", icon: "⚖️", label: "Nizolar", count: ["disputes"] },
+  { v: "donate", icon: "💎", label: "Donat", count: ["donate_review"] },
+  { v: "tg", icon: "⭐️", label: "TG xizmatlar", count: ["tg_pending"] },
+  { v: "boost", icon: "🚀", label: "Boost", count: ["boost_open"] },
+  { v: "kyc", icon: "🪪", label: "Identifikatsiya", count: ["kyc_pending"] },
+  { v: "partner", icon: "🎬", label: "Hamkor videolari", count: ["partner_pending"] },
+];
+const MANAGE: Section[] = [
+  { v: "users", icon: "👥", label: "Foydalanuvchilar" },
+  { v: "settings", icon: "⚙️", label: "Sozlamalar" },
+  { v: "packages", icon: "📦", label: "Donat paketlari" },
+  { v: "tournaments", icon: "🏆", label: "Turnirlar" },
+  { v: "matches", icon: "🎯", label: "Prognozlar" },
+];
+
 export default function Admin() {
   const { me } = useApp();
   const [tab, setTab] = useState<Tab>("stats");
   if (!me?.is_admin) return <><Header title="Admin" /><Empty icon="🔒" text={t("Ruxsat yo'q")} /></>;
+  const sec = [...QUEUE, ...MANAGE].find((x) => x.v === tab);
   return (
     <>
-      <Header title={t("Admin panel")} right={<span />} />
+      <Header title={sec ? `${sec.icon} ${sec.label}` : t("Admin panel")} right={<span />} />
       <div className="page">
-        <Chips value={tab} onChange={setTab} options={[
-          { v: "stats", label: "📊 Statistika" }, { v: "settings", label: "⚙️ Sozlamalar" }, { v: "rent", label: "🔑 Ijara" }, { v: "incoming", label: "💳 Kirimlar" }, { v: "withdraw", label: "💸 Yechish" },
-          { v: "moderation", label: "📝 E'lonlar" }, { v: "disputes", label: "⚖️ Nizolar" }, { v: "donate", label: "💎 Donat" },
-          { v: "tg", label: "⭐️ TG" }, { v: "boost", label: "🚀 Boost" }, { v: "users", label: "👥 Foydalanuvchilar" },
-          { v: "packages", label: "📦 Paketlar" }, { v: "tournaments", label: "🏆 Turnirlar" },
-          { v: "kyc", label: "🪪 KYC" }, { v: "partner", label: "🎬 Hamkor" }, { v: "matches", label: "🎯 Prognoz" },
-        ]} />
+        {tab !== "stats" && <button className="btn small ghost" style={{ alignSelf: "flex-start" }} onClick={() => setTab("stats")}>‹ Bo'limlar</button>}
         {tab === "stats" && <Stats go={setTab} />}
         {tab === "settings" && <AppSettings />}
         {tab === "rent" && <RentAdmin />}
@@ -45,28 +61,35 @@ export default function Admin() {
 
 function Stats({ go }: { go: (t: Tab) => void }) {
   const st = useLoad(() => api.get<Record<string, number>>("/admin/stats"));
+  const tile = (x: Section, s: Record<string, number>) => {
+    const n = (x.count ?? []).reduce((a, k) => a + (s[k] || 0), 0);
+    return (
+      <button key={x.v} className={"adm-tile" + (n ? " hot" : "")} onClick={() => go(x.v)}>
+        <span className="adm-ico">{x.icon}</span>
+        <span className="adm-lbl">{x.label}</span>
+        {x.count && <span className={"adm-n" + (n ? " on" : "")}>{n}</span>}
+      </button>
+    );
+  };
   return (
     <Loadable state={st}>
-      {(s) => (
-        <>
-          <div className="grid2">
-            <StatCard label="Foydalanuvchilar" value={money(s.users)} sub={`+${s.users_today} bugun`} />
-            <StatCard label="Jami balanslar" value={money(s.balances_total)} sub="so'm (majburiyat)" />
-            <StatCard label="To'ldirish (24 soat)" value={money(s.topups_today)} sub="so'm" />
-            <StatCard label="Donat (24 soat)" value={money(s.donate_today)} sub="so'm" />
-          </div>
-          <div className="sec-title">Bajarilishi kerak</div>
-          {([
-            ["unmatched", "Biriktirilmagan kirimlar", "incoming"], ["withdrawals", "Pul yechish so'rovlari", "withdraw"],
-            ["moderation", "Moderatsiyadagi e'lonlar", "moderation"], ["disputes", "Ochiq nizolar", "disputes"],
-            ["donate_review", "Tekshiruvdagi donatlar", "donate"], ["tg_pending", "TG buyurtmalar", "tg"], ["boost_open", "Boost (qidiruv/nizo)", "boost"],
-          ] as [string, string, Tab][]).map(([k, label, tabName]) => (
-            <div key={k} className="card tight click row between" onClick={() => go(tabName)}>
-              <span>{label}</span><span className={"badge " + (s[k] ? "y" : "m")}>{s[k]}</span>
+      {(s) => {
+        const total = QUEUE.reduce((a, x) => a + (x.count ?? []).reduce((b, k) => b + (s[k] || 0), 0), 0);
+        return (
+          <>
+            <div className="grid2">
+              <StatCard label="Foydalanuvchilar" value={money(s.users)} sub={`+${s.users_today} bugun`} />
+              <StatCard label="Jami balanslar" value={money(s.balances_total)} sub="so'm (majburiyat)" />
+              <StatCard label="To'ldirish (24 soat)" value={money(s.topups_today)} sub="so'm" />
+              <StatCard label="Donat (24 soat)" value={money(s.donate_today)} sub="so'm" />
             </div>
-          ))}
-        </>
-      )}
+            <div className="row between"><div className="sec-title">Navbat</div><span className={"badge " + (total ? "y" : "g")}>{total ? `${total} ta ish` : "Hammasi bajarilgan ✓"}</span></div>
+            <div className="adm-grid">{QUEUE.map((x) => tile(x, s))}</div>
+            <div className="sec-title">Boshqaruv</div>
+            <div className="adm-grid">{MANAGE.map((x) => tile(x, s))}</div>
+          </>
+        );
+      }}
     </Loadable>
   );
 }
@@ -245,7 +268,7 @@ function DonateReview() {
         {(list) => list.length === 0 ? <Empty text="Bo'sh" /> : list.map((o) => (
           <div key={o.id} className="card col">
             <div className="row between"><span className="b">{o.ref} · {o.title}</span><Status s={o.status} /></div>
-            <div className="mut xs mono">user {o.user_id} · ID {o.player_id} ({o.zone_id}) · {som(o.price)} · urinish {o.attempts}</div>
+            <div className="mut xs mono">Mijoz ID {o.user_id} · O'yin ID {o.player_id}{o.zone_id ? ` (${o.zone_id})` : ""} · {som(o.price)}</div>
             {o.error && <div className="r xs">{o.error}</div>}
             {o.status === "review" && (
               <div className="row">
@@ -260,6 +283,9 @@ function DonateReview() {
     </>
   );
 }
+
+const HIDE_TG = ["price_mode"];
+const TG_LABEL: Record<string, string> = { months: "Muddat (oy)", stars: "Stars soni", gift: "Sovg'a", nft: "NFT", message: "Xabar", anonymous: "Anonim", link: "Havola", for_self: "O'ziga" };
 
 function TgAdmin() {
   const [status, setStatus] = useState("processing");
@@ -279,7 +305,7 @@ function TgAdmin() {
           <div key={o.id} className="card col">
             <div className="row between"><span className="b">{o.title}</span><span className="y mono">{som(o.price)}</span></div>
             <Copy value={o.target_username} label={`Kimga · ${o.ref} · user ${o.user_id}`} />
-            <div className="mut xs pre">{Object.entries(o.details).filter(([, v]) => v !== "" && v !== false).map(([k, v]) => `${k}: ${v}`).join("\n")}</div>
+            <div className="mut xs pre">{Object.entries(o.details).filter(([k, v]) => v !== "" && v !== false && v != null && !HIDE_TG.includes(k)).map(([k, v]) => `${TG_LABEL[k] ?? k}: ${v === true ? "ha" : v}`).join("\n")}</div>
             {o.status === "processing" && (
               <div className="row"><button className="btn small green grow" disabled={busy} onClick={() => act(o, "done")}>Bajarildi</button><button className="btn small danger" disabled={busy} onClick={() => act(o, "refund")}>Qaytarish</button></div>
             )}
@@ -301,12 +327,12 @@ function BoostAdmin() {
   });
   return (
     <>
-      <Chips value={status} onChange={setStatus} options={["searching", "accepted", "in_progress", "finished", "disputed", "done", "refunded"].map((v) => ({ v, label: v }))} />
+      <Chips value={status} onChange={setStatus} options={[["searching", "Booster kutmoqda"], ["accepted", "Qabul qilingan"], ["in_progress", "Jarayonda"], ["finished", "Tugatildi"], ["disputed", "Nizo"], ["done", "Yakunlangan"], ["refunded", "Qaytarilgan"]].map(([v, label]) => ({ v, label }))} />
       <Loadable state={st}>
         {(list) => list.length === 0 ? <Empty text="Bo'sh" /> : list.map((o) => (
           <div key={o.id} className="card col">
             <div className="row between"><span className="b">{o.ref} · {o.current_rank} → {o.target_rank}</span><span className="y mono">{som(o.price)}</span></div>
-            <div className="mut xs pre">user {o.user_id} · {o.login_method} · booster: {o.booster_name ?? "—"}{o.note ? "\n" + o.note : ""}</div>
+            <div className="mut xs pre">Mijoz ID {o.user_id} · kirish: {o.login_method} · booster: {o.booster_name ?? "—"}{o.note ? "\n" + o.note : ""}</div>
             {!["done", "refunded"].includes(o.status) && (
               <div className="row"><button className="btn small green grow" disabled={busy} onClick={() => act(o, "done")}>Yakunlash</button><button className="btn small danger" disabled={busy} onClick={() => act(o, "refund")}>Qaytarish</button></div>
             )}

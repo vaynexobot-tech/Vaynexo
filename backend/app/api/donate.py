@@ -58,7 +58,7 @@ async def check_player(body: PlayerIn, user: CurrentUser):
     if not body.player_id.strip().isdigit():
         raise AppError("bad_player_id", "ID faqat raqamlardan iborat bo'lishi kerak")
     nick = await get_provider().check_player(body.game, body.player_id.strip(), body.zone_id.strip())
-    return {"found": nick is not None, "nickname": nick}
+    return {"found": nick is not None, "nickname": nick or None}
 
 
 class OrderIn(BaseModel):

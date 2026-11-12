@@ -234,6 +234,7 @@ export function RentSell() {
     <>
       <Header title={editId ? t("Ijara e'lonini tahrirlash") : t("Ijaraga berish")} sub={t("Akkauntingizni soatbay ijaraga qo'ying")} />
       <div className="page">
+        <KycBanner area="rental" />
         <Seg value={f.game} onChange={(v) => set("game", v)} options={[{ v: "ML", label: "Mobile Legends" }, { v: "MC", label: "Magic Chess" }]} />
         <Field label={t("Sarlavha")}><input className="input" maxLength={120} placeholder={t("Masalan: Mythic akkaunt · 120 skin")} value={f.title} onChange={(e) => set("title", e.target.value)} /></Field>
         <Field label={t("Rank")}><Chips wrap value={f.rank} onChange={(v) => set("rank", v)} options={RANKS.map((r) => ({ v: r, label: r }))} /></Field>

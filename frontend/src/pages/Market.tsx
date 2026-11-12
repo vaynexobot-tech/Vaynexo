@@ -333,12 +333,12 @@ function BuyMethodSheet({ open, l, busy, onClose, onChat, onGarant }: {
             <div><div className="b">{t("Garant orqali sotib olish")} <span className="pill-b g" style={{ fontSize: 10, padding: "2px 7px" }}>{t("Xavfsiz")}</span></div><div className="mut xs">{t("Pul kafolatlanadi, akkaunt tekshiriladi")}</div></div></div>
           <div className="row sm"><span className="g"><Icon name="check" size={14} /></span>{t("To'lov qilsangiz, akkaunt ma'lumotlari ochiladi")}</div>
           <div className="row sm"><span className="g"><Icon name="check" size={14} /></span>{t("Tasdiqlaganingizdan so'ng pul sotuvchiga o'tadi")}</div>
+          <label className="row sm" style={{ cursor: "pointer" }}>
+            <input type="checkbox" className="cbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+            <span>{t("Men")} <a className="y" style={{ textDecoration: "underline" }} onClick={(e) => { e.preventDefault(); nav("/legal/terms"); }}>{t("Foydalanuvchi kelishuvi")}</a> {t("bilan tanishdim va unga roziman.")}</span>
+          </label>
           <button className="btn full" disabled={!agree || l.status !== "active"} onClick={onGarant}>{t("Garant bilan davom etish")}</button>
         </div>
-        <label className="row sm" style={{ cursor: "pointer" }}>
-          <input type="checkbox" className="cbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-          <span>{t("Men")} <a className="y" style={{ textDecoration: "underline" }} onClick={(e) => { e.preventDefault(); nav("/legal/terms"); }}>{t("Foydalanuvchi kelishuvi")}</a> {t("bilan tanishdim va unga roziman.")}</span>
-        </label>
       </div>
     </Sheet>
   );

@@ -169,5 +169,5 @@ async def history(user: CurrentUser, session: SessionDep, type: str = "all", lim
 
     items.sort(key=lambda x: x["created_at"] or "", reverse=True)
     items = items[:limit]
-    spent = sum(-i["amount"] for i in items if i["amount"] < 0 and i["status"] in ("done", "completed"))
+    spent = sum(-i["amount"] for i in items if i["amount"] < 0 and i["type"] != "withdraw" and i["status"] not in ("refunded", "cancelled", "failed", "rejected", "expired"))
     return {"items": items, "spent": spent, "count": len(items)}

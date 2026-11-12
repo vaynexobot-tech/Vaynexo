@@ -63,7 +63,7 @@ const METHODS: { v: string; title: string; sub: string; logo: JSX.Element }[] = 
   { v: "uzcard", title: "UZCARD", sub: "Kartaga o'tkazma", logo: <span className="pm-logo uz">U</span> },
   { v: "humo", title: "HUMO", sub: "Kartaga o'tkazma", logo: <span className="pm-logo humo">HUMO</span> },
   { v: "atm", title: "BANKOMAT", sub: "Terminal orqali", logo: <span className="pm-logo atm">ATM</span> },
-  { v: "visa", title: "INTERNATIONAL", sub: "Visa / Mastercard", logo: <span className="pm-logo visa">VISA</span> },
+  { v: "visa", title: "VISA", sub: "Visa / Mastercard", logo: <span className="pm-logo visa">VISA</span> },
 ];
 
 function TopupFlow({ info, onDone }: { info: WalletInfo; onDone: () => void }) {

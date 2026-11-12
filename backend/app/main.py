@@ -113,7 +113,7 @@ if settings.frontend_dir and Path(settings.frontend_dir, "index.html").is_file()
 
     @app.get("/{path:path}", include_in_schema=False)
     async def spa(path: str):
-        if path.startswith(("api/", "tg/")):
+        if path.startswith("api/") or path == "tg/webhook":
             return JSONResponse({"error": "not_found"}, status_code=404)
         f = (_dist / path).resolve()
         if path and f.is_file() and _dist in f.parents:

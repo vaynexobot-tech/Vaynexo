@@ -10,7 +10,7 @@ class ManualProvider:
     manual = True
 
     async def check_player(self, game: str, player_id: str, zone_id: str) -> str | None:
-        return "qo'lda tekshiriladi" if player_id.isdigit() and len(player_id) >= 5 else None
+        return "" if player_id.isdigit() and len(player_id) >= 5 else None  # nik tekshirilmaydi
 
     async def create(self, order_ref: str, sku: str, game: str, player_id: str, zone_id: str) -> ProviderResult:
         return ProviderResult("manual")

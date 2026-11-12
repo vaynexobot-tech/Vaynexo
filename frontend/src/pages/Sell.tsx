@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api, type ListingCard, type ListingFull, type Media } from "../api";
 import { t } from "../i18n";
 import { confirmDialog } from "../tg";
-import { BottomBar, Chips, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Spinner, useAction, useApp, useLoad } from "../ui";
+import { BottomBar, Chips, Empty, Field, Header, Icon, KycBanner, Loadable, money, MoneyInput, Seg, Sheet, som, Spinner, useAction, useApp, useLoad } from "../ui";
 import { ListingRow } from "./Market";
 
 const RANKS = ["Epic", "Legend", "Mythic", "Mythic Honor", "Mythic Glory", "Mythic Immortal"];
@@ -96,6 +96,7 @@ export function Sell() {
     <>
       <Header title={editId ? t("E'lonni tahrirlash") : t("E'lon joylash")} sub={t("Akkaunt sotish uchun ma'lumotlarni kiriting")} />
       <div className="page">
+        <KycBanner area="marketplace" />
         <Field label={t("O'yin")}>
           <Seg value={f.game} onChange={(v) => set("game", v)} options={[{ v: "ML", label: "Mobile Legends" }, { v: "MC", label: "Magic Chess" }]} />
         </Field>

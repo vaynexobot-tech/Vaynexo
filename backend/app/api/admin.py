@@ -11,7 +11,7 @@ from app.config import settings
 from app.errors import AppError, BadState, NotFound
 from app.models import (
     Rental, RentListing,
-    BoostOrder, Deal, DonateOrder, DonatePackage, IncomingPayment, Listing, P2PCard, TgOrder, Topup, Tournament,
+    BoostOrder, Deal, DonateOrder, DonatePackage, IncomingPayment, Listing, P2PCard, PartnerVideo, TgOrder, Topup, Tournament,
     TournamentEntry, User, Withdrawal,
 )
 from app.queue import enqueue
@@ -42,6 +42,9 @@ async def stats(admin: AdminUser, session: SessionDep):
         "boost_open": _count(BoostOrder, BoostOrder.status.in_(("searching", "disputed"))),
         "rent_moderation": _count(RentListing, RentListing.status == "moderation"),
         "rent_disputes": _count(Rental, Rental.status == "disputed"),
+        "topup_checking": _count(Topup, Topup.status == "checking"),
+        "kyc_pending": _count(User, User.kyc_status == "pending"),
+        "partner_pending": _count(PartnerVideo, PartnerVideo.status == "pending"),
     }
     out = {k: (await session.scalar(v)) or 0 for k, v in q.items()}
     out["topups_today"] = int(await session.scalar(select(func.coalesce(func.sum(Topup.pay_amount), 0)).where(Topup.status == "paid", Topup.paid_at >= day)))

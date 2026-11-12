@@ -61,6 +61,7 @@ TOPICS = {
     "boost": "Boost buyurtmalari",
     "hamkor": "Hamkor videolari",
     "yordam": "Yordam so'rovlari",
+    "hisobot": "Kunlik hisobot (har kuni 09:00)",
     "boshqa": "Qolgan barcha xabarlar",
     "barcha": "Hamma xabarlarning nusxasi",
 }

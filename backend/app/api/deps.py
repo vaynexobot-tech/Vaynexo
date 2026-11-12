@@ -1,5 +1,7 @@
 import logging
 import time
+from collections.abc import AsyncIterator
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import redis.asyncio as aioredis
@@ -101,6 +103,7 @@ async def current_user(
             lang="ru" if (tg.get("language_code") or "").startswith("ru") else "uz",
             referrer_id=ref,
             is_admin=uid in settings.admin_ids,
+            last_seen_at=datetime.now(timezone.utc),
         )
         session.add(user)
         if ref:
@@ -114,6 +117,9 @@ async def current_user(
             user.username = tg.get("username")
         if uid in settings.admin_ids and not user.is_admin:
             user.is_admin = True
+        now_ = datetime.now(timezone.utc)
+        if user.last_seen_at is None or now_ - user.last_seen_at > timedelta(minutes=30):
+            user.last_seen_at = now_  # faollik (ommaviy xabar auditoriyasi, statistika)
         # Tranzaksiyani yopamiz (rollback obyektlarni eskirtiradi, commit esa yo'q) — endpoint o'zinikini ochadi.
         await session.commit()
     if user.is_banned:
@@ -137,10 +143,18 @@ def _pin_exempt(request: Request) -> bool:
 CurrentUser = Annotated[User, Depends(current_user)]
 
 
-async def admin_user(user: CurrentUser) -> User:
+async def admin_user(request: Request, user: CurrentUser) -> AsyncIterator[User]:
     if not (user.is_admin or user.id in settings.admin_ids):
         raise Forbidden()
-    return user
+    if request.method == "GET":
+        yield user
+        return
+    body = await request.body()
+    yield user
+    # Faqat muvaffaqiyatli o'zgarishlar yoziladi (endpoint xato bersa, bu yerga yetib kelmaydi)
+    from app.services import audit
+
+    await audit.log_http(user.id, request.method, request.url.path, body)
 
 
 AdminUser = Annotated[User, Depends(admin_user)]

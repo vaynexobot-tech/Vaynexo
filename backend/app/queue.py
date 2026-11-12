@@ -107,6 +107,8 @@ async def lite_cron_loop() -> None:
         await asyncio.sleep(60)
         tick += 1
         jobs = [worker.cron_expire_topups]
+        if tick % 10 == 0:
+            jobs.append(worker.cron_daily_report)
         if tick % 5 == 0:
             jobs.append(worker.cron_auto_release)
         if tick % 2 == 0:

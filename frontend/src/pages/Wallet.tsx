@@ -20,7 +20,7 @@ const KIND: Record<string, string> = {
   deal_payout: "Akkaunt sotuvi", deal_refund: "Bitim qaytarildi", withdraw: "Pul yechish", withdraw_refund: "Yechish qaytarildi",
   tg_service: "Telegram xizmat", tg_refund: "TG xizmat qaytarildi", boost: "Boost", boost_refund: "Boost qaytarildi",
   boost_payout: "Boost daromadi", vip: "VIP e'lon", rent_pay: "Akkaunt ijarasi", rent_payout: "Ijara daromadi",
-  rent_deposit_back: "Depozit qaytdi", rent_refund: "Ijara qaytarildi", tournament_fee: "Turnir to'lovi", referral: "Taklif bonusi", admin_adjust: "Admin tuzatishi",
+  rent_deposit_back: "Depozit qaytdi", rent_refund: "Ijara qaytarildi", tournament_fee: "Turnir to'lovi", referral: "Taklif bonusi", admin_adjust: "Admin tuzatishi", promo: "Promo-kod bonusi",
 };
 
 export default function Wallet() {
@@ -50,7 +50,7 @@ export default function Wallet() {
         <Seg value={tab} onChange={setTab} options={[{ v: "topup", label: t("To'ldirish") }, ...(canWithdraw ? [{ v: "withdraw" as const, label: t("Yechish") }] : []), { v: "history", label: t("Tarix") }]} />
         <Loadable state={w}>
           {(d) =>
-            tab === "topup" ? <TopupFlow info={d} onDone={w.reload} /> : tab === "withdraw" && canWithdraw ? <WithdrawForm info={d} onDone={w.reload} /> : <LedgerList entries={d.entries} />
+            tab === "topup" ? <><TopupFlow info={d} onDone={w.reload} /><PromoBox onDone={w.reload} /></> : tab === "withdraw" && canWithdraw ? <WithdrawForm info={d} onDone={w.reload} /> : <LedgerList entries={d.entries} />
           }
         </Loadable>
       </div>
@@ -342,5 +342,27 @@ function WalletIdChip({ id }: { id: string }) {
     <button className="wid-chip mono" onClick={async () => {
       try { await navigator.clipboard.writeText(id.replace(/\s/g, "")); toast(t("Nusxa olindi"), "ok"); } catch { toast(id); }
     }}>{id} <Icon name="copy" size={13} /></button>
+  );
+}
+
+function PromoBox({ onDone }: { onDone: () => void }) {
+  const { toast, refreshMe } = useApp();
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const { busy, run } = useAction();
+  if (!open) return <button className="btn ghost full" onClick={() => setOpen(true)}>🎟 {t("Promo-kod bormi?")}</button>;
+  return (
+    <div className="card col">
+      <div className="b">🎟 {t("Promo-kod")}</div>
+      <div className="row">
+        <input className="input mono grow" placeholder="VAYNEXO2026" maxLength={32} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+        <button className="btn" disabled={busy || code.trim().length < 3} onClick={() => run(async () => {
+          const r = await api.post<{ amount: number }>("/wallet/promo", { code });
+          toast(t("Hamyoningizga +{n} so'm bonus tushdi", { n: money(r.amount) }), "ok");
+          setCode(""); setOpen(false); onDone(); refreshMe();
+        })}>{t("Faollashtirish")}</button>
+      </div>
+      <div className="mut xs">{t("Bonus faqat VAYNEXO xizmatlari uchun ishlatiladi, yechib olinmaydi.")}</div>
+    </div>
   );
 }

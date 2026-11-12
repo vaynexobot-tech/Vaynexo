@@ -873,4 +873,10 @@ export const ru: Record<string, string> = {
   "Visa/Mastercard ilovangiz yoki bankingiz orqali o'tkazmani oching": "Откройте перевод в приложении банка Visa/Mastercard",
   "Bank ilovangizni oching (Click, Payme, Uzum va boshqalar)": "Откройте банковское приложение (Click, Payme, Uzum и др.)",
   "«Kartaga o'tkazma» ni tanlab, karta raqamini kiriting": "Выберите «Перевод на карту» и введите номер карты",
+  "Promo-kod bormi?": "Есть промокод?",
+  "Promo-kod": "Промокод",
+  "Hamyoningizga +{n} so'm bonus tushdi": "На кошелёк зачислен бонус +{n} сум",
+  "Faollashtirish": "Активировать",
+  "Bonus faqat VAYNEXO xizmatlari uchun ishlatiladi, yechib olinmaydi.": "Бонус можно тратить только на услуги VAYNEXO, вывести нельзя.",
+  "Promo-kod bonusi": "Бонус по промокоду",
 };

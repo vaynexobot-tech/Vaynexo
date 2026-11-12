@@ -64,6 +64,7 @@ class User(TimestampMixin, Base):
     tournament_passes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     boost_coupon_percent: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     badge: Mapped[str | None] = mapped_column(String(32))
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     wallet_id: Mapped[str | None] = mapped_column(String(12), unique=True)  # hamyon ID (8 raqam), Telegram ID o'rniga ko'rsatiladi
 
 
@@ -506,3 +507,41 @@ class PartnerVideo(TimestampMixin, Base):
     reward: Mapped[str] = mapped_column(String(120), default="")
     note: Mapped[str | None] = mapped_column(String(300))
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+# ---------------------------------------------------------------- admin jurnali
+class AdminLog(TimestampMixin, Base):
+    """Adminning har bir o'zgartiruvchi harakati: kim, qachon, nima qildi."""
+
+    __tablename__ = "admin_log"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    admin_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    action: Mapped[str] = mapped_column(String(120))
+    summary: Mapped[str] = mapped_column(Text, default="")
+    amount: Mapped[int | None] = mapped_column(BigInteger)
+    target_user: Mapped[int | None] = mapped_column(BigInteger, index=True)
+
+
+# ---------------------------------------------------------------- promo-kodlar
+class PromoCode(TimestampMixin, Base):
+    __tablename__ = "promo_codes"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    code: Mapped[str] = mapped_column(String(32), unique=True)
+    amount: Mapped[int] = mapped_column(BigInteger)  # hamyonga bonus (so'm)
+    max_uses: Mapped[int] = mapped_column(Integer, default=100)
+    used: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    need_topup: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")  # faqat to'ldirganlar
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    created_by: Mapped[int] = mapped_column(BigInteger)
+
+
+class PromoRedemption(TimestampMixin, Base):
+    __tablename__ = "promo_redemptions"
+    __table_args__ = (UniqueConstraint("promo_id", "user_id", name="uq_promo_user"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    promo_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("promo_codes.id"), index=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)

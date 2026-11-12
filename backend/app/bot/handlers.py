@@ -467,6 +467,9 @@ async def kyc_callback(cb: CallbackQuery):
         await cb.answer(e.message, show_alert=True)
         return
     await out.flush()
+    from app.services import audit
+
+    await audit.write(cb.from_user.id, "Identifikatsiya (bot)", "tasdiqlandi" if action == "ok" else "rad etildi", None, int(uid))
     await cb.answer("Tasdiqlandi ✅" if action == "ok" else "Rad etildi")
     try:
         await cb.message.edit_text(cb.message.text + ("\n\n✅ Tasdiqlandi" if action == "ok" else "\n\n❌ Rad etildi"))
@@ -491,6 +494,9 @@ async def donate_callback(cb: CallbackQuery):
         await cb.answer(e.message, show_alert=True)
         return
     await out.flush()
+    from app.services import audit
+
+    await audit.write(cb.from_user.id, "Donat (bot)", f"buyurtma #{oid}: " + ("bajarildi" if action == "done" else "pul qaytarildi"))
     who = cb.from_user.username or cb.from_user.first_name
     mark = f"\n\n✅ Bajarildi ({who})" if action == "done" else f"\n\n↩️ Pul qaytarildi ({who})"
     await cb.answer("Bajarildi ✅" if action == "done" else "Pul qaytarildi")
@@ -518,6 +524,9 @@ async def topup_callback(cb: CallbackQuery):
         await cb.answer(e.message, show_alert=True)
         return
     await out.flush()
+    from app.services import audit
+
+    await audit.write(cb.from_user.id, "«To'ladim» (bot)", f"so'rov #{tid}: " + ("tasdiqlandi" if action == "ok" else "rad etildi"))
     mark = "\n\n✅ Tasdiqlandi — balans to'ldirildi" if action == "ok" else "\n\n❌ Rad etildi"
     await cb.answer("Tasdiqlandi ✅" if action == "ok" else "Rad etildi")
     try:

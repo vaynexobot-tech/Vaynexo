@@ -5,7 +5,7 @@ import { t } from "../i18n";
 import { confirmDialog, openTg } from "../tg";
 import { Chips, Copy, dateTime, Empty, Field, Header, Loadable, money, MoneyInput, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
 
-type Tab = "stats" | "settings" | "rent" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments" | "kyc" | "partner" | "matches";
+type Tab = "stats" | "analytics" | "audit" | "broadcast" | "promo" | "settings" | "rent" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments" | "kyc" | "partner" | "matches";
 
 type Section = { v: Tab; icon: string; label: string; count?: string[] };
 const QUEUE: Section[] = [
@@ -21,7 +21,11 @@ const QUEUE: Section[] = [
   { v: "partner", icon: "🎬", label: "Hamkor videolari", count: ["partner_pending"] },
 ];
 const MANAGE: Section[] = [
+  { v: "analytics", icon: "📈", label: "Daromad va grafik" },
   { v: "users", icon: "👥", label: "Foydalanuvchilar" },
+  { v: "broadcast", icon: "📣", label: "Ommaviy xabar" },
+  { v: "promo", icon: "🎟", label: "Promo-kodlar" },
+  { v: "audit", icon: "🧾", label: "Admin jurnali" },
   { v: "settings", icon: "⚙️", label: "Sozlamalar" },
   { v: "packages", icon: "📦", label: "Donat paketlari" },
   { v: "tournaments", icon: "🏆", label: "Turnirlar" },
@@ -40,6 +44,10 @@ export default function Admin() {
         {tab !== "stats" && <button className="btn small ghost" style={{ alignSelf: "flex-start" }} onClick={() => setTab("stats")}>‹ Bo'limlar</button>}
         {tab === "stats" && <Stats go={setTab} />}
         {tab === "settings" && <AppSettings />}
+        {tab === "analytics" && <Analytics />}
+        {tab === "audit" && <AuditLog />}
+        {tab === "broadcast" && <Broadcast />}
+        {tab === "promo" && <Promos />}
         {tab === "rent" && <RentAdmin />}
         {tab === "incoming" && <Incoming />}
         {tab === "withdraw" && <Withdrawals />}
@@ -396,6 +404,7 @@ function Users() {
   const [query, setQuery] = useState("");
   const st = useLoad(() => api.get<(Me & { is_banned: boolean; created_at: string })[]>(`/admin/users?q=${encodeURIComponent(query)}`), [query]);
   const [adj, setAdj] = useState<{ id: number; name: string } | null>(null);
+  const [card, setCard] = useState<number | null>(null);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const { busy, run } = useAction();
@@ -405,7 +414,7 @@ function Users() {
       <Loadable state={st}>
         {(list) => list.map((u) => (
           <div key={u.id} className="card col">
-            <div className="row between"><span className="b">{u.name} {u.username ? `@${u.username}` : ""}</span>{u.is_banned && <span className="badge r">BLOK</span>}</div>
+            <div className="row between click" onClick={() => setCard(u.id)}><span className="b">{u.name} {u.username ? `@${u.username}` : ""}</span>{u.is_banned ? <span className="badge r">BLOK</span> : <span className="y sm">Kartochka ›</span>}</div>
             <div className="mut xs mono">{(u as Me & { wallet_id?: string }).wallet_id ?? ""} · ID {u.id} · {som(u.balance)} · {dateTime(u.created_at)}</div>
             <div className="row">
               <button className="btn small ghost grow" onClick={() => { setAdj({ id: u.id, name: u.name }); setAmount(""); setNote(""); }}>Balans</button>
@@ -425,6 +434,254 @@ function Users() {
           setAdj(null); st.reload();
         })}>Saqlash</button>
       </Sheet>
+      <Sheet open={card !== null} onClose={() => setCard(null)}>
+        {card !== null && <UserCard id={card} onBalance={(id, name) => { setCard(null); setAdj({ id, name }); setAmount(""); setNote(""); }} />}
+      </Sheet>
+    </>
+  );
+}
+
+const KIND: Record<string, string> = {
+  topup: "To'ldirish", donate: "Donat", donate_refund: "Donat qaytdi", tg_service: "TG xizmat", tg_refund: "TG qaytdi",
+  boost: "Boost", boost_refund: "Boost qaytdi", boost_payout: "Boost daromadi", deal_pay: "Akkaunt xaridi", deal_refund: "Xarid qaytdi",
+  deal_payout: "Sotuvdan tushum", rent_pay: "Ijara to'lovi", rent_payout: "Ijara daromadi", rent_refund: "Ijara qaytdi",
+  rent_deposit_back: "Garov qaytdi", withdraw: "Pul yechish", withdraw_refund: "Yechish qaytdi", referral: "Taklif bonusi",
+  admin_adjust: "Admin tuzatishi", promo: "Promo-kod", vip: "VIP e'lon", tournament_fee: "Turnir badali",
+};
+const KYC: Record<string, string> = { none: "Yo'q", pending: "Tekshiruvda", verified: "Tasdiqlangan", rejected: "Rad etilgan" };
+
+interface CardData {
+  user: Me & { is_banned: boolean; created_at: string; last_seen_at: string | null; wallet_id: string; kyc_status: string; referrer_id: number | null; withdrawable: number };
+  stats: Record<string, { count: number; sum: number }>;
+  ledger: { id: number; amount: number; balance_after: number; kind: string; note: string | null; created_at: string }[];
+  admin_log: AuditRow[];
+}
+
+function UserCard({ id, onBalance }: { id: number; onBalance: (id: number, name: string) => void }) {
+  const st = useLoad(() => api.get<CardData>(`/admin/users/${id}/card`), [id]);
+  const rows: [string, string, boolean][] = [
+    ["topups", "To'ldirgan", true], ["purchases", "Akkaunt xaridi", true], ["sales", "Akkaunt sotuvi", true], ["donates", "Donat", true],
+    ["tg", "TG xizmat", true], ["boosts", "Boost", true], ["rentals", "Ijara", true], ["withdrawals", "Yechgan", true],
+    ["listings", "E'lonlari", false], ["disputes", "Nizolar", false], ["invited", "Taklif qilgan", false],
+  ];
+  return (
+    <Loadable state={st}>
+      {(d) => (
+        <div className="col">
+          <div className="row between">
+            <div><div className="b">{d.user.name} {d.user.username ? `@${d.user.username}` : ""}</div>
+              <div className="mut xs mono">{d.user.wallet_id} · ID {d.user.id}</div></div>
+            {d.user.is_banned ? <span className="badge r">BLOK</span> : <span className="badge g">Faol</span>}
+          </div>
+          <div className="grid2">
+            <StatCard label="Balans" value={money(d.user.balance)} sub={`yechsa bo'ladi: ${money(d.user.withdrawable)}`} />
+            <StatCard label="Identifikatsiya" value={KYC[d.user.kyc_status] ?? d.user.kyc_status} sub={`ro'yxat: ${dateTime(d.user.created_at)}`} />
+          </div>
+          <div className="mut xs">Oxirgi kirish: {d.user.last_seen_at ? dateTime(d.user.last_seen_at) : "—"}{d.user.referrer_id ? ` · taklif qilgan: ID ${d.user.referrer_id}` : ""}</div>
+          <div className="card tight col" style={{ gap: 4 }}>
+            {rows.map(([k, label, withSum]) => (
+              <div key={k} className="kv"><span>{label}</span><span className="mono">{d.stats[k].count} ta{withSum && d.stats[k].sum ? ` · ${som(d.stats[k].sum)}` : ""}</span></div>
+            ))}
+          </div>
+          <button className="btn small" onClick={() => onBalance(d.user.id, d.user.name)}>Balansni tuzatish</button>
+          <div className="sec-title">Hamyon harakatlari</div>
+          {d.ledger.length === 0 ? <div className="mut sm">Harakat yo'q</div> : d.ledger.map((e) => (
+            <div key={e.id} className="row between sm" style={{ borderBottom: "1px solid var(--line)", padding: "6px 0" }}>
+              <div><div>{KIND[e.kind] ?? e.kind}</div><div className="mut xs">{dateTime(e.created_at)}{e.note ? ` · ${e.note}` : ""}</div></div>
+              <div style={{ textAlign: "right" }}><div className={"mono b " + (e.amount > 0 ? "g" : "")}>{e.amount > 0 ? "+" : ""}{money(e.amount)}</div><div className="mut xs mono">{money(e.balance_after)}</div></div>
+            </div>
+          ))}
+          {d.admin_log.length > 0 && <><div className="sec-title">Adminlar harakati</div>{d.admin_log.map((x) => <AuditItem key={x.id} x={x} />)}</>}
+        </div>
+      )}
+    </Loadable>
+  );
+}
+
+// ------------------------------------------------------------ admin jurnali
+interface AuditRow { id: number; admin_id: number; admin_name?: string; action: string; summary: string; amount: number | null; target_user: number | null; target_name?: string | null; created_at: string }
+
+const AuditItem = ({ x }: { x: AuditRow }) => (
+  <div className="card tight col" style={{ gap: 2 }}>
+    <div className="row between"><span className="b sm">{x.action}</span>{x.amount != null && <span className="y mono sm">{money(x.amount)}</span>}</div>
+    <div className="mut xs">{dateTime(x.created_at)} · {x.admin_name ?? `admin ${x.admin_id}`}{x.target_user ? ` → ${x.target_name ?? ""} (ID ${x.target_user})` : ""}</div>
+    {x.summary && <div className="mut xs pre" style={{ wordBreak: "break-word" }}>{x.summary}</div>}
+  </div>
+);
+
+function AuditLog() {
+  const [rows, setRows] = useState<AuditRow[]>([]);
+  const st = useLoad(async () => { const r = await api.get<AuditRow[]>("/admin/audit"); setRows(r); return r; });
+  const { busy, run } = useAction();
+  return (
+    <Loadable state={st}>
+      {() => rows.length === 0 ? <Empty icon="🧾" text="Hali harakat yo'q" /> : (
+        <>
+          <div className="mut xs">Adminlarning har bir o'zgartiruvchi harakati shu yerda: kim, qachon, kimga, qancha. Parol va kalitlar yashiriladi.</div>
+          {rows.map((x) => <AuditItem key={x.id} x={x} />)}
+          {rows.length % 50 === 0 && <button className="btn ghost full" disabled={busy} onClick={() => run(async () => {
+            const more = await api.get<AuditRow[]>(`/admin/audit?before=${rows[rows.length - 1].id}`); setRows([...rows, ...more]);
+          })}>Yana</button>}
+        </>
+      )}
+    </Loadable>
+  );
+}
+
+// ------------------------------------------------------------ daromad va grafik
+interface DayRow { date: string; topup: number; turnover: number; income: number; withdraw: number; users: number; donate: number; tg: number; deals: number; boost: number }
+interface AnalyticsData { days: DayRow[]; total: Record<string, number>; top_packages: { title: string; count: number; sum: number }[] }
+const METRICS: { v: keyof DayRow; label: string; money: boolean }[] = [
+  { v: "income", label: "Daromad", money: true }, { v: "topup", label: "To'ldirish", money: true },
+  { v: "turnover", label: "Aylanma", money: true }, { v: "users", label: "Yangi foydalanuvchi", money: false },
+];
+
+function Analytics() {
+  const { toast } = useApp();
+  const [days, setDays] = useState(30);
+  const [metric, setMetric] = useState<keyof DayRow>("income");
+  const [hover, setHover] = useState<number | null>(null);
+  const [table, setTable] = useState(false);
+  const st = useLoad(() => api.get<AnalyticsData>(`/admin/analytics?days=${days}`), [days]);
+  const { busy, run } = useAction();
+  const m = METRICS.find((x) => x.v === metric)!;
+  const fmtV = (n: number) => (m.money ? `${money(n)} so'm` : `${n}`);
+  return (
+    <Loadable state={st}>
+      {(d) => {
+        const vals = d.days.map((x) => Number(x[metric]));
+        const max = Math.max(1, ...vals);
+        const sel = hover ?? vals.length - 1;
+        return (
+          <>
+            <Chips value={days} onChange={setDays} options={[7, 30, 90].map((v) => ({ v, label: `${v} kun` }))} />
+            <div className="grid2">
+              <StatCard label="Platforma daromadi" value={money(d.total.income)} sub="komissiya + boost ulushi" />
+              <StatCard label="To'ldirildi" value={money(d.total.topup)} sub="so'm" />
+              <StatCard label="Aylanma" value={money(d.total.turnover)} sub="donat, TG, akkaunt, boost" />
+              <StatCard label="Yangi foydalanuvchi" value={money(d.total.users)} sub={`${days} kunda`} />
+            </div>
+            <div className="card col">
+              <Chips value={metric} onChange={setMetric} options={METRICS.map((x) => ({ v: x.v, label: x.label }))} />
+              <div className="row between sm"><span className="mut">{d.days[sel]?.date.split("-").reverse().join(".")}</span><span className="b mono">{fmtV(vals[sel] ?? 0)}</span></div>
+              <div className="bars" role="img" aria-label={`${m.label}: ${days} kunlik grafik`} onMouseLeave={() => setHover(null)}>
+                {vals.map((v, i) => (
+                  <div key={i} className={"bar-hit" + (i === sel ? " on" : "")} onMouseEnter={() => setHover(i)} onClick={() => setHover(i)}>
+                    <i style={{ height: v ? Math.max(3, (v / max) * 100) + "%" : 0 }} />
+                  </div>
+                ))}
+              </div>
+              <div className="row between mut xs"><span>{d.days[0]?.date.split("-").reverse().slice(0, 2).join(".")}</span><span>eng ko'p: {fmtV(max === 1 && !vals.some(Boolean) ? 0 : max)}</span><span>{d.days[d.days.length - 1]?.date.split("-").reverse().slice(0, 2).join(".")}</span></div>
+              <button className="btn small ghost" onClick={() => setTable(!table)}>{table ? "Jadvalni yopish" : "Jadval ko'rinishi"}</button>
+              {table && (
+                <div className="col" style={{ gap: 0 }}>
+                  {[...d.days].reverse().map((x) => (
+                    <div key={x.date} className="kv sm"><span>{x.date.split("-").reverse().join(".")}</span><span className="mono">{fmtV(Number(x[metric]))}</span></div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="card col" style={{ gap: 4 }}>
+              <div className="b sm">Aylanma tarkibi ({days} kun)</div>
+              {([["donate", "💎 Donat"], ["tg", "⭐️ TG xizmatlar"], ["deals", "🛒 Akkaunt savdosi"], ["boost", "🚀 Boost"]] as const).map(([k, label]) => (
+                <div key={k} className="kv"><span>{label}</span><span className="mono">{som(d.total[k] ?? 0)}</span></div>
+              ))}
+              <div className="kv"><span>💸 Yechib berilgan</span><span className="mono">{som(d.total.withdraw)}</span></div>
+            </div>
+            {d.top_packages.length > 0 && (
+              <div className="card col" style={{ gap: 4 }}>
+                <div className="b sm">Eng ko'p sotilgan paketlar</div>
+                {d.top_packages.map((p) => <div key={p.title} className="kv"><span>{p.title}</span><span className="mono">{p.count} ta · {som(p.sum)}</span></div>)}
+              </div>
+            )}
+            <div className="card col">
+              <div className="b sm">📊 Kunlik hisobot</div>
+              <div className="mut xs">Har kuni 09:00 da kechagi natijalar admin guruhining «Kunlik hisobot» mavzusiga yuboriladi (guruhda /mavzu → «Kunlik hisobot»).</div>
+              <button className="btn small ghost" disabled={busy} onClick={() => run(async () => { await api.post("/admin/report/send"); toast("Hisobot guruhga yuborildi", "ok"); })}>Hozir yuborib ko'rish</button>
+            </div>
+          </>
+        );
+      }}
+    </Loadable>
+  );
+}
+
+// ------------------------------------------------------------ ommaviy xabar
+interface BroadcastState { running: boolean; sent: number; failed: number; total: number; audience: string | null; audiences: { v: string; label: string; count: number }[] }
+
+function Broadcast() {
+  const { toast } = useApp();
+  const st = useLoad(() => api.get<BroadcastState>("/admin/broadcast"));
+  const [text, setText] = useState("");
+  const [aud, setAud] = useState("all");
+  const [button, setButton] = useState(true);
+  const { busy, run } = useAction();
+  return (
+    <Loadable state={st}>
+      {(d) => {
+        const target = d.audiences.find((a) => a.v === aud);
+        return (
+          <>
+            {(d.running || d.total > 0) && (
+              <div className="card col" style={{ borderColor: d.running ? "rgba(255,214,10,.5)" : "rgba(29,233,182,.45)" }}>
+                <div className="row between"><span className="b sm">{d.running ? "⏳ Yuborilmoqda…" : "✅ Oxirgi xabar yuborildi"}</span><span className="mut xs">{d.audience}</span></div>
+                <div className="progress"><i style={{ width: (d.total ? ((d.sent + d.failed) / d.total) * 100 : 0) + "%", background: "var(--g)" }} /></div>
+                <div className="mut xs">{d.sent} yuborildi · {d.failed} yetmadi · jami {d.total}</div>
+                {d.running && <button className="btn small ghost" onClick={st.reload}>Yangilash</button>}
+              </div>
+            )}
+            <div className="card col">
+              <Field label="Kimga"><Chips value={aud} onChange={setAud} options={d.audiences.map((a) => ({ v: a.v, label: `${a.label} · ${a.count}` }))} /></Field>
+              <Field label="Xabar matni"><textarea className="input" rows={6} maxLength={3500} placeholder="🎉 Aksiya: bugun barcha almaz paketlariga −10%!" value={text} onChange={(e) => setText(e.target.value)} /></Field>
+              <label className="row sm" style={{ cursor: "pointer" }}><input type="checkbox" className="cbox" checked={button} onChange={(e) => setButton(e.target.checked)} /><span>«VAYNEXO ni ochish» tugmasi bilan</span></label>
+              <div className="row">
+                <button className="btn ghost grow" disabled={busy || text.trim().length < 2} onClick={() => run(async () => { await api.post("/admin/broadcast", { text, audience: aud, button, test: true }); toast("Sinov xabari sizga yuborildi", "ok"); })}>Avval o'zimga</button>
+                <button className="btn grow" disabled={busy || d.running || text.trim().length < 2 || !target?.count} onClick={() => run(async () => {
+                  if (!(await confirmDialog(`${target!.count} kishiga yuborilsinmi? Bekor qilib bo'lmaydi.`))) return;
+                  await api.post("/admin/broadcast", { text, audience: aud, button }); setText(""); toast("Yuborish boshlandi", "ok"); st.reload();
+                })}>Yuborish · {target?.count ?? 0}</button>
+              </div>
+              <div className="mut xs">Telegram cheklovi sababli soniyasiga ~20 ta xabar ketadi: 1 000 kishiga taxminan 1 daqiqa. Botni bloklaganlarga yetmaydi.</div>
+            </div>
+          </>
+        );
+      }}
+    </Loadable>
+  );
+}
+
+// ------------------------------------------------------------ promo-kodlar
+interface Promo { id: number; code: string; amount: number; max_uses: number; used: number; expires_at: string | null; need_topup: boolean; active: boolean }
+
+function Promos() {
+  const { toast } = useApp();
+  const st = useLoad(() => api.get<Promo[]>("/admin/promo"));
+  const [f, setF] = useState({ code: "", amount: "" as number | "", max_uses: 100, days: 30, need_topup: true });
+  const { busy, run } = useAction();
+  return (
+    <>
+      <div className="card col">
+        <div className="b">Yangi promo-kod</div>
+        <div className="mut xs">Foydalanuvchi kodni Hamyon → «Promo-kod» ga kiritadi va bonus hamyoniga tushadi. Har kim bir marta ishlata oladi. Bonusni yechib bo'lmaydi — faqat xizmatlarga sarflanadi.</div>
+        <Field label="Kod"><input className="input mono" placeholder="VAYNEXO2026" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "") })} /></Field>
+        <Field label="Bonus (so'm)"><MoneyInput value={f.amount} onChange={(v) => setF({ ...f, amount: v })} placeholder="5 000" /></Field>
+        <Field label="Necha kishi ishlata oladi"><Chips value={f.max_uses} onChange={(v) => setF({ ...f, max_uses: v })} options={[10, 50, 100, 500, 1000].map((v) => ({ v, label: String(v) }))} /></Field>
+        <Field label="Amal qilish muddati"><Chips value={f.days} onChange={(v) => setF({ ...f, days: v })} options={[[1, "1 kun"], [7, "7 kun"], [30, "30 kun"], [0, "Muddatsiz"]].map(([v, label]) => ({ v: v as number, label: label as string }))} /></Field>
+        <label className="row sm" style={{ cursor: "pointer" }}><input type="checkbox" className="cbox" checked={f.need_topup} onChange={(e) => setF({ ...f, need_topup: e.target.checked })} /><span>Faqat hamyonini to'ldirganlar uchun (soxta akkauntlardan himoya)</span></label>
+        <button className="btn full" disabled={busy || f.code.length < 3 || !f.amount} onClick={() => run(async () => {
+          await api.post("/admin/promo", { ...f, amount: Number(f.amount) }); toast("Promo-kod yaratildi", "ok"); setF({ ...f, code: "", amount: "" }); st.reload();
+        })}>Yaratish</button>
+      </div>
+      <Loadable state={st}>
+        {(list) => list.length === 0 ? <Empty icon="🎟" text="Promo-kodlar yo'q" /> : list.map((p) => (
+          <div key={p.id} className="card col" style={{ opacity: p.active ? 1 : 0.55 }}>
+            <div className="row between"><Copy value={p.code} /><span className="y mono b">+{som(p.amount)}</span></div>
+            <div className="progress"><i style={{ width: Math.min(100, (p.used / p.max_uses) * 100) + "%", background: "var(--y)" }} /></div>
+            <div className="row between mut xs"><span>{p.used} / {p.max_uses} ishlatildi{p.need_topup ? " · faqat to'ldirganlar" : ""}</span><span>{p.expires_at ? `${dateTime(p.expires_at)} gacha` : "muddatsiz"}</span></div>
+            <button className={"btn small " + (p.active ? "danger" : "green")} disabled={busy} onClick={() => run(async () => { await api.post(`/admin/promo/${p.id}/toggle`); st.reload(); })}>{p.active ? "O'chirish" : "Yoqish"}</button>
+          </div>
+        ))}
+      </Loadable>
     </>
   );
 }

@@ -11,8 +11,16 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-12.kirim-idga"
-NOTES = """💳 Kirimni aniq odamga yozish: Admin → Kirimlar → «Kimga» (VX hamyon ID yoki Telegram ID) → summa
+RELEASE = "2026-11-12.admin-vositalar"
+NOTES = """🛠 Admin panelga yangi bo'limlar (Admin → Boshqaruv):
+   📈 Daromad va grafik — kunlik daromad, to'ldirish, aylanma, yangi foydalanuvchilar
+   📣 Ommaviy xabar — hammaga / faollarga / sotuvchilarga…, avval o'zingizga sinov
+   🎟 Promo-kodlar — hamyonga bonus (foydalanuvchi: Hamyon → «Promo-kod bormi?»)
+   🧾 Admin jurnali — kim, qachon, kimga, qancha
+   👥 Foydalanuvchi kartochkasi — barcha to'lov va xaridlari bitta joyda
+📊 Kunlik hisobot har kuni 09:00 da — guruhda /mavzu → «Kunlik hisobot»
+
+💳 Kirimni aniq odamga yozish: Admin → Kirimlar → «Kimga» (VX hamyon ID yoki Telegram ID) → summa
    Biriktirilmagan kirimlarda ham «Odamga yozish» tugmasi bor
 
 🛠 Admin panel yangilandi: bosh sahifada «Navbat» (ishlar soni bilan) va «Boshqaruv» bo'limlari

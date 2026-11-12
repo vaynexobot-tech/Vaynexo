@@ -111,6 +111,12 @@ async def cron_auto_release(ctx):
     await out.flush()
 
 
+async def cron_daily_report(ctx):
+    from app.services import reports
+
+    await reports.maybe_send_daily()
+
+
 async def cron_rescue_donates(ctx):
     """Navbatga tushmay qolgan (masalan, Redis vaqtincha ishlamagan) donatlarni qayta yuboradi."""
     limit_time = datetime.now(timezone.utc) - timedelta(minutes=3)
@@ -135,6 +141,7 @@ class WorkerSettings:
     functions = [send_tg, fulfil_donate, post_boost, update_boost_post]
     cron_jobs = [
         cron(cron_expire_topups, second=0),
+        cron(cron_daily_report, minute=set(range(0, 60, 10)), second=30),
         cron(cron_auto_release, minute=set(range(0, 60, 5)), second=10),
         cron(cron_rescue_donates, minute=set(range(1, 60, 2)), second=20),
     ]

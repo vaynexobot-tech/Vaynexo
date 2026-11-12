@@ -860,4 +860,10 @@ export const en: Record<string, string> = {
   "Visa/Mastercard ilovangiz yoki bankingiz orqali o'tkazmani oching": "Open a transfer in your Visa/Mastercard bank app",
   "Bank ilovangizni oching (Click, Payme, Uzum va boshqalar)": "Open your banking app (Click, Payme, Uzum, etc.)",
   "«Kartaga o'tkazma» ni tanlab, karta raqamini kiriting": "Choose «Transfer to card» and enter the card number",
+  "Promo-kod bormi?": "Have a promo code?",
+  "Promo-kod": "Promo code",
+  "Hamyoningizga +{n} so'm bonus tushdi": "+{n} UZS bonus added to your wallet",
+  "Faollashtirish": "Activate",
+  "Bonus faqat VAYNEXO xizmatlari uchun ishlatiladi, yechib olinmaydi.": "The bonus can only be spent on VAYNEXO services and can't be withdrawn.",
+  "Promo-kod bonusi": "Promo code bonus",
 };

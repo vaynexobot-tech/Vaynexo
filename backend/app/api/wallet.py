@@ -129,6 +129,21 @@ async def topup_paid(topup_id: int, user: CurrentUser, session: SessionDep):
     return await _topup(session, t)
 
 
+class PromoIn(BaseModel):
+    code: str = Field(max_length=40)
+
+
+@router.post("/promo")
+async def redeem_promo(body: PromoIn, user: CurrentUser, session: SessionDep):
+    from app.services import promo
+
+    await rate_limit(f"promo:{user.id}", limit=8, window=600)
+    async with session.begin():
+        amount = await promo.redeem(session, user.id, body.code)
+    u = await session.get(User, user.id)
+    return {"ok": True, "amount": amount, "balance": u.balance}
+
+
 p2p_router = APIRouter(prefix="/p2p", tags=["p2p"])
 
 

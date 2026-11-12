@@ -562,3 +562,205 @@ async def tg_bank_bots(body: TgBotsIn, admin: AdminUser):
 
     await tg_bank.set_bots(body.bots)
     return await tg_bank.status()
+
+
+# ------------------------------------------------------------------ foydalanuvchi kartochkasi
+@router.get("/users/{user_id}/card")
+async def user_card(user_id: int, admin: AdminUser, session: SessionDep):
+    from app.models import AdminLog, LedgerEntry, Rental
+
+    u = await session.get(User, user_id)
+    if u is None:
+        raise NotFound("Foydalanuvchi")
+
+    async def agg(model, amount_col, *where):
+        row = (await session.execute(select(func.count(), func.coalesce(func.sum(amount_col), 0)).where(*where))).one()
+        return {"count": int(row[0]), "sum": int(row[1])}
+
+    stats = {
+        "topups": await agg(Topup, Topup.pay_amount, Topup.user_id == u.id, Topup.status == "paid"),
+        "purchases": await agg(Deal, Deal.price, Deal.buyer_id == u.id, Deal.status == "completed"),
+        "sales": await agg(Deal, Deal.price, Deal.seller_id == u.id, Deal.status == "completed"),
+        "donates": await agg(DonateOrder, DonateOrder.price, DonateOrder.user_id == u.id, DonateOrder.status == "done"),
+        "tg": await agg(TgOrder, TgOrder.price, TgOrder.user_id == u.id, TgOrder.status == "done"),
+        "boosts": await agg(BoostOrder, BoostOrder.price, BoostOrder.user_id == u.id),
+        "rentals": await agg(Rental, Rental.price, or_(Rental.renter_id == u.id, Rental.owner_id == u.id)),
+        "withdrawals": await agg(Withdrawal, Withdrawal.amount, Withdrawal.user_id == u.id, Withdrawal.status == "paid"),
+        "disputes": {"count": int(await session.scalar(select(func.count()).select_from(Deal).where(
+            or_(Deal.buyer_id == u.id, Deal.seller_id == u.id), Deal.dispute_reason.is_not(None))) or 0), "sum": 0},
+        "listings": {"count": int(await session.scalar(select(func.count()).select_from(Listing).where(Listing.seller_id == u.id)) or 0), "sum": 0},
+        "invited": {"count": int(await session.scalar(select(func.count()).select_from(User).where(User.referrer_id == u.id)) or 0), "sum": 0},
+    }
+    ledger = list(await session.scalars(select(LedgerEntry).where(LedgerEntry.user_id == u.id).order_by(LedgerEntry.id.desc()).limit(40)))
+    logs = list(await session.scalars(select(AdminLog).where(AdminLog.target_user == u.id).order_by(AdminLog.id.desc()).limit(20)))
+    return {
+        "user": {**S.user_private(u), "is_banned": u.is_banned, "created_at": S.iso(u.created_at), "last_seen_at": S.iso(u.last_seen_at),
+                 "wallet_id": wallet.format_wallet_id(u.wallet_id), "kyc_status": u.kyc_status, "referrer_id": u.referrer_id,
+                 "withdrawable": (await wallet.withdrawable(session, u.id, u.balance))["available"]},
+        "stats": stats,
+        "ledger": [{"id": e.id, "amount": e.amount, "balance_after": e.balance_after, "kind": e.kind, "note": e.note,
+                    "created_at": S.iso(e.created_at)} for e in ledger],
+        "admin_log": [_log_dict(x) for x in logs],
+    }
+
+
+def _log_dict(x) -> dict:
+    return {"id": x.id, "admin_id": x.admin_id, "action": x.action, "summary": x.summary, "amount": x.amount,
+            "target_user": x.target_user, "created_at": S.iso(x.created_at)}
+
+
+# ------------------------------------------------------------------ admin jurnali
+@router.get("/audit")
+async def audit_log(admin: AdminUser, session: SessionDep, before: int = 0, user: int = 0):
+    from app.models import AdminLog
+
+    q = select(AdminLog).order_by(AdminLog.id.desc()).limit(50)
+    if before:
+        q = q.where(AdminLog.id < before)
+    if user:
+        q = q.where(AdminLog.target_user == user)
+    rows = list(await session.scalars(q))
+    names = {u.id: (f"@{u.username}" if u.username else u.first_name) for u in await session.scalars(
+        select(User).where(User.id.in_({r.admin_id for r in rows} | {r.target_user for r in rows if r.target_user} or {0})))}
+    return [{**_log_dict(r), "admin_name": names.get(r.admin_id, str(r.admin_id)),
+             "target_name": names.get(r.target_user) if r.target_user else None} for r in rows]
+
+
+# ------------------------------------------------------------------ grafik / hisobot
+@router.get("/analytics")
+async def analytics(admin: AdminUser, session: SessionDep, days: int = 30):
+    from app.services import reports
+
+    return await reports.analytics(session, days)
+
+
+@router.post("/report/send")
+async def report_now(admin: AdminUser, session: SessionDep):
+    """Hisobotni hozir guruhga yuborish (sinash uchun)."""
+    from app.services import reports
+
+    text = await reports.daily_text(session)
+    out = Outbox()
+    out.admins(text, topic="hisobot")
+    await out.flush()
+    return {"ok": True, "text": text}
+
+
+# ------------------------------------------------------------------ promo-kodlar
+class PromoIn(BaseModel):
+    code: str = Field(min_length=3, max_length=32)
+    amount: int = Field(gt=0, le=5_000_000)
+    max_uses: int = Field(100, ge=1, le=100_000)
+    days: int = Field(30, ge=0, le=365)  # 0 — muddatsiz
+    need_topup: bool = True
+
+
+@router.get("/promo")
+async def promo_list(admin: AdminUser, session: SessionDep):
+    from app.models import PromoCode
+    from app.services.promo import promo_dict
+
+    return [promo_dict(p) for p in await session.scalars(select(PromoCode).order_by(PromoCode.id.desc()).limit(100))]
+
+
+@router.post("/promo")
+async def promo_create(body: PromoIn, admin: AdminUser, session: SessionDep):
+    from app.models import PromoCode
+    from app.services.promo import clean_code, promo_dict
+
+    code = clean_code(body.code)
+    if len(code) < 3:
+        raise AppError("bad_promo", "Kod faqat lotin harf va raqamlardan iborat bo'lsin")
+    async with session.begin():
+        if await session.scalar(select(PromoCode.id).where(PromoCode.code == code)):
+            raise BadState("Bunday kod bor")
+        p = PromoCode(code=code, amount=body.amount, max_uses=body.max_uses, need_topup=body.need_topup, created_by=admin.id,
+                      expires_at=datetime.now(timezone.utc) + timedelta(days=body.days) if body.days else None)
+        session.add(p)
+    return promo_dict(p)
+
+
+@router.post("/promo/{pid}/toggle")
+async def promo_toggle(pid: int, admin: AdminUser, session: SessionDep):
+    from app.models import PromoCode
+    from app.services.promo import promo_dict
+
+    async with session.begin():
+        p = await session.get(PromoCode, pid)
+        if p is None:
+            raise NotFound("Promo-kod")
+        p.active = not p.active
+    return promo_dict(p)
+
+
+# ------------------------------------------------------------------ ommaviy xabar
+class BroadcastIn(BaseModel):
+    text: str = Field(min_length=2, max_length=3500)
+    audience: str = Field("all", pattern="^(all|active7|buyers|sellers|verified|no_topup)$")
+    button: bool = True
+    test: bool = False
+
+
+AUDIENCES = {"all": "Hammaga", "active7": "Oxirgi 7 kunda kirganlar", "buyers": "Xarid qilganlar",
+             "sellers": "Sotuvchilar", "verified": "Tasdiqlanganlar (KYC)", "no_topup": "Hali to'ldirmaganlar"}
+_broadcast: dict = {"running": False, "sent": 0, "failed": 0, "total": 0, "audience": None, "started_at": None}
+
+
+def _audience_query(aud: str):
+    from app.api.user import SPEND_KINDS
+    from app.models import LedgerEntry, RentListing
+
+    q = select(User.id).where(User.is_banned.is_(False))
+    if aud == "active7":
+        q = q.where(User.last_seen_at >= datetime.now(timezone.utc) - timedelta(days=7))
+    elif aud == "buyers":
+        q = q.where(User.id.in_(select(LedgerEntry.user_id).where(LedgerEntry.kind.in_(SPEND_KINDS))))
+    elif aud == "sellers":
+        q = q.where(or_(User.id.in_(select(Listing.seller_id)), User.id.in_(select(RentListing.owner_id))))
+    elif aud == "verified":
+        q = q.where(User.kyc_status == "verified")
+    elif aud == "no_topup":
+        q = q.where(User.id.not_in(select(Topup.user_id).where(Topup.status == "paid")))
+    return q
+
+
+@router.get("/broadcast")
+async def broadcast_status(admin: AdminUser, session: SessionDep):
+    counts = {k: int(await session.scalar(select(func.count()).select_from(_audience_query(k).subquery())) or 0) for k in AUDIENCES}
+    return {**{k: v for k, v in _broadcast.items() if k != "task"}, "audiences": [{"v": k, "label": v, "count": counts[k]} for k, v in AUDIENCES.items()]}
+
+
+@router.post("/broadcast")
+async def broadcast(body: BroadcastIn, admin: AdminUser, session: SessionDep):
+    import asyncio
+
+    from app.services.notify import webapp_button
+
+    markup = webapp_button("🎮 VAYNEXO ni ochish") if body.button else None
+    out = Outbox()
+    if body.test:
+        out.user(admin.id, body.text, markup)
+        await out.flush()
+        return {"ok": True, "test": True}
+    if _broadcast["running"]:
+        raise BadState("Oldingi xabar hali yuborilmoqda")
+    ids = list(await session.scalars(_audience_query(body.audience)))
+    _broadcast.update(running=True, sent=0, failed=0, total=len(ids), audience=AUDIENCES[body.audience],
+                      started_at=datetime.now(timezone.utc).isoformat())
+
+    async def run() -> None:
+        from app.services import notify
+
+        try:
+            for uid in ids:
+                try:
+                    await notify._sender(uid, body.text, markup)
+                    _broadcast["sent"] += 1
+                except Exception:  # noqa: BLE001
+                    _broadcast["failed"] += 1
+                await asyncio.sleep(0.05)  # Telegram limiti: ~20 xabar/soniya
+        finally:
+            _broadcast["running"] = False
+
+    _broadcast["task"] = asyncio.create_task(run())
+    return {k: v for k, v in _broadcast.items() if k != "task"}

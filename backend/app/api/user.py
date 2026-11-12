@@ -163,6 +163,11 @@ async def history(user: CurrentUser, session: SessionDep, type: str = "all", lim
         for t in await session.scalars(select(Topup).where(Topup.user_id == uid, Topup.status == "paid").order_by(Topup.id.desc()).limit(limit)):
             items.append({"type": "topup", "id": t.id, "game": "UZS", "title": "Hamyon to'ldirish", "sub": "P2P karta",
                           "amount": t.pay_amount, "status": "done", "created_at": S.iso(t.paid_at or t.created_at)})
+        bonus_q = select(LedgerEntry).where(LedgerEntry.user_id == uid, LedgerEntry.kind.in_(("promo", "referral", "admin_adjust")))
+        for e in await session.scalars(bonus_q.order_by(LedgerEntry.id.desc()).limit(limit)):
+            title = {"promo": "Promo-kod bonusi", "referral": "Taklif bonusi", "admin_adjust": "Balans tuzatish"}[e.kind]
+            items.append({"type": "topup", "id": e.id, "game": "UZS", "title": title, "sub": e.note or "",
+                          "amount": e.amount, "status": "done", "created_at": S.iso(e.created_at)})
         for w in await session.scalars(select(Withdrawal).where(Withdrawal.user_id == uid).order_by(Withdrawal.id.desc()).limit(limit)):
             items.append({"type": "withdraw", "id": w.id, "game": "UZS", "title": "Pul yechish", "sub": "•••• " + w.card_number[-4:],
                           "amount": -w.amount, "status": w.status, "created_at": S.iso(w.created_at)})

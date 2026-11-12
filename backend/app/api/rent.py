@@ -18,7 +18,7 @@ def card(x: RentListing) -> dict:
     now = datetime.now(timezone.utc)
     owner = x.__dict__.get("owner")
     return {
-        "id": x.id, "game": x.game, "title": x.title, "rank": x.rank, "server": x.server, "skins": x.skins, "heroes": x.heroes,
+        "id": x.id, "game": x.game, "title": x.title, "rank": x.rank, "server": x.server, "collection_level": x.collection_level, "skins": x.skins, "heroes": x.heroes,
         "price_per_hour": x.price_per_hour, "status": x.status, "reject_reason": x.reject_reason,
         "cover": next((m["url"] for m in x.media if m.get("type") == "image"), None),
         "busy_until": S.iso(x.busy_until) if x.busy_until and x.busy_until > now else None,
@@ -48,6 +48,7 @@ async def rent_config(user: CurrentUser, session: SessionDep):
 
 @router.get("/rent/listings")
 async def listings(user: CurrentUser, session: SessionDep, free: bool = False, rank: str | None = None, max_price: int | None = None,
+                   level: str | None = None,
                    sort: str = "cheap", limit: int = 20, offset: int = 0):
     limit, offset = page_params(limit, offset)
     stmt = select(RentListing).where(RentListing.status == "active")
@@ -57,6 +58,8 @@ async def listings(user: CurrentUser, session: SessionDep, free: bool = False, r
         stmt = stmt.where(RentListing.rank.ilike(f"{rank[:20]}%"))
     if max_price:
         stmt = stmt.where(RentListing.price_per_hour <= max_price)
+    if level:
+        stmt = stmt.where(RentListing.collection_level.ilike(f"{level[:20]}%"))
     total = await session.scalar(select(func.count()).select_from(stmt.subquery()))
     free_first = case((or_(RentListing.busy_until.is_(None), RentListing.busy_until <= func.now()), 0), else_=1)
     order = {"expensive": RentListing.price_per_hour.desc(), "new": RentListing.id.desc(), "skins": RentListing.skins.desc()}.get(
@@ -82,6 +85,7 @@ class RentListingIn(BaseModel):
     title: str = Field(max_length=120)
     rank: str = Field("", max_length=32)
     server: str = Field("", max_length=32)
+    collection_level: str = Field("", max_length=32)
     skins: int = Field(0, ge=0)
     heroes: int = Field(0, ge=0)
     price_per_hour: int = Field(gt=0)

@@ -59,7 +59,7 @@ def validate_listing(data: dict, need_creds: bool) -> dict:
     pph = int(data.get("price_per_hour") or 0)
     if not 500 <= pph <= 10_000_000:
         raise AppError("bad_price", "Soatlik narx 500 so'mdan kam bo'lmasin")
-    out = {k: base[k] for k in ("game", "title", "rank", "server", "skins", "heroes", "description", "media")}
+    out = {k: base[k] for k in ("game", "title", "rank", "server", "collection_level", "skins", "heroes", "description", "media")}
     out["price_per_hour"] = pph
     creds = (data.get("credentials") or "").strip()
     if need_creds or creds:

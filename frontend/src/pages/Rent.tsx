@@ -9,7 +9,7 @@ import {
 } from "../ui";
 
 export interface RentCard {
-  id: number; game: "ML" | "MC"; title: string; rank: string; server: string; skins: number; heroes: number; price_per_hour: number;
+  id: number; game: "ML" | "MC"; title: string; rank: string; server: string; collection_level?: string; skins: number; heroes: number; price_per_hour: number;
   status: string; reject_reason: string | null; cover: string | null; busy_until: string | null; owner_rating: number | null; created_at: string;
 }
 interface RentFull extends RentCard { description: string; media: Media[]; owner: { id: number; name: string; username: string | null; rating: number | null; rating_count: number }; is_mine: boolean }
@@ -21,6 +21,7 @@ interface Rental {
 }
 
 const RANKS = ["Epic", "Legend", "Mythic", "Mythic Honor", "Mythic Glory", "Mythic Immortal"];
+const LEVELS = ["World", "Mega", "Exalted", "Renowned", "Expert", "Senior", "Junior"];
 /** Narx = soatlik × soat − muddat chegirmasi (server ham xuddi shunday hisoblaydi). */
 const priceOf = (pph: number, hours: number, c: RentConfig) => {
   const gross = pph * hours;
@@ -49,13 +50,12 @@ function BusyLabel({ until }: { until: string | null }) {
 
 export function Rent() {
   const nav = useNavigate();
-  const [cat, setCat] = useState<"all" | "free" | "Mythic" | "Legend" | "cheap">("all");
+  const [cat, setCat] = useState("all"); // all | free | lv:<daraja>
   const [sort, setSort] = useState("cheap");
   const st = useLoad(() => {
     const p = new URLSearchParams({ sort });
     if (cat === "free") p.set("free", "true");
-    if (cat === "Mythic" || cat === "Legend") p.set("rank", cat);
-    if (cat === "cheap") p.set("max_price", "5000");
+    if (cat.startsWith("lv:")) p.set("level", cat.slice(3));
     return api.get<{ items: RentCard[]; total: number; free: number }>("/rent/listings?" + p);
   }, [cat, sort]);
   return (
@@ -68,8 +68,8 @@ export function Rent() {
           <button className="btn small ghost" onClick={() => nav("/rentals")}>{t("Mening ijaralarim")}</button>
         </div>
         <Chips value={cat} onChange={setCat} options={[
-          { v: "all", label: t("Hammasi") }, { v: "free", label: t("Bo'sh") }, { v: "Mythic", label: "Mythic" }, { v: "Legend", label: "Legend" },
-          { v: "cheap", label: t("5 000 gacha") },
+          { v: "all", label: t("Hammasi") }, { v: "free", label: t("Bo'sh") },
+          ...LEVELS.map((l) => ({ v: "lv:" + l, label: l })),
         ]} />
         <div className="row between sm">
           <span className="mut">{st.data ? t("{n} ta akkaunt · {f} tasi bo'sh", { n: st.data.total, f: st.data.free }) : ""}</span>
@@ -87,7 +87,7 @@ export function Rent() {
                 <div key={x.id} className="gcard" style={x.busy_until ? { opacity: 0.75 } : undefined} onClick={() => nav(`/rent/${x.id}`)}>
                   <div className="gcov">
                     <img src={x.cover ?? GAME_IMG[x.game]} alt="" loading="lazy" style={x.busy_until ? { filter: "grayscale(.6) brightness(.75)" } : undefined} />
-                    {x.rank && <span className="grank">{x.rank.toUpperCase()}</span>}
+                    {(x.collection_level || x.rank) && <span className="grank">{(x.collection_level || x.rank).toUpperCase()}</span>}
                   </div>
                   <div className="gbody">
                     <div className="b ell sm">{x.title}</div>
@@ -204,7 +204,7 @@ export function RentSell() {
   const editId = useParams().id;
   const nav = useNavigate();
   const { toast, fail } = useApp();
-  const [f, setF] = useState({ game: "ML" as "ML" | "MC", title: "", rank: "", server: "", skins: "" as number | "", heroes: "" as number | "", price_per_hour: "" as number | "", description: "", credentials: "", media: [] as Media[] });
+  const [f, setF] = useState({ game: "ML" as "ML" | "MC", title: "", rank: "", server: "", collection_level: "", skins: "" as number | "", heroes: "" as number | "", price_per_hour: "" as number | "", description: "", credentials: "", media: [] as Media[] });
   const [loading, setLoading] = useState(!!editId);
   const [uploading, setUploading] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -213,7 +213,7 @@ export function RentSell() {
   useEffect(() => {
     if (!editId) return;
     api.get<RentFull>(`/rent/listings/${editId}`).then((l) => {
-      setF({ game: l.game, title: l.title, rank: l.rank, server: l.server, skins: l.skins, heroes: l.heroes, price_per_hour: l.price_per_hour, description: l.description, credentials: "", media: l.media });
+      setF({ game: l.game, title: l.title, rank: l.rank, server: l.server, collection_level: l.collection_level ?? "", skins: l.skins, heroes: l.heroes, price_per_hour: l.price_per_hour, description: l.description, credentials: "", media: l.media });
       setLoading(false);
     }).catch((e) => { fail(e); nav(-1); });
   }, [editId, fail, nav]);
@@ -237,6 +237,7 @@ export function RentSell() {
         <Seg value={f.game} onChange={(v) => set("game", v)} options={[{ v: "ML", label: "Mobile Legends" }, { v: "MC", label: "Magic Chess" }]} />
         <Field label={t("Sarlavha")}><input className="input" maxLength={120} placeholder={t("Masalan: Mythic akkaunt · 120 skin")} value={f.title} onChange={(e) => set("title", e.target.value)} /></Field>
         <Field label={t("Rank")}><Chips wrap value={f.rank} onChange={(v) => set("rank", v)} options={RANKS.map((r) => ({ v: r, label: r }))} /></Field>
+        <Field label={t("Kolleksiya darajasi")}><Chips wrap value={f.collection_level} onChange={(v) => set("collection_level", f.collection_level === v ? "" : v)} options={LEVELS.map((l) => ({ v: l + " Collector", label: l }))} /></Field>
         <div className="grid3">
           <Field label={t("Skinlar")}><input className="input mono" inputMode="numeric" value={f.skins} onChange={(e) => set("skins", e.target.value ? Number(e.target.value.replace(/\D/g, "").slice(0, 4)) : "")} /></Field>
           <Field label={t("Qahramonlar")}><input className="input mono" inputMode="numeric" value={f.heroes} onChange={(e) => set("heroes", e.target.value ? Number(e.target.value.replace(/\D/g, "").slice(0, 3)) : "")} /></Field>

@@ -572,11 +572,11 @@ on("GET", "/admin/tournaments/:id/entries", () => [{ user_id: ME, nick: "Aziz", 
 // ---------------------------------------------------------------- ijara
 const HOURS: Record<number, string> = { 12: "12 soat", 24: "24 soat", 72: "3 kun", 168: "1 hafta" };
 const rentListings: Json[] = [
-  { id: 201, owner_id: 2001, game: "ML", title: "Mythic Glory · 210 skin", rank: "Mythic Glory", server: "Asia", skins: 210, heroes: 118, price_per_hour: 8000, description: "Kuchli akkaunt, reytingli o'yinlar uchun.", media: [], status: "active", busy_until: null, created_at: ago(500) },
-  { id: 202, owner_id: 2002, game: "ML", title: "Mythic · 120 skin", rank: "Mythic", server: "Asia", skins: 120, heroes: 85, price_per_hour: 5000, description: "Toza akkaunt.", media: [], status: "active", busy_until: null, created_at: ago(900) },
-  { id: 203, owner_id: 2001, game: "MC", title: "Magic Chess · Master", rank: "Mythic", server: "Asia", skins: 25, heroes: 0, price_per_hour: 3000, description: "", media: [], status: "active", busy_until: new Date(Date.now() + 42 * 60000).toISOString(), created_at: ago(1500) },
-  { id: 204, owner_id: 2002, game: "ML", title: "Legend · 41 skin", rank: "Legend", server: "Asia", skins: 41, heroes: 60, price_per_hour: 3500, description: "", media: [], status: "active", busy_until: null, created_at: ago(2000) },
-  { id: 205, owner_id: ME, game: "ML", title: "Mening Mythic akkauntim", rank: "Mythic", server: "Asia", skins: 98, heroes: 80, price_per_hour: 6000, description: "", media: [], status: "active", busy_until: null, created_at: ago(3000) },
+  { id: 201, collection_level: "World Collector", owner_id: 2001, game: "ML", title: "Mythic Glory · 210 skin", rank: "Mythic Glory", server: "Asia", skins: 210, heroes: 118, price_per_hour: 8000, description: "Kuchli akkaunt, reytingli o'yinlar uchun.", media: [], status: "active", busy_until: null, created_at: ago(500) },
+  { id: 202, collection_level: "Mega Collector", owner_id: 2002, game: "ML", title: "Mythic · 120 skin", rank: "Mythic", server: "Asia", skins: 120, heroes: 85, price_per_hour: 5000, description: "Toza akkaunt.", media: [], status: "active", busy_until: null, created_at: ago(900) },
+  { id: 203, collection_level: "Exalted Collector", owner_id: 2001, game: "MC", title: "Magic Chess · Master", rank: "Mythic", server: "Asia", skins: 25, heroes: 0, price_per_hour: 3000, description: "", media: [], status: "active", busy_until: new Date(Date.now() + 42 * 60000).toISOString(), created_at: ago(1500) },
+  { id: 204, collection_level: "Renowned Collector", owner_id: 2002, game: "ML", title: "Legend · 41 skin", rank: "Legend", server: "Asia", skins: 41, heroes: 60, price_per_hour: 3500, description: "", media: [], status: "active", busy_until: null, created_at: ago(2000) },
+  { id: 205, collection_level: "Mega Collector", owner_id: ME, game: "ML", title: "Mening Mythic akkauntim", rank: "Mythic", server: "Asia", skins: 98, heroes: 80, price_per_hour: 6000, description: "", media: [], status: "active", busy_until: null, created_at: ago(3000) },
 ];
 const rentals: Json[] = [
   { id: 301, listing_id: 205, renter_id: 2002, owner_id: ME, hours: 12, price: 72_000, deposit: 72_000, commission: 7_200, status: "ended",
@@ -592,12 +592,14 @@ const rentCfg = () => ({ durations: Object.entries(HOURS).map(([h, label]) => ({
   ["rent_deposit_type", "rent_deposit_percent", "rent_deposit_fixed", "rent_commission_percent"].map((k) => [k, state.settings[k]])) });
 on("GET", "/rent/config", rentCfg);
 on("GET", "/rent/listings", (_m, _b, q) => {
+  const lvl = q.get("level");
   const isFree = (x: Json) => !x.busy_until || Date.parse(x.busy_until) <= Date.now();
   let ls = rentListings.filter((x) => x.status === "active");
   const all = ls;
   if (q.get("free")) ls = ls.filter(isFree);
   if (q.get("rank")) ls = ls.filter((x) => x.rank.startsWith(q.get("rank")!));
   if (q.get("max_price")) ls = ls.filter((x) => x.price_per_hour <= +q.get("max_price")!);
+  if (lvl) ls = ls.filter((x) => (x.collection_level || "").startsWith(lvl));
   const sort = q.get("sort");
   ls = [...ls].sort((a, b) => (isFree(a) ? 0 : 1) - (isFree(b) ? 0 : 1) || (sort === "expensive" ? b.price_per_hour - a.price_per_hour : sort === "new" ? b.id - a.id : sort === "skins" ? b.skins - a.skins : a.price_per_hour - b.price_per_hour));
   return { items: ls.map(rcard), has_more: false, total: ls.length, free: all.filter(isFree).length };

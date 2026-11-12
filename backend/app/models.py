@@ -369,6 +369,7 @@ class RentListing(TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(120))
     rank: Mapped[str] = mapped_column(String(32))
     server: Mapped[str] = mapped_column(String(32), default="")
+    collection_level: Mapped[str] = mapped_column(String(32), default="", server_default="")
     skins: Mapped[int] = mapped_column(Integer, default=0)
     heroes: Mapped[int] = mapped_column(Integer, default=0)
     price_per_hour: Mapped[int] = mapped_column(BigInteger)

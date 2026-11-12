@@ -70,7 +70,7 @@ async def create_listing(session: AsyncSession, seller_id: int, data: dict, out:
     listing = Listing(seller_id=seller_id, status="moderation", **validate_listing_data(data))
     session.add(listing)
     await session.flush()
-    out.admins(f"🆕 Yangi e'lon moderatsiyada: #{listing.id} · {listing.title} · {fmt(listing.price)}", webapp_button("Ko'rib chiqish", "/admin"))
+    out.admins(f"🆕 Yangi e'lon moderatsiyada: #{listing.id} · {listing.title} · {fmt(listing.price)}", webapp_button("Ko'rib chiqish", "/admin"), topic="elon")
     return listing
 
 
@@ -293,7 +293,7 @@ async def open_dispute(session: AsyncSession, deal_id: int, user_id: int, reason
     await _system(session, deal.chat_id, "⚖️ Nizo ochildi. Pul muzlatildi, admin ikkala tomonni ko'rib chiqadi.")
     other = deal.seller_id if user_id == deal.buyer_id else deal.buyer_id
     out.user(other, f"⚖️ Bitim #{deal.id} bo'yicha nizo ochildi. Admin bog'lanadi.", webapp_button("Bitimni ochish", f"/deal/{deal.id}"))
-    out.admins(f"⚖️ Nizo: bitim #{deal.id} · {fmt(deal.price)}\nSabab: {reason[:500]}", webapp_button("Admin panel", "/admin"))
+    out.admins(f"⚖️ Nizo: bitim #{deal.id} · {fmt(deal.price)}\nSabab: {reason[:500]}", webapp_button("Admin panel", "/admin"), topic="nizo")
     return deal
 
 

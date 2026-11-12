@@ -59,3 +59,19 @@ async def test_admin_messages_go_to_channel(ctx, monkeypatch):
     assert ctx["sent"][0][2] == {"inline_keyboard": [[{"text": "Bitimni ochish", "url": "https://t.me/VaynexoBot?startapp=deal_7"}]]}
     assert ctx["sent"][1][0] == 5
     await notify.set_admin_chat(None)
+
+
+async def test_admin_messages_go_to_topics(ctx):
+    from app.services import notify
+
+    await notify.set_topic("elon", -100777, 5)
+    await notify.set_topic("barcha", -100777, 9)
+    out = notify.Outbox()
+    out.admins("🆕 Yangi e'lon", topic="elon")
+    out.admins("🆘 Yordam", topic="yordam")  # mavzusi yo'q → guruhning General qismi
+    await out.flush()
+    sent = [(c, t, (m or {}).get("_thread")) for c, t, m in ctx["sent"]]
+    assert sent == [(-100777, "🆕 Yangi e'lon", 5), (-100777, "🆕 Yangi e'lon", 9),
+                    (-100777, "🆘 Yordam", None), (-100777, "🆘 Yordam", 9)]
+    for k in ("elon", "barcha"):
+        await notify.set_topic(k, None)

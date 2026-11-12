@@ -76,7 +76,7 @@ async def create_tg_order(session: AsyncSession, user: User, data: dict, out: Ou
     session.add(order)
     await session.flush()
     await wallet.debit(session, user.id, price, "tg_service", f"tg:{order.id}", ref_type="tg", ref_id=order.id)
-    out.admins(f"⭐️ Yangi TG buyurtma #{order.id}\n{title}\nKimga: {target}\nSumma: {fmt(price)}", webapp_button("Bajarish", "/admin"))
+    out.admins(f"⭐️ Yangi TG buyurtma #{order.id}\n{title}\nKimga: {target}\nSumma: {fmt(price)}", webapp_button("Bajarish", "/admin"), topic="buyurtma")
     return order
 
 
@@ -254,7 +254,7 @@ async def boost_client_action(session: AsyncSession, order_id: int, user_id: int
     elif action == "dispute" and order.status in ("accepted", "in_progress", "finished"):
         order.status = "disputed"
         order.note = (order.note + f"\n[Nizo] {reason}")[:500]
-        out.admins(f"⚖️ Boost nizosi #{order.id}: {reason[:300]}", webapp_button("Admin panel", "/admin"))
+        out.admins(f"⚖️ Boost nizosi #{order.id}: {reason[:300]}", webapp_button("Admin panel", "/admin"), topic="nizo")
     else:
         raise BadState()
     return order
@@ -353,7 +353,7 @@ async def create_withdrawal(session: AsyncSession, user_id: int, amount: int, ca
     session.add(w)
     await session.flush()
     await wallet.debit(session, user_id, amount, "withdraw", f"withdraw:{w.id}", ref_type="withdraw", ref_id=w.id)
-    out.admins(f"💳 Pul yechish so'rovi #{w.id}: {fmt(amount)}\nKarta: {card} {w.card_holder}", webapp_button("Admin panel", "/admin"))
+    out.admins(f"💳 Pul yechish so'rovi #{w.id}: {fmt(amount)}\nKarta: {card} {w.card_holder}", webapp_button("Admin panel", "/admin"), topic="yechish")
     return w
 
 

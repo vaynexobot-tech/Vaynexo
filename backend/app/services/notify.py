@@ -36,8 +36,85 @@ def webapp_button(text: str, path: str = "") -> dict:
     return {"inline_keyboard": [[{"text": text, "web_app": {"url": settings.webapp_url.rstrip("/") + path}}]]}
 
 
-ADMINS = object()  # Outbox.admins() belgisi
+class _Admins:
+    """Outbox.admins() belgisi: qaysi mavzuga (topic) tegishli."""
+
+    def __init__(self, topic: str) -> None:
+        self.topic = topic
+
+
 ADMIN_CHAT_KEY = "_admin_chat_id"
+TOPIC_KEY = "_topic:"  # + mavzu kaliti → "chat_id:thread_id"
+# Guruh mavzulari (Telegram forum topics). Kalit → tavsif. Mavzuda «/mavzu kalit» yoziladi.
+TOPICS = {
+    "elon": "Yangi e'lonlar (moderatsiya)",
+    "tolov": "Tasdiqlanmagan to'lovlar va kirimlar",
+    "yechish": "Pul yechish so'rovlari",
+    "nizo": "Nizolar",
+    "kyc": "Identifikatsiya so'rovlari",
+    "buyurtma": "TG / donat / boost buyurtmalari",
+    "hamkor": "Hamkor videolari",
+    "yordam": "Yordam so'rovlari",
+    "boshqa": "Qolgan barcha xabarlar",
+    "barcha": "Hamma xabarlarning nusxasi",
+}
+
+
+async def get_topics() -> dict[str, tuple[int, int | None]]:
+    from sqlalchemy import select
+
+    from app.db import SessionLocal
+    from app.models import AppSetting
+
+    try:
+        async with SessionLocal() as s:
+            rows = (await s.execute(select(AppSetting.key, AppSetting.value).where(AppSetting.key.like(TOPIC_KEY + "%")))).all()
+    except Exception:  # noqa: BLE001
+        log.exception("Mavzularni o'qib bo'lmadi")
+        return {}
+    res = {}
+    for k, v in rows:
+        chat, _, thread = v.partition(":")
+        res[k[len(TOPIC_KEY):]] = (int(chat), int(thread) if thread and thread != "0" else None)
+    return res
+
+
+async def set_topic(key: str, chat_id: int | None, thread_id: int | None = None) -> None:
+    from sqlalchemy import delete
+    from sqlalchemy.dialects.postgresql import insert
+
+    from app.db import SessionLocal
+    from app.models import AppSetting
+
+    async with SessionLocal() as s, s.begin():
+        if chat_id is None:
+            await s.execute(delete(AppSetting).where(AppSetting.key == TOPIC_KEY + key))
+        else:
+            v = f"{chat_id}:{thread_id or 0}"
+            await s.execute(insert(AppSetting).values(key=TOPIC_KEY + key, value=v)
+                            .on_conflict_do_update(index_elements=["key"], set_={"value": v}))
+
+
+def with_thread(markup: dict | None, thread_id: int | None) -> dict | None:
+    """Mavzu (thread) raqami markup ichida uzatiladi — send_tg uni ajratib oladi."""
+    if not thread_id:
+        return markup
+    return {**(markup or {}), "_thread": thread_id}
+
+
+async def admin_targets(topic: str) -> list[tuple[int, int | None]]:
+    """Admin xabari qayerlarga ketadi: mavzu → «boshqa» mavzu → admin kanali → shaxsiy. + «barcha» nusxasi."""
+    topics = await get_topics()
+    main = topics.get(topic) or topics.get("boshqa")
+    if not main:
+        chat = await get_admin_chat()
+        if not chat and topics:
+            chat = next(iter(topics.values()))[0]  # mavzular bor guruhning General qismi
+        main = (chat, None) if chat else None
+    targets = [main] if main else [(a, None) for a in settings.admin_ids]
+    if (copy := topics.get("barcha")) and copy not in targets:
+        targets.append(copy)
+    return targets
 
 
 async def get_admin_chat() -> int | None:
@@ -100,15 +177,14 @@ def for_group(markup: dict | None) -> dict | None:
 
 
 async def _expand_admins(items: list) -> list:
-    chat = await get_admin_chat()
     res = []
     for chat_id, text, markup in items:
-        if chat_id is not ADMINS:
+        if not isinstance(chat_id, _Admins):
             res.append((chat_id, text, markup))
-        elif chat:
-            res.append((chat, text, for_group(markup)))
-        else:
-            res.extend((a, text, markup) for a in settings.admin_ids)
+            continue
+        for chat, thread in await admin_targets(chat_id.topic):
+            private = chat in settings.admin_ids
+            res.append((chat, text, markup if private else with_thread(for_group(markup), thread)))
     return res
 
 
@@ -147,15 +223,15 @@ class Outbox:
             self.kinds[len(self.items)] = kind
         self.items.append((chat_id, text, markup))
 
-    def admins(self, text: str, markup: dict | None = None) -> None:
-        self.items.append((ADMINS, text, markup))  # qayerga ketishi flush() da aniqlanadi
+    def admins(self, text: str, markup: dict | None = None, topic: str = "boshqa") -> None:
+        self.items.append((_Admins(topic), text, markup))  # qayerga ketishi flush() da aniqlanadi
 
     async def flush(self) -> None:
         items, self.items = self.items, []
         kinds, self.kinds = self.kinds, {}
         muted = await _muted({(items[i][0], k) for i, k in kinds.items()}) if kinds else set()
         items = [it for i, it in enumerate(items) if not (i in kinds and (it[0], kinds[i]) in muted)]
-        if any(it[0] is ADMINS for it in items):
+        if any(isinstance(it[0], _Admins) for it in items):
             items = await _expand_admins(items)
         for chat_id, text, markup in items:
             await _sender(chat_id, text, markup)

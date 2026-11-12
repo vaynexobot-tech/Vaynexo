@@ -11,8 +11,12 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-12.admin-kanal"
-NOTES = """📢 Admin xabarlarini kanal/guruhga ulash
+RELEASE = "2026-11-12.mavzular"
+NOTES = """🗂 Admin guruhida mavzular: har bir mavzuga o'z xabarlari
+   Botni guruhga admin qiling, har mavzuda yozing: /mavzu elon, /mavzu tolov, /mavzu yechish, /mavzu nizo, /mavzu kyc, /mavzu barcha …
+   Ro'yxat: guruhda /mavzu
+
+📢 Admin xabarlarini kanal/guruhga ulash
    Botni kanalga admin qilib qo'shing va kanalda yozing: /admin_kanal
    (guruhda ham ishlaydi; bekor qilish: /admin_kanal_ochir)
    Yangi e'lonlar, to'lovlar, pul yechish, nizolar, identifikatsiya — hammasi shu yerga keladi

@@ -88,7 +88,7 @@ async def refund(session: AsyncSession, order: DonateOrder, reason: str, out: Ou
         webapp_button("Hamyon", "/wallet"),
     )
     if notify_admin:
-        out.admins(f"❗️Donat xatosi, pul qaytarildi.\n{order_ref(order)} · {order.title}\nID {order.player_id} ({order.zone_id})\nSabab: {reason}")
+        out.admins(f"❗️Donat xatosi, pul qaytarildi.\n{order_ref(order)} · {order.title}\nID {order.player_id} ({order.zone_id})\nSabab: {reason}", topic="buyurtma")
 
 
 async def fulfil_step(sessions: async_sessionmaker, order_id: int, mode: str, out: Outbox) -> tuple[str, int] | None:
@@ -130,7 +130,7 @@ async def fulfil_step(sessions: async_sessionmaker, order_id: int, mode: str, ou
         if result.status == "pending":
             if attempts >= MAX_STATUS_CHECKS:
                 order.status = "review"
-                out.admins(f"⏳ Donat juda uzoq kutilmoqda, tekshiring: {ref} · {order.title}", webapp_button("Admin panel", "/admin"))
+                out.admins(f"⏳ Donat juda uzoq kutilmoqda, tekshiring: {ref} · {order.title}", webapp_button("Admin panel", "/admin"), topic="buyurtma")
                 return None
             return ("check", CHECK_DELAY)
         # unknown
@@ -143,7 +143,7 @@ async def fulfil_step(sessions: async_sessionmaker, order_id: int, mode: str, ou
         out.admins(
             f"⚠️ Donat holati noma'lum (provayder javob bermadi): {ref} · {order.title}\n"
             f"ID {pid} ({zid}). Provayder kabinetida tekshirib, admin paneldan «Bajarildi» yoki «Pulni qaytarish» ni bosing.",
-            webapp_button("Admin panel", "/admin"),
+            webapp_button("Admin panel", "/admin"), topic="buyurtma",
         )
         out.user(order.user_id, f"⏳ {order.title} buyurtmangiz tekshirilmoqda. Natija tez orada xabar qilinadi.")
         return None

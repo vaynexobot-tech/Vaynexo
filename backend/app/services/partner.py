@@ -69,7 +69,7 @@ async def submit(session: AsyncSession, user_id: int, url: str, out: Outbox) -> 
     session.add(v)
     await session.flush()
     await arena.bump(session, user_id, "partner_video")
-    out.admins(f"🎬 Hamkor videosi #{v.id} ({platform}) tekshiruvga keldi:\n{clean}", webapp_button("Ko'rib chiqish", "/admin"))
+    out.admins(f"🎬 Hamkor videosi #{v.id} ({platform}) tekshiruvga keldi:\n{clean}", webapp_button("Ko'rib chiqish", "/admin"), topic="hamkor")
     return v
 
 
@@ -105,10 +105,10 @@ async def _give_reward(session: AsyncSession, v: PartnerVideo, out: Outbox) -> N
     elif v.tier == 2:
         u.tournament_passes += 4  # ~1 oy haftalik turnirlar
     elif v.tier == 3:
-        out.admins(f"💎 Hamkor #{v.id}: foydalanuvchi {u.id} ga olmos paketi berilsin (qo'lda).")
+        out.admins(f"💎 Hamkor #{v.id}: foydalanuvchi {u.id} ga olmos paketi berilsin (qo'lda).", topic="hamkor")
     elif v.tier == 4:
         u.badge = "partner"
-        out.admins(f"🤝 Hamkor #{v.id}: foydalanuvchi {u.id} «Rasmiy hamkor» bo'ldi. 50k+ — shaxsiy shartnoma uchun bog'laning.")
+        out.admins(f"🤝 Hamkor #{v.id}: foydalanuvchi {u.id} «Rasmiy hamkor» bo'ldi. 50k+ — shaxsiy shartnoma uchun bog'laning.", topic="hamkor")
 
 
 def video_dict(v: PartnerVideo) -> dict:

@@ -27,8 +27,13 @@ log = logging.getLogger(__name__)
 
 
 async def send_tg(ctx, chat_id: int, text: str, markup: dict | None = None):
+    thread = None
+    if markup and "_thread" in markup:
+        markup = dict(markup)
+        thread = markup.pop("_thread")
+        markup = markup or None
     try:
-        await get_bot().send_message(chat_id, text, reply_markup=markup)
+        await get_bot().send_message(chat_id, text, reply_markup=markup, message_thread_id=thread)
     except TelegramRetryAfter as e:
         raise Retry(defer=e.retry_after + 1) from e
     except TelegramForbiddenError:
@@ -51,7 +56,7 @@ async def fulfil_donate(ctx, order_id: int, mode: str = "create"):
 async def post_boost(ctx, order_id: int):
     if not settings.booster_group_id:
         out = Outbox()
-        out.admins(f"🚀 Yangi boost buyurtma #{order_id} (BOOSTER_GROUP_ID sozlanmagan — admin paneldan kuzating).")
+        out.admins(f"🚀 Yangi boost buyurtma #{order_id} (BOOSTER_GROUP_ID sozlanmagan — admin paneldan kuzating).", topic="buyurtma")
         await out.flush()
         return
     await get_share_pct()

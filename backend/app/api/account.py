@@ -149,6 +149,6 @@ async def support(body: SupportIn, user: CurrentUser):
     await rate_limit(f"support:{user.id}", limit=3, window=600)
     who = f"@{user.username}" if user.username else user.first_name
     out = Outbox()
-    out.admins(f"🆘 Yordam so'rovi\n{who} · ID {user.id}\n\n{body.text.strip()}")
+    out.admins(f"🆘 Yordam so'rovi\n{who} · ID {user.id}\n\n{body.text.strip()}", topic="yordam")
     await out.flush()
     return {"ok": True}

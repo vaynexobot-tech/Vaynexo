@@ -215,7 +215,7 @@ async def register_incoming(
         out.admins(
             f"⚠️ Kirim avtomatik biriktirilmadi ({reason}).\nSumma: {fmt(amount)}\nManba: {source}\n"
             f"ID: {incoming.id}\nAdmin paneldan qo'lda biriktiring.",
-            webapp_button("Admin panel", "/admin"),
+            webapp_button("Admin panel", "/admin"), topic="tolov",
         )
     return incoming
 
@@ -301,7 +301,7 @@ async def remind_unmatched(session: AsyncSession, out: Outbox) -> int:
     for t in rows:
         t.review_sent = True
         user = await session.get(User, t.user_id)
-        out.admins(review_text(t, user, minutes), review_markup(t.id))
+        out.admins(review_text(t, user, minutes), review_markup(t.id), topic="tolov")
     return len(rows)
 
 

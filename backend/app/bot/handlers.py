@@ -238,6 +238,27 @@ async def admin_chat_off_channel(post: Message):
     await post.answer("Admin xabarlari yana shaxsiy xabarda keladi.")
 
 
+@router.message(Command("mavzu"), F.chat.type.in_({"group", "supergroup"}))
+async def topic_here(message: Message, command: CommandObject):
+    """Guruh mavzusida (topic) yoziladi: /mavzu elon — shu turdagi admin xabarlari shu mavzuga keladi."""
+    if not is_admin(message.from_user.id):
+        return
+    key = (command.args or "").strip().lower()
+    thread = message.message_thread_id if message.is_topic_message else None
+    if key.endswith("_ochir") and key[:-6] in notify.TOPICS:
+        await notify.set_topic(key[:-6], None)
+        await message.answer(f"«{notify.TOPICS[key[:-6]]}» mavzudan uzildi.")
+        return
+    if key not in notify.TOPICS:
+        bound = await notify.get_topics()
+        lines = [f"/mavzu {k} — {v}" + (" ✅" if k in bound else "") for k, v in notify.TOPICS.items()]
+        await message.answer("Kerakli mavzuni oching va o'sha yerda yozing:\n\n" + "\n".join(lines)
+                             + "\n\nUzish: /mavzu elon_ochir (va h.k.)")
+        return
+    await notify.set_topic(key, message.chat.id, thread)
+    await message.answer(f"✅ Endi «{notify.TOPICS[key]}» shu mavzuga keladi.")
+
+
 @router.message(Command("stats"), F.chat.type == "private")
 async def stats(message: Message):
     if not is_admin(message.from_user.id):
@@ -359,7 +380,7 @@ async def boost_callback(cb: CallbackQuery):
         except Exception:
             log.warning("Boosterga DM yuborilmadi (botni /start qilmagan bo'lishi mumkin)")
             await cb.answer("Buyurtma sizniki, lekin shaxsiy xabar yuborilmadi: botga /start yozing va adminga murojaat qiling.", show_alert=True)
-            out.admins(f"⚠️ Booster {booster.id} buyurtma #{order_id} ni oldi, lekin DM yuborilmadi.")
+            out.admins(f"⚠️ Booster {booster.id} buyurtma #{order_id} ni oldi, lekin DM yuborilmadi.", topic="buyurtma")
             await out.flush()
     else:
         await cb.answer("Bajarildi ✅")

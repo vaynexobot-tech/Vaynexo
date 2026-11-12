@@ -77,7 +77,7 @@ async def create_listing(session: AsyncSession, owner_id: int, data: dict, out: 
     session.add(item)
     await session.flush()
     out.admins(f"🔑 Yangi ijara e'loni moderatsiyada: #{item.id} · {item.title} · {fmt(item.price_per_hour)}/soat",
-               webapp_button("Ko'rib chiqish", "/admin"))
+               webapp_button("Ko'rib chiqish", "/admin"), topic="elon")
     return item
 
 
@@ -190,7 +190,7 @@ async def open_dispute(session: AsyncSession, rid: int, user_id: int, reason: st
     r.status, r.review_until = "disputed", None
     r.dispute_by = "owner" if user_id == r.owner_id else "renter"
     r.dispute_reason = reason[:2000]
-    out.admins(f"⚖️ Ijara nizosi #{r.id} ({r.dispute_by}): {reason[:300]}", webapp_button("Admin panel", "/admin"))
+    out.admins(f"⚖️ Ijara nizosi #{r.id} ({r.dispute_by}): {reason[:300]}", webapp_button("Admin panel", "/admin"), topic="nizo")
     out.user(r.renter_id if user_id == r.owner_id else r.owner_id, f"⚖️ Ijara #{r.id} bo'yicha nizo ochildi. Admin ko'rib chiqadi.")
     return r
 

@@ -279,3 +279,45 @@ async def reset_once(marker: str) -> None:
     async with SessionLocal() as s, s.begin():
         await s.execute(insert(AppSetting).values(key=marker, value="1").on_conflict_do_nothing())
     log.info("Admin mavzulari tozalandi (%s)", marker)
+
+
+BOOSTER_KEY = "_booster_group_id"
+_booster_cache: list = [None, 0.0]
+
+
+async def get_booster_group() -> int | None:
+    """Boosterlar guruhi: /booster_guruh bilan belgilanadi (yoki Render'dagi BOOSTER_GROUP_ID)."""
+    import time
+
+    from sqlalchemy import select
+
+    from app.db import SessionLocal
+    from app.models import AppSetting
+
+    if time.monotonic() - _booster_cache[1] < 30:
+        return _booster_cache[0]
+    try:
+        async with SessionLocal() as s:
+            v = await s.scalar(select(AppSetting.value).where(AppSetting.key == BOOSTER_KEY))
+        val = int(v) if v else (settings.booster_group_id or None)
+    except Exception:  # noqa: BLE001
+        log.exception("Booster guruhini o'qib bo'lmadi")
+        val = settings.booster_group_id or None
+    _booster_cache[:] = [val, time.monotonic()]
+    return val
+
+
+async def set_booster_group(chat_id: int | None) -> None:
+    from sqlalchemy import delete
+    from sqlalchemy.dialects.postgresql import insert
+
+    from app.db import SessionLocal
+    from app.models import AppSetting
+
+    async with SessionLocal() as s, s.begin():
+        if chat_id is None:
+            await s.execute(delete(AppSetting).where(AppSetting.key == BOOSTER_KEY))
+        else:
+            await s.execute(insert(AppSetting).values(key=BOOSTER_KEY, value=str(chat_id))
+                            .on_conflict_do_update(index_elements=["key"], set_={"value": str(chat_id)}))
+    _booster_cache[:] = [chat_id, 0.0]

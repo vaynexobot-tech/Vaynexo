@@ -54,9 +54,12 @@ async def fulfil_donate(ctx, order_id: int, mode: str = "create"):
 
 
 async def post_boost(ctx, order_id: int):
-    if not settings.booster_group_id:
+    from app.services.notify import get_booster_group
+
+    group = await get_booster_group()
+    if not group:
         out = Outbox()
-        out.admins(f"🚀 Yangi boost buyurtma #{order_id} (BOOSTER_GROUP_ID sozlanmagan — admin paneldan kuzating).", topic="boost")
+        out.admins(f"🚀 Yangi boost buyurtma #{order_id} (boosterlar guruhi ulanmagan — guruhda /booster_guruh yozing).", topic="boost")
         await out.flush()
         return
     await get_share_pct()
@@ -64,7 +67,7 @@ async def post_boost(ctx, order_id: int):
         o = await session.scalar(select(BoostOrder).where(BoostOrder.id == order_id).with_for_update())
         if o is None or o.group_message_id:
             return
-        msg = await get_bot().send_message(settings.booster_group_id, boost_post_text(o), reply_markup=boost_post_kb(o))
+        msg = await get_bot().send_message(group, boost_post_text(o), reply_markup=boost_post_kb(o))
         o.group_message_id = msg.message_id
 
 
@@ -72,11 +75,14 @@ async def update_boost_post(ctx, order_id: int):
     await get_share_pct()
     async with SessionLocal() as session:
         o = await session.get(BoostOrder, order_id)
-    if o is None or not o.group_message_id or not settings.booster_group_id:
+    from app.services.notify import get_booster_group
+
+    group = await get_booster_group()
+    if o is None or not o.group_message_id or not group:
         return
     try:
         await get_bot().edit_message_text(
-            boost_post_text(o), chat_id=settings.booster_group_id, message_id=o.group_message_id, reply_markup=boost_post_kb(o)
+            boost_post_text(o), chat_id=group, message_id=o.group_message_id, reply_markup=boost_post_kb(o)
         )
     except Exception:
         log.debug("Guruh xabarini yangilab bo'lmadi", exc_info=True)

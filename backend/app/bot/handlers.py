@@ -80,10 +80,11 @@ async def is_booster(bot, user_id: int) -> bool:
     """Booster — boosterlar guruhi a'zosi (yoki admin)."""
     if is_admin(user_id):
         return True
-    if not settings.booster_group_id:
+    group = await notify.get_booster_group()
+    if not group:
         return False
     try:
-        m = await bot.get_chat_member(settings.booster_group_id, user_id)
+        m = await bot.get_chat_member(group, user_id)
         return m.status in ("member", "administrator", "creator", "restricted")
     except Exception:
         return False
@@ -249,6 +250,27 @@ def _topics_kb(bound: dict) -> InlineKeyboardMarkup:
     if row:
         rows.append(row)
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+@router.message(Command("booster_guruh"), F.chat.type.in_({"group", "supergroup"}))
+async def booster_group_here(message: Message):
+    """Admin guruhda yozadi: yangi boost buyurtmalar shu guruhga tushadi, a'zolari booster hisoblanadi."""
+    if not is_admin(message.from_user.id):
+        return
+    await notify.set_booster_group(message.chat.id)
+    await message.answer(
+        "✅ Bu guruh endi boosterlar guruhi.\n\n"
+        "• Yangi boost buyurtmalar shu yerga tushadi — booster «Olish» tugmasini bosadi\n"
+        "• Guruh a'zolari booster hisoblanadi (botda /booster buyrug'i ochiladi)\n"
+        "• Faqat ishonchli boosterlarni qo'shing\n\nO'chirish: /booster_guruh_ochir")
+
+
+@router.message(Command("booster_guruh_ochir"))
+async def booster_group_off(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+    await notify.set_booster_group(None)
+    await message.answer("Boosterlar guruhi uzildi. Yangi boost buyurtmalar admin guruhiga («boost» mavzusi) tushadi.")
 
 
 @router.message(Command("mavzu_tozalash"))

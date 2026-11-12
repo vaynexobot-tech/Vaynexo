@@ -75,3 +75,16 @@ async def test_admin_messages_go_to_topics(ctx):
                     (-100777, "🆘 Yordam", None), (-100777, "🆘 Yordam", 9)]
     for k in ("elon", "barcha"):
         await notify.set_topic(k, None)
+
+
+async def test_reset_admin_routing(ctx):
+    from app.services import notify
+
+    await notify.set_topic("elon", -100777, 5)
+    await notify.set_admin_chat(-100888)
+    await notify.reset_once("_t_reset")
+    assert await notify.get_topics() == {} and await notify.get_admin_chat() is None
+    await notify.set_topic("elon", -100777, 5)
+    await notify.reset_once("_t_reset")  # ikkinchi marta tegmaydi
+    assert "elon" in await notify.get_topics()
+    await notify.reset_admin_routing()

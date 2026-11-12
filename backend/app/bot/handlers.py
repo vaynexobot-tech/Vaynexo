@@ -251,6 +251,15 @@ def _topics_kb(bound: dict) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@router.message(Command("mavzu_tozalash"))
+async def topics_reset(message: Message):
+    """Hamma mavzu ulanishlarini o'chiradi — keyin /mavzu bilan qaytadan ulanadi."""
+    if not is_admin(message.from_user.id):
+        return
+    await notify.reset_admin_routing()
+    await message.answer("🧹 Hamma mavzu ulanishlari o'chirildi. Endi har bir mavzuda /mavzu yozib qaytadan ulang.")
+
+
 @router.message(Command(re.compile(r"mavzu(_\w+)?")), F.chat.type.in_({"group", "supergroup"}))
 async def topic_here(message: Message, command: CommandObject):
     """Guruh mavzusida /mavzu yoziladi → tugmalardan birini bosasiz → shu turdagi xabarlar shu mavzuga keladi.

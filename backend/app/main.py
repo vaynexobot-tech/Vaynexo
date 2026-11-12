@@ -53,6 +53,12 @@ async def lifespan(app: FastAPI):
             await notify_admins_once()
         except Exception:  # Telegram vaqtincha javob bermasa ham API ishlayversin
             log.exception("Webhook o'rnatilmadi — tokenni va internetni tekshiring, so'ng saytni qayta ishga tushiring")
+    try:
+        from app.services.notify import reset_once
+
+        await reset_once("_routing_reset_2026_11_12")  # admin so'rovi: mavzularni noldan ulash
+    except Exception:  # noqa: BLE001
+        log.exception("Mavzularni tozalab bo'lmadi")
     yield
     tg_task.cancel()
     if cron_task:

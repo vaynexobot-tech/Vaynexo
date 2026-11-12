@@ -250,3 +250,32 @@ class Outbox:
 
 def fmt(amount: int) -> str:
     return f"{amount:,}".replace(",", " ") + " so'm"
+
+
+async def reset_admin_routing() -> None:
+    """Barcha mavzu ulanishlari, admin kanali va KYC guruhini o'chiradi (xabarlar yana shaxsiy keladi)."""
+    from sqlalchemy import delete, or_
+
+    from app.db import SessionLocal
+    from app.models import AppSetting
+
+    async with SessionLocal() as s, s.begin():
+        await s.execute(delete(AppSetting).where(or_(
+            AppSetting.key.like(TOPIC_KEY + "%"), AppSetting.key.in_((ADMIN_CHAT_KEY, "_kyc_chat_id")))))
+
+
+async def reset_once(marker: str) -> None:
+    """Deploydan keyin bir marta tozalash (admin so'rovi bilan)."""
+    from sqlalchemy import select
+    from sqlalchemy.dialects.postgresql import insert
+
+    from app.db import SessionLocal
+    from app.models import AppSetting
+
+    async with SessionLocal() as s:
+        if await s.scalar(select(AppSetting.key).where(AppSetting.key == marker)):
+            return
+    await reset_admin_routing()
+    async with SessionLocal() as s, s.begin():
+        await s.execute(insert(AppSetting).values(key=marker, value="1").on_conflict_do_nothing())
+    log.info("Admin mavzulari tozalandi (%s)", marker)

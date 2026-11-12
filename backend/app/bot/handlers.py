@@ -1,6 +1,7 @@
 """Bot: Mini App'ni ochish, admin uchun bank xabarini qabul qilish, boosterlar guruhi."""
 
 import logging
+import re
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject, CommandStart
@@ -238,25 +239,54 @@ async def admin_chat_off_channel(post: Message):
     await post.answer("Admin xabarlari yana shaxsiy xabarda keladi.")
 
 
-@router.message(Command("mavzu"), F.chat.type.in_({"group", "supergroup"}))
+def _topics_kb(bound: dict) -> InlineKeyboardMarkup:
+    rows, row = [], []
+    for k, v in notify.TOPICS.items():
+        row.append(InlineKeyboardButton(text=("✅ " if k in bound else "") + v, callback_data=f"mavzu:{k}"))
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+@router.message(Command(re.compile(r"mavzu(_\w+)?")), F.chat.type.in_({"group", "supergroup"}))
 async def topic_here(message: Message, command: CommandObject):
-    """Guruh mavzusida (topic) yoziladi: /mavzu elon — shu turdagi admin xabarlari shu mavzuga keladi."""
+    """Guruh mavzusida /mavzu yoziladi → tugmalardan birini bosasiz → shu turdagi xabarlar shu mavzuga keladi.
+    Qo'lda ham bo'ladi: /mavzu nizo yoki /mavzu_nizo."""
     if not is_admin(message.from_user.id):
         return
-    key = (command.args or "").strip().lower()
+    raw = (command.command[6:] if command.command.startswith("mavzu_") else (command.args or "")).strip().lower()
+    key = raw.split()[0].strip("-—:") if raw else ""
     thread = message.message_thread_id if message.is_topic_message else None
     if key.endswith("_ochir") and key[:-6] in notify.TOPICS:
         await notify.set_topic(key[:-6], None)
-        await message.answer(f"«{notify.TOPICS[key[:-6]]}» mavzudan uzildi.")
+        await message.answer(f"«{notify.TOPICS[key[:-6]]}» uzildi.")
         return
-    if key not in notify.TOPICS:
-        bound = await notify.get_topics()
-        lines = [f"/mavzu {k} — {v}" + (" ✅" if k in bound else "") for k, v in notify.TOPICS.items()]
-        await message.answer("Kerakli mavzuni oching va o'sha yerda yozing:\n\n" + "\n".join(lines)
-                             + "\n\nUzish: /mavzu elon_ochir (va h.k.)")
+    if key in notify.TOPICS:
+        await notify.set_topic(key, message.chat.id, thread)
+        await message.answer(f"✅ Endi «{notify.TOPICS[key]}» shu mavzuga keladi.")
         return
-    await notify.set_topic(key, message.chat.id, thread)
-    await message.answer(f"✅ Endi «{notify.TOPICS[key]}» shu mavzuga keladi.")
+    await message.answer("Bu mavzuga qaysi xabarlar kelsin? Tugmani bosing 👇", reply_markup=_topics_kb(await notify.get_topics()))
+
+
+@router.callback_query(F.data.startswith("mavzu:"))
+async def topic_pick(cb: CallbackQuery):
+    if cb.from_user.id not in settings.admin_ids:
+        await cb.answer("Faqat admin uchun", show_alert=True)
+        return
+    key = cb.data.split(":", 1)[1]
+    if key not in notify.TOPICS or not cb.message:
+        return
+    msg = cb.message
+    thread = msg.message_thread_id if msg.is_topic_message else None
+    await notify.set_topic(key, msg.chat.id, thread)
+    await cb.answer("Saqlandi ✅")
+    try:
+        await msg.edit_text(f"✅ Endi «{notify.TOPICS[key]}» shu mavzuga keladi.\nO'zgartirish: /mavzu")
+    except Exception:  # noqa: BLE001
+        pass
 
 
 @router.message(Command("stats"), F.chat.type == "private")

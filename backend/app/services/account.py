@@ -36,8 +36,10 @@ async def send_kyc_to_admins(user: User, images: list[bytes]) -> None:
         InlineKeyboardButton(text="❌ Rad etish", callback_data=f"kyc:no:{user.id}"),
     ]])
     who = f"@{user.username}" if user.username else user.first_name
-    group = await get_kyc_chat()
-    targets = [group] if group else ([settings.admin_chat_id] if settings.admin_chat_id else list(settings.admin_ids))
+    from app.services.notify import get_admin_chat
+
+    group = await get_kyc_chat() or await get_admin_chat()
+    targets = [group] if group else list(settings.admin_ids)
     if not targets:
         raise AppError("no_admin", "Admin sozlanmagan, keyinroq urinib ko'ring", 503)
     for chat_id in targets:

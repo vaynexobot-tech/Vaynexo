@@ -164,7 +164,7 @@ export function ListingRow({ x, onClick, extra }: { x: ListingCard; onClick?: ()
 
 function FilterSheet({ open, value, onClose, onApply }: { open: boolean; value: Filters; onClose: () => void; onApply: (f: Filters) => void }) {
   const [f, setF] = useState(value);
-  useEffect(() => setF(value), [value, open]);
+  useEffect(() => { setF(value); }, [value, open]);
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) => setF((p) => ({ ...p, [k]: v }));
   return (
     <Sheet open={open} onClose={onClose}>

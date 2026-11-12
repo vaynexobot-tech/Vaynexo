@@ -39,3 +39,23 @@ async def test_admin_tg_bank_settings(api):
     assert (await api(1).post("/admin/tg-bank/api", {"api_id": "abc", "api_hash": "x"})).status_code == 400
     r = await api(1).post("/admin/tg-bank/api", {"api_id": "12345", "api_hash": "a" * 32})
     assert r.json()["api_ready"] is True
+
+
+async def test_admin_messages_go_to_channel(ctx, monkeypatch):
+    from app.config import settings
+    from app.services import notify
+
+    monkeypatch.setattr(settings, "bot_username", "VaynexoBot")
+    out = notify.Outbox()
+    out.admins("🆕 Yangi e'lon moderatsiyada", notify.webapp_button("Ko'rib chiqish", "/admin"))
+    await out.flush()
+    assert [m[0] for m in ctx["sent"]] == list(settings.admin_ids)  # kanal yo'q — shaxsiy
+    ctx["sent"].clear()
+    await notify.set_admin_chat(-1001234)
+    out.admins("💸 Pul yechish", notify.webapp_button("Bitimni ochish", "/deal/7"))
+    out.user(5, "salom")
+    await out.flush()
+    assert ctx["sent"][0][0] == -1001234
+    assert ctx["sent"][0][2] == {"inline_keyboard": [[{"text": "Bitimni ochish", "url": "https://t.me/VaynexoBot?startapp=deal_7"}]]}
+    assert ctx["sent"][1][0] == 5
+    await notify.set_admin_chat(None)

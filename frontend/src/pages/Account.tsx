@@ -99,7 +99,7 @@ export function Settings() {
 
 function LangSheet({ open, current, onClose, onPick }: { open: boolean; current: Lang; onClose: () => void; onPick: (l: Lang) => void }) {
   const [v, setV] = useState<Lang>(current);
-  useEffect(() => setV(current), [current, open]);
+  useEffect(() => { setV(current); }, [current, open]);
   return (
     <Sheet open={open} onClose={onClose}>
       <div className="row between" style={{ marginBottom: 12 }}>

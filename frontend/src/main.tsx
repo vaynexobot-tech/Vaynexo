@@ -33,8 +33,9 @@ function DeepLink() {
     const p = startParam();
     if (!p) return;
     const [kind, id] = p.split("_");
-    const map: Record<string, string> = { listing: `/listing/${id}`, deal: `/deal/${id}`, chat: `/chat/${id}`, boost: `/boost/${id}`, tour: `/arena/${id}` };
+    const map: Record<string, string> = { listing: `/listing/${id}`, deal: `/deal/${id}`, chat: `/chat/${id}`, boost: `/boost/${id}`, tour: `/arena/${id}`, arena: `/arena/${id}`, rental: `/rental/${id}` };
     if (map[kind] && /^\d+$/.test(id)) nav(map[kind], { replace: false });
+    else if (["admin", "wallet", "booster", "rent", "partner", "arena"].includes(kind) && !id) nav("/" + kind); // kanal tugmalari
   }, [nav]);
   return null;
 }

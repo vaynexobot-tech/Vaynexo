@@ -11,8 +11,15 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-12.tg-bank"
-NOTES = """🆕 To'lov kartalari: summa o'zgarmaydi
+RELEASE = "2026-11-12.admin-kanal"
+NOTES = """📢 Admin xabarlarini kanal/guruhga ulash
+   Botni kanalga admin qilib qo'shing va kanalda yozing: /admin_kanal
+   (guruhda ham ishlaydi; bekor qilish: /admin_kanal_ochir)
+   Yangi e'lonlar, to'lovlar, pul yechish, nizolar, identifikatsiya — hammasi shu yerga keladi
+
+🐞 Chatda xabar yuborganda ilova qorayib qolishi tuzatildi
+
+🆕 To'lov kartalari: summa o'zgarmaydi
 
 💳 Har bir to'ldirishga bitta bo'sh karta beriladi — foydalanuvchi aynan o'zi yozgan summani o'tkazadi (50 000 → 50 000)
    • bir xil summa bir vaqtda turli kartalarga taqsimlanadi

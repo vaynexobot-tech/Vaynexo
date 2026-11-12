@@ -67,7 +67,7 @@ export function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  useEffect(() => bottom.current?.scrollIntoView({ behavior: "smooth" }), [msgs.length]);
+  useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs.length]);
 
   const send = async () => {
     const body = text.trim();

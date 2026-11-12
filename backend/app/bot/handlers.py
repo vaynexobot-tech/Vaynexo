@@ -15,7 +15,8 @@ from app.errors import AppError
 from app.models import BoostOrder, User
 from app.queue import enqueue
 from app.security import decrypt
-from app.services import account, p2p
+from app.services import account, notify, p2p
+from app.bot.instance import get_bot
 from app.services import services as svc
 from app.services.notify import Outbox, fmt
 
@@ -163,9 +164,21 @@ async def kyc_here(message: Message):
                          "⚠️ Guruhda pasport rasmlari bo'ladi — faqat ishonchli adminlarni qo'shing.\nBekor qilish: /kyc_ochir")
 
 
+async def _channel_owned_by_admin(chat_id: int) -> bool:
+    """Kanal buyrug'ini kim yozganini bilib bo'lmaydi — kanal adminlari orasida bizning admin bo'lishi shart.
+    Aks holda begona odam o'z kanaliga botni qo'shib, admin xabarlarini (va pasport rasmlarini) o'ziga burib oladi."""
+    try:
+        admins = await get_bot().get_chat_administrators(chat_id)
+    except Exception:  # noqa: BLE001
+        return False
+    return any(a.user.id in settings.admin_ids for a in admins)
+
+
 @router.channel_post(Command("kyc_guruh"))
 async def kyc_here_channel(post: Message):
-    """Kanalda faqat adminlar post yoza oladi — kanal ham qabul qilinadi."""
+    if not await _channel_owned_by_admin(post.chat.id):
+        await post.answer("⛔ Bu kanalda bot admini (ADMIN_IDS) kanal admini emas.")
+        return
     await account.set_kyc_chat(post.chat.id)
     await post.answer("✅ Identifikatsiya so'rovlari endi shu kanalga keladi. Bekor qilish: /kyc_ochir")
 
@@ -180,8 +193,49 @@ async def kyc_off(message: Message):
 
 @router.channel_post(Command("kyc_ochir"))
 async def kyc_off_channel(post: Message):
+    if not await _channel_owned_by_admin(post.chat.id):
+        return
     await account.set_kyc_chat(None)
     await post.answer("Identifikatsiya so'rovlari yana adminlarga shaxsiy xabarda keladi.")
+
+
+# ------------------------------------------------------------------ admin xabarlari kanali
+ADMIN_CHAT_TEXT = ("✅ Admin xabarlari endi shu yerga keladi: yangi e'lonlar (moderatsiya), to'lovlar, pul yechish, "
+                   "nizolar, bank kirimlari, identifikatsiya va h.k.\n"
+                   "Tugmalarni faqat ADMIN_IDS dagi adminlar bosa oladi. Bekor qilish: /admin_kanal_ochir")
+
+
+@router.message(Command("admin_kanal"), F.chat.type.in_({"group", "supergroup"}))
+async def admin_chat_here(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+    await notify.set_admin_chat(message.chat.id)
+    await message.answer(ADMIN_CHAT_TEXT)
+
+
+@router.channel_post(Command("admin_kanal"))
+async def admin_chat_here_channel(post: Message):
+    if not await _channel_owned_by_admin(post.chat.id):
+        await post.answer("⛔ Bu kanalda bot admini (ADMIN_IDS) kanal admini emas.")
+        return
+    await notify.set_admin_chat(post.chat.id)
+    await post.answer(ADMIN_CHAT_TEXT)
+
+
+@router.message(Command("admin_kanal_ochir"))
+async def admin_chat_off(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+    await notify.set_admin_chat(None)
+    await message.answer("Admin xabarlari yana shaxsiy xabarda keladi.")
+
+
+@router.channel_post(Command("admin_kanal_ochir"))
+async def admin_chat_off_channel(post: Message):
+    if not await _channel_owned_by_admin(post.chat.id):
+        return
+    await notify.set_admin_chat(None)
+    await post.answer("Admin xabarlari yana shaxsiy xabarda keladi.")
 
 
 @router.message(Command("stats"), F.chat.type == "private")

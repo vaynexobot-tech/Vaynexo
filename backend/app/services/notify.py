@@ -181,7 +181,8 @@ def for_group(markup: dict | None) -> dict | None:
                 if not settings.bot_username:
                     continue
                 path = b["web_app"]["url"][len(base):] if b["web_app"]["url"].startswith(base) else ""
-                b = {"text": b["text"], "url": f"https://t.me/{settings.bot_username}?startapp={start_param(path)}"}
+                # ?start= — bot o'zi «Ochish» tugmasini yuboradi (BotFather'da asosiy Mini App bo'lmasa ham ishlaydi)
+                b = {"text": b["text"], "url": f"https://t.me/{settings.bot_username}?start={start_param(path)}"}
             new.append(b)
         if new:
             rows.append(new)

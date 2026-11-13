@@ -32,7 +32,7 @@ async def test_listing_channel_sync(api, monkeypatch):
     assert await channel.sync_batch() == 1
     chat, photo, text, kb = fake.posts[0]
     assert chat == -100500 and photo.endswith("/media/a.jpg") and "420 000 so'm" in text
-    assert kb["inline_keyboard"][0][0]["url"] == f"https://t.me/VaynexoBot?startapp=listing_{lid}"
+    assert kb["inline_keyboard"][0][0]["url"] == f"https://t.me/VaynexoBot?start=listing_{lid}"
     assert await channel.sync_batch() == 0  # o'zgarmagan — qayta yuborilmaydi
     # narx o'zgardi → qayta moderatsiya → post o'chadi, tasdiqlangach yangisi chiqadi
     await api(40).put(f"/listings/{lid}", {**LISTING, "price": 400_000})
@@ -49,3 +49,12 @@ async def test_listing_channel_sync(api, monkeypatch):
     assert await channel.sync_batch() == 1
     msg_id, kind, text, kb = fake.edits[-1]
     assert "BAND" in text and kb is None
+
+
+def test_deep_link_path():
+    from app.bot.handlers import deep_link_path
+
+    assert deep_link_path("listing_15") == ("/listing/15", "E'lonni ochish")
+    assert deep_link_path("admin")[0] == "/admin"
+    assert deep_link_path("my-listings")[0] == "/my-listings"
+    assert deep_link_path("ref_5") is None and deep_link_path("x/../y") is None and deep_link_path(None) is None

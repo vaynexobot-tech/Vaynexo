@@ -57,12 +57,29 @@ async def ensure_user(tg_user, ref: int | None = None) -> User:
     return user
 
 
+DEEP_PAGES = {"admin": "Admin panel", "listing": "E'lonni ochish", "deal": "Bitimni ochish", "chat": "Chatni ochish",
+              "boost": "Buyurtmani ochish", "rental": "Ijarani ochish", "arena": "Turnirni ochish", "wallet": "Hamyonni ochish",
+              "partner": "Hamkor", "booster": "Booster", "rent": "Ijara", "history": "Tarix", "my-listings": "E'lonlarim"}
+
+
+def deep_link_path(arg: str | None) -> tuple[str, str] | None:
+    """Kanal/guruh tugmasi: t.me/bot?start=listing_15 → (/listing/15, «E'lonni ochish»)."""
+    m = re.fullmatch(r"([a-z-]+)(?:_(\d+))?", arg or "")
+    if not m or m.group(1) not in DEEP_PAGES:
+        return None
+    return "/" + m.group(1) + (f"/{m.group(2)}" if m.group(2) else ""), DEEP_PAGES[m.group(1)]
+
+
 @router.message(CommandStart(), F.chat.type == "private")
 async def start(message: Message, command: CommandObject):
     ref = None
     if command.args and command.args.startswith("ref_") and command.args[4:].isdigit():
         ref = int(command.args[4:])
     await ensure_user(message.from_user, ref)
+    deep = deep_link_path(command.args)
+    if deep and not (deep[0] == "/admin" and not is_admin(message.from_user.id)):
+        await message.answer("👇 Ochish uchun tugmani bosing", reply_markup=open_app_kb(f"📲 {deep[1]}", deep[0]))
+        return
     await message.answer(
         "Assalomu alaykum! 👋\n\nVAYNEXO — raqamli o'yin bozori:\n"
         "💎 Mobile Legends va Magic Chess almaz donat\n🛒 Akkaunt savdo (garant bilan)\n"

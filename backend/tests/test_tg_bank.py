@@ -56,7 +56,7 @@ async def test_admin_messages_go_to_channel(ctx, monkeypatch):
     out.user(5, "salom")
     await out.flush()
     assert ctx["sent"][0][0] == -1001234
-    assert ctx["sent"][0][2] == {"inline_keyboard": [[{"text": "Bitimni ochish", "url": "https://t.me/VaynexoBot?startapp=deal_7"}]]}
+    assert ctx["sent"][0][2] == {"inline_keyboard": [[{"text": "Bitimni ochish", "url": "https://t.me/VaynexoBot?start=deal_7"}]]}
     assert ctx["sent"][1][0] == 5
     await notify.set_admin_chat(None)
 

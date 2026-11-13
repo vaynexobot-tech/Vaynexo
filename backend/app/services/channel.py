@@ -61,7 +61,7 @@ def caption(l: Listing) -> str:
 def keyboard(l: Listing) -> dict | None:
     if l.status != "active" or not settings.bot_username:
         return None
-    url = f"https://t.me/{settings.bot_username}?startapp=listing_{l.id}"
+    url = f"https://t.me/{settings.bot_username}?start=listing_{l.id}"
     return {"inline_keyboard": [[{"text": "🛒 Sotib olish", "url": url}]]}
 
 

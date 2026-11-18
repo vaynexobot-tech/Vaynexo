@@ -107,3 +107,21 @@ async def test_admin_arena_stats_and_web_link(api, client):
     assert (await client.get("/api/me", headers={"Authorization": f"web {make_web_token(30)}"})).status_code == 401
     assert (await client.get("/api/me", headers={"Authorization": f"web {token[:-2]}xx"})).status_code == 401
     assert (await api(30).post("/admin/web-link")).status_code == 403
+
+
+async def test_ml_account_link(api, monkeypatch):
+    from app.services import donate_catalog
+
+    class P:
+        async def check_player(self, game, pid, zone):
+            return None if pid == "11111" else "ZedUz"
+
+    async def fake(session, g):
+        return P()
+
+    monkeypatch.setattr(donate_catalog, "provider_for_game", fake)
+    await set_balance(40, 0)
+    assert (await api(40).post("/arena/link", {"ml_id": "12ab", "server": "1"})).status_code == 400
+    assert (await api(40).post("/arena/link", {"ml_id": "11111", "server": "2463"})).status_code == 400
+    r = await api(40).post("/arena/link", {"ml_id": "123456789", "server": "2463"})
+    assert r.status_code == 200 and r.json()["verified"] and r.json()["nick"] == "ZedUz" and r.json()["server"] == "2463"

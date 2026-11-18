@@ -56,7 +56,7 @@ def _img_dir() -> Path | None:
 # ---------------------------------------------------------------- MLBB kartasi
 def profile_dict(u: User) -> dict:
     return {"nick": u.ml_nick or "", "lane": u.ml_lane or "", "rank": u.ml_rank or "", "heroes": u.ml_heroes or [],
-            "ml_id": u.ml_id or ""}
+            "ml_id": u.ml_id or "", "server": u.ml_server or "", "verified": bool(u.ml_verified)}
 
 
 def update_profile(u: User, data: dict) -> None:

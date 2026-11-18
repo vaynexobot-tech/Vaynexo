@@ -45,6 +45,8 @@ class User(TimestampMixin, Base):
     ml_lane: Mapped[str | None] = mapped_column(String(16))
     ml_rank: Mapped[str | None] = mapped_column(String(16))
     ml_heroes: Mapped[list | None] = mapped_column(JSONB)
+    ml_server: Mapped[str | None] = mapped_column(String(16))
+    ml_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # ID o'yinda tekshirilgan
     bio: Mapped[str | None] = mapped_column(String(300))
     balance: Mapped[int] = mapped_column(BigInteger, default=0)
     tickets: Mapped[int] = mapped_column(Integer, default=0)  # konkurs biletlari

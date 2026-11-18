@@ -99,7 +99,7 @@ function TourCard({ x, onClick }: { x: Tournament; onClick: () => void }) {
 }
 
 // ---------------------------------------------------------------- MLBB kartasi
-interface MlProfile { nick: string; lane: string; rank: string; heroes: number[]; ml_id: string }
+interface MlProfile { nick: string; lane: string; rank: string; heroes: number[]; ml_id: string; server: string; verified: boolean }
 
 function MlCard() {
   const st = useLoad(() => api.get<MlProfile>("/arena/profile"));
@@ -114,6 +114,7 @@ function MlCard() {
           <div className="row" style={{ gap: 6 }}>
             <span className="b ell">{p?.nick || t("Mening MLBB kartam")}</span>
             {p?.lane && <MlIcon kind="lane" k={p.lane} size={20} />}
+            {p?.verified && <span className="g xs b" title={t("Tasdiqlangan")}>✓</span>}
           </div>
           <div className="mut xs ell">{empty ? t("Rank, liniya va sevimli qahramonlaringizni qo'shing") : [p?.rank && rankLabel(p.rank), p?.lane && laneLabel(p.lane)].filter(Boolean).join(" · ")}</div>
         </div>
@@ -122,12 +123,34 @@ function MlCard() {
         </div>
         <span className="mut"><Icon name="right" size={18} /></span>
       </div>
-      {edit && p && <MlCardSheet p={p} onClose={() => setEdit(false)} onSaved={(x) => { st.setData(x); setEdit(false); }} />}
+      {edit && p && <MlCardSheet p={p} onClose={() => setEdit(false)} onSaved={(x) => { st.setData(x); setEdit(false); }} onLinked={(x) => st.setData(x)} />}
     </>
   );
 }
 
-function MlCardSheet({ p, onClose, onSaved }: { p: MlProfile; onClose: () => void; onSaved: (p: MlProfile) => void }) {
+function LinkBox({ p, onLinked }: { p: MlProfile; onLinked: (p: MlProfile) => void }) {
+  const [id, setId] = useState(p.ml_id);
+  const [srv, setSrv] = useState(p.server);
+  const { busy, run } = useAction();
+  const { toast } = useApp();
+  return (
+    <div className="card col" style={{ borderColor: p.verified ? "rgba(29,233,182,.45)" : "rgba(255,214,10,.4)" }}>
+      <div className="row between"><span className="b">🔗 {t("MLBB akkauntni ulash")}</span>{p.verified && <span className="pill-b g">✓ {t("Tasdiqlangan")}</span>}</div>
+      <div className="mut xs">{t("O'yinda profil rasmingizga bosing: nik ostida ID va qavs ichida server, masalan 123456789 (2463).")}</div>
+      <div className="row">
+        <input className="input mono grow" inputMode="numeric" placeholder="Game ID" value={id} onChange={(e) => setId(e.target.value.replace(/\D/g, "").slice(0, 20))} />
+        <input className="input mono" style={{ width: 100 }} inputMode="numeric" placeholder="Server" value={srv} onChange={(e) => setSrv(e.target.value.replace(/\D/g, "").slice(0, 10))} />
+      </div>
+      <button className="btn full" disabled={busy || id.length < 5 || !srv} onClick={() => run(async () => {
+        const r = await api.post<MlProfile>("/arena/link", { ml_id: id, server: srv });
+        onLinked(r);
+        toast(r.verified ? t("Ulandi: {n}", { n: r.nick }) : t("Saqlandi (o'yinda tekshirib bo'lmadi)"), "ok");
+      })}>🛡 {t("Tekshirish va ulash")}</button>
+    </div>
+  );
+}
+
+function MlCardSheet({ p, onClose, onSaved, onLinked }: { p: MlProfile; onClose: () => void; onSaved: (p: MlProfile) => void; onLinked: (p: MlProfile) => void }) {
   const [f, setF] = useState({ nick: p.nick, lane: p.lane, rank: p.rank, heroes: p.heroes ?? [] });
   const { busy, run } = useAction();
   const { toast } = useApp();
@@ -135,6 +158,7 @@ function MlCardSheet({ p, onClose, onSaved }: { p: MlProfile; onClose: () => voi
     <Sheet open onClose={onClose}>
       <div className="sec-title" style={{ marginTop: 0 }}>{t("Mening MLBB kartam")}</div>
       <div className="col">
+        <LinkBox p={p} onLinked={(x) => { setF((y) => ({ ...y, nick: x.nick || y.nick })); onLinked(x); }} />
         <Field label={t("O'yindagi nik")}><input className="input" maxLength={32} value={f.nick} onChange={(e) => setF({ ...f, nick: e.target.value })} /></Field>
         <Field label={t("Rank")}><RankPicker value={f.rank} onChange={(v) => setF({ ...f, rank: v })} /></Field>
         <Field label={t("Asosiy liniya")}><LanePicker value={f.lane} onChange={(v) => setF({ ...f, lane: v })} /></Field>
@@ -154,8 +178,14 @@ interface QuizQ { n: number; type: "who" | "role"; options: string[]; image: str
 interface QuizT { day: string; points_each: number; questions: QuizQ[]; score: number; done: boolean; roles: Record<string, string> }
 
 function Games({ onPoints }: { onPoints: () => void }) {
+  const nav = useNavigate();
   return (
     <>
+      <button className="card row click" style={{ textAlign: "left", borderColor: "rgba(29,233,182,.4)" }} onClick={() => nav("/heroes")}>
+        <span className="row" style={{ gap: 0 }}>{[109, 4, 9].map((id, i) => <span key={id} style={{ marginLeft: i ? -12 : 0 }}><HeroAva id={id} size={36} radius={18} /></span>)}</span>
+        <div className="grow"><div className="b">📖 {t("Qahramonlar ensiklopediyasi")}</div><div className="mut xs">{t("Skillar, buyumlar, counter-pick — rasmiy ma'lumot")}</div></div>
+        <Icon name="right" size={18} />
+      </button>
       <Quiz onPoints={onPoints} />
       <HeroVoteCard onPoints={onPoints} />
     </>

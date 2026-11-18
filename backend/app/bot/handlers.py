@@ -44,6 +44,7 @@ async def set_commands(bot) -> None:
         await bot.set_my_commands([
             BotCommand(command="start", description="Bosh menyu"),
             BotCommand(command="arena", description="Arena: viktorina, turnir, reyting"),
+            BotCommand(command="qahramonlar", description="MLBB qahramonlar: skill, buyum, counter"),
             BotCommand(command="donat", description="Almaz donat"),
             BotCommand(command="hamyon", description="Hamyon va balans"),
             BotCommand(command="help", description="Yordam"),
@@ -130,6 +131,12 @@ async def _quick(message: Message, text: str, btn: str, path: str) -> None:
 async def arena_cmd(message: Message):
     await _quick(message, "🏆 Arena: bugungi «Qahramonni top» viktorinasi, haftaning qahramoni ovozi, turnirlar va reyting.",
                  "🏆 Arenani ochish", "/arena")
+
+
+@router.message(Command("qahramonlar"), F.chat.type == "private")
+async def heroes_cmd(message: Message):
+    await _quick(message, "📖 MLBB qahramonlari: skillar, tavsiya buyumlar va counter-pick (rasmiy ma'lumot).",
+                 "📖 Qahramonlar", "/heroes")
 
 
 @router.message(Command("donat"), F.chat.type == "private")

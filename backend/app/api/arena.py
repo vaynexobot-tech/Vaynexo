@@ -170,6 +170,41 @@ async def ml_profile_save(body: ProfileIn, user: CurrentUser, session: SessionDe
     return mlbb.profile_dict(u)
 
 
+class LinkIn(BaseModel):
+    ml_id: str = Field(max_length=20)
+    server: str = Field(max_length=10)
+
+
+@router.post("/arena/link")
+async def ml_link(body: LinkIn, user: CurrentUser, session: SessionDep):
+    """MLBB akkauntni ulash: Game ID + server o'yinda tekshiriladi (donat provayderi orqali), nik avtomatik olinadi."""
+    import re
+
+    from app.errors import AppError
+    from app.models import DonateGame
+    from app.services import mlbb
+    from app.services.donate_catalog import provider_for_game
+
+    uid = user.id
+    await rate_limit(f"mllink:{uid}", limit=8, window=600)
+    pid, zone = body.ml_id.strip(), body.server.strip()
+    if not re.fullmatch(r"\d{5,20}", pid) or not re.fullmatch(r"\d{1,10}", zone):
+        raise AppError("bad_player_id", "Game ID va server raqamini to'g'ri kiriting")
+    g = await session.get(DonateGame, "ML")
+    prov = await provider_for_game(session, g) if g else None
+    brand = (g.brand_slug or g.slug) if g else "ML"
+    await session.rollback()  # tashqi so'rov paytida bazani band qilmaymiz
+    nick = await prov.check_player(brand, pid, zone) if prov else ""
+    if nick is None:
+        raise AppError("player_not_found", "Bunday MLBB akkaunt topilmadi. ID va serverni tekshiring")
+    async with session.begin():
+        u = await session.get(User, uid, with_for_update=True)
+        u.ml_id, u.ml_server, u.ml_verified = pid, zone, bool(nick)
+        if nick:
+            u.ml_nick = nick[:32]
+    return mlbb.profile_dict(u)
+
+
 @router.get("/arena/quiz")
 async def quiz(user: CurrentUser, session: SessionDep):
     from app.services import mlbb

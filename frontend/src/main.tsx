@@ -11,6 +11,7 @@ import { ChatPage, Chats } from "./pages/Chat";
 import { DealPage, Deals } from "./pages/Deal";
 import Donate from "./pages/Donate";
 import Home from "./pages/Home";
+import { HeroPage, Heroes } from "./pages/Heroes";
 import { ListingDetail, Market, PayListing } from "./pages/Market";
 import { MyRentals, Rent, RentalPage, RentDetail, RentSell } from "./pages/Rent";
 import { MyListings, Sell } from "./pages/Sell";
@@ -133,6 +134,8 @@ function App() {
           <Route path="/boost/:id" element={<Gate f="boost"><BoostOrderPage /></Gate>} />
           <Route path="/arena" element={<Gate f="arena"><Arena /></Gate>} />
           <Route path="/arena/:id" element={<Gate f="arena"><TournamentPage /></Gate>} />
+          <Route path="/heroes" element={<Heroes />} />
+          <Route path="/heroes/:id" element={<HeroPage />} />
           <Route path="/top" element={<Gate f="top"><Top /></Gate>} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/profile" element={<ProfileEdit />} />

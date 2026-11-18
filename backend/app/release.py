@@ -11,8 +11,12 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-18.arena-mlbb"
-NOTES = """🏆 Arena yangilandi (rasmiy MLBB rasmlari bilan):
+RELEASE = "2026-11-18.heroes"
+NOTES = """📖 Qahramonlar ensiklopediyasi (Arena → O'yinlar yoki /qahramonlar): 124 qahramon, skillar, tavsiya buyumlar,
+   counter va eng yaxshi juft, raqib jamoasiga counter-pick, 68 buyum — rasmiy mobilelegends.com ma'lumoti
+🔗 MLBB akkauntni ulash: Game ID + server o'yinda tekshiriladi, nik avtomatik olinadi (✓ tasdiqlangan)
+
+🏆 Arena yangilandi (rasmiy MLBB rasmlari bilan):
    🪪 MLBB kartasi — rank nishoni, liniya, 3 ta sevimli qahramon (reyting va jamoa e'lonlarida ko'rinadi)
    🧠 «Qahramonni top» — kuniga 5 savol (qahramonni rasmidan topish, rolini topish), har to'g'ri javob +10 ball
    👑 Haftaning qahramoni — har hafta ovoz, jamoatchilik meta reytingi (+5 ball)

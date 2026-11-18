@@ -455,3 +455,9 @@ textarea.input { height: auto; min-height: 90px; padding: 12px 14px; resize: ver
 .adm-body { display: flex; flex-direction: column; gap: 12px; max-width: 1040px; }
 .adm-web .grid2 { grid-template-columns: repeat(4, 1fr); }
 .adm-web .adm-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+
+.build-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.build-item { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; color: var(--mut); min-width: 0; }
+.build-item img { width: 46px; height: 46px; border-radius: 10px; background: var(--card2); }
+.build-item span { max-width: 100%; text-align: center; }
+.item-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }

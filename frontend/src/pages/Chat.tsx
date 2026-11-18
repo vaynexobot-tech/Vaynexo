@@ -9,7 +9,7 @@ export function Chats() {
   const st = useLoad(() => api.get<Chat[]>("/chats"));
   return (
     <>
-      <Header title={t("Chatlar")} />
+      <Header title={t("Chatlar")} icon="help" />
       <div className="page">
         <Loadable state={st}>
           {(list) => list.length === 0 ? <Empty icon="💬" text={t("Hali chatlar yo'q")} /> : (

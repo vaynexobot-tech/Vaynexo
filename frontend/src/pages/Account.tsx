@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, ApiError, setPinToken, type Me, type PayCard } from "../api";
 import { LANGS, t, type Lang } from "../i18n";
 import { bioClear, bioManager, bioRead, bioSave, confirmDialog, haptic, tgPhoto } from "../tg";
-import { BottomBar, BottomNav, errorText, Field, Header, Icon, Loadable, money, Row, Sheet, Toggle, useAction, useApp, useLoad } from "../ui";
+import { Art, BottomBar, BottomNav, errorText, Field, Header, Icon, Loadable, money, Row, Sheet, Toggle, useAction, useApp, useLoad } from "../ui";
 
 const KYC_PILL: Record<Me["kyc_status"], [string, string]> = {
   none: ["Tasdiqlanmagan", "y"],
@@ -63,7 +63,7 @@ export function Settings() {
         </div>
 
         {(me.features?.market || me.features?.rent || me.kyc_status !== "none") && <div className="card click row kyc-card" onClick={() => nav("/kyc")}>
-          <div className="hd-ico" style={{ width: 44, height: 44 }}><Icon name="shield" /></div>
+          <Art name="shield" size={44} />
           <div className="grow">
             <div className="b">{t("Identifikatsiya")}</div>
             <div className="mut xs">{t("Shaxsingizni tasdiqlang")}</div>
@@ -73,21 +73,21 @@ export function Settings() {
         </div>}
 
         <div className="card" style={{ padding: "4px 14px" }}>
-          {me.features?.market && <Row icon={<Icon name="doc" />} title={t("Mening e'lonlarim")}
+          {me.features?.market && <Row icon="doc" title={t("Mening e'lonlarim")}
             right={<><span className="pill-b g">{t("{n} faol", { n: me.active_listings })}</span>{chev}</>} onClick={() => nav("/my-listings")} />}
-          <Row icon={<Icon name="clock" />} title={t("Xaridlar tarixi")}
+          <Row icon="clock" title={t("Xaridlar tarixi")}
             right={<><span className="pill-b y">{t("{n} ta", { n: me.purchases_count })}</span>{chev}</>} onClick={() => nav("/history")} />
-          <Row icon={<Icon name="globe" />} title={t("Til")}
+          <Row icon="globe" title={t("Til")}
             right={<><span className="mut sm">{LANGS.find((l) => l.v === me.lang)?.label}</span>{chev}</>} onClick={() => setLangOpen(true)} />
-          <Row icon={<Icon name="gift" />} title={t("Do'stlarni taklif qilish")}
+          <Row icon="gift" title={t("Do'stlarni taklif qilish")}
             right={<><span className="pill-b g">+ bonus</span>{chev}</>} onClick={() => nav("/referral")} />
-          <Row icon={<Icon name="bell" />} title={t("Bildirishnomalar")}
+          <Row icon="bell" title={t("Bildirishnomalar")}
             right={<Toggle on={notifOn} onChange={(v) => patch({ notify_chat: v, notify_tour: v })} />} />
-          <Row icon={<Icon name="card" />} title={t("To'lov usullari")} onClick={() => nav("/payment-methods")} />
-          <Row icon={<Icon name="shield" />} title={t("Xavfsizlik")} onClick={() => nav("/security")} />
-          <Row icon={<Icon name="help" />} title={t("Yordam va aloqa")} onClick={() => nav("/help")} />
-          <Row icon={<Icon name="doc" />} title={t("Qoidalar va shartlar")} onClick={() => nav("/legal/terms")} />
-          {me.is_admin && <Row icon={<Icon name="admin" />} title={<span className="y">{t("Admin panel")}</span>} onClick={() => nav("/admin")} />}
+          <Row icon="card" title={t("To'lov usullari")} onClick={() => nav("/payment-methods")} />
+          <Row icon="shield" title={t("Xavfsizlik")} onClick={() => nav("/security")} />
+          <Row icon="help" title={t("Yordam va aloqa")} onClick={() => nav("/help")} />
+          <Row icon="doc" title={t("Qoidalar va shartlar")} onClick={() => nav("/legal/terms")} />
+          {me.is_admin && <Row icon="admin" title={<span className="y">{t("Admin panel")}</span>} onClick={() => nav("/admin")} />}
         </div>
         <div className="mut xs center">VAYNEXO · v1.1</div>
       </div>
@@ -236,7 +236,7 @@ export function PaymentMethods() {
         <div className="mut xs mono" style={{ marginTop: 6 }}>{t("BOSHQA USULLAR")}</div>
         <div className="card" style={{ padding: "4px 14px" }}>
           {["Payme", "Click", "Paynet"].map((n) => (
-            <Row key={n} icon={<Icon name="wallet" />} title={n} sub={t("Ulanmagan")} right={<span className="mut xs">{t("Tez kunda")}</span>} />
+            <Row key={n} icon="wallet" title={n} sub={t("Ulanmagan")} right={<span className="mut xs">{t("Tez kunda")}</span>} />
           ))}
         </div>
         <div className="mut xs">{t("Hamyonni to'ldirish uchun hozir istalgan bank ilovasidan kartaga o'tkazma ishlatiladi (Hamyon → To'ldirish).")}</div>

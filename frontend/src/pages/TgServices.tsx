@@ -232,7 +232,7 @@ export function TgOrders() {
   const st = useLoad(() => api.get<TgOrder[]>("/tg/orders"));
   return (
     <>
-      <Header title={t("TG buyurtmalarim")} />
+      <Header title={t("TG buyurtmalarim")} icon="tg" />
       <div className="page">
         <Loadable state={st}>
           {(list) => list.length === 0 ? <Empty icon="⭐" text={t("Buyurtmalar yo'q")} /> : list.map((o) => (

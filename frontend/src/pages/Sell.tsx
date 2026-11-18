@@ -94,7 +94,7 @@ export function Sell() {
 
   return (
     <>
-      <Header title={editId ? t("E'lonni tahrirlash") : t("E'lon joylash")} sub={t("Akkaunt sotish uchun ma'lumotlarni kiriting")} />
+      <Header title={editId ? t("E'lonni tahrirlash") : t("E'lon joylash")} sub={t("Akkaunt sotish uchun ma'lumotlarni kiriting")} icon="sell" />
       <div className="page">
         <KycBanner area="marketplace" />
         <Field label={t("O'yin")}>

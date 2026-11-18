@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, type DonateGameCard, type DonateGames, type Tournament } from "../api";
 import { t } from "../i18n";
 import { tgPhoto } from "../tg";
-import { BalancePill, BottomNav, GameTile, Icon, Loadable, money, som, useApp, useFeature, useLoad } from "../ui";
+import { Art, BalancePill, BottomNav, GameTile, Icon, Loadable, money, som, useApp, useFeature, useLoad } from "../ui";
 
 export default function Home() {
   const nav = useNavigate();
@@ -113,7 +113,7 @@ export default function Home() {
 
         <div className="card row between">
           <div className="row">
-            <div className="iconbtn" style={{ width: 44, height: 44, background: "rgba(255,214,10,.1)", borderColor: "rgba(255,214,10,.3)" }}><Icon name="wallet" /></div>
+            <Art name="wallet" size={44} />
             <div>
               <div className="mut xs mono">{t("BALANS")}</div>
               <div className="bb" style={{ fontSize: 18 }}>{som(me?.balance ?? 0)}</div>
@@ -125,7 +125,7 @@ export default function Home() {
         {f.top && (
           <div className="card click row between" onClick={() => nav("/top")}>
             <div className="row">
-              <div className="iconbtn" style={{ width: 44, height: 44 }}><Icon name="trophy" /></div>
+              <Art name="top" size={44} />
               <div>
                 <div className="b">{t("Top xaridorlar")}</div>
                 <div className="mut xs">{t("Botda eng ko'p xarid qilganlar reytingi")}</div>
@@ -138,7 +138,7 @@ export default function Home() {
         {f.market && (
           <div className="card click row between" onClick={() => nav("/sell")}>
             <div className="row">
-              <div className="hd-ico" style={{ width: 44, height: 44 }}><Icon name="doc" /></div>
+              <Art name="sell" size={44} />
               <div>
                 <div className="b">{t("E'lon berish")}</div>
                 <div className="mut xs">{t("Account sotish uchun e'lon joylang")}</div>

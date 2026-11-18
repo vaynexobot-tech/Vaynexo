@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, type Deal, type ListingCard, type ListingFull } from "../api";
 import { t } from "../i18n";
 import {
-  BottomBar, BottomNav, Chips, KycBanner, Empty, Field, GAME_IMG, GameLogo, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Spinner, Status,
+  Art, BottomBar, BottomNav, Chips, KycBanner, Empty, Field, GAME_IMG, GameLogo, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Spinner, Status,
   useAction, useApp, useLoad,
 } from "../ui";
 
@@ -285,7 +285,7 @@ function CollectionCard({ level, skins, heroes }: { level: string; skins: number
   return (
     <div className="card col coll-card">
       <div className="row">
-        <div className="hd-ico" style={{ width: 40, height: 40, background: "rgba(255,214,10,.15)", color: "var(--y)" }}><Icon name="trophy" /></div>
+        <Art name="top" size={40} />
         <div className="grow">
           <div className="mut xs">{t("Kolleksiya darajasi")}</div>
           <div className="y bb" style={{ fontSize: 18 }}>{level}</div>
@@ -329,7 +329,7 @@ function BuyMethodSheet({ open, l, busy, onClose, onChat, onGarant }: {
           <button className="btn ghost full" disabled={busy} onClick={onChat}><Icon name="chat" /> {t("Chatni ochish")}</button>
         </div>
         <div className="card col" style={{ borderColor: "rgba(255,214,10,.6)" }}>
-          <div className="row"><span className="hd-ico" style={{ width: 36, height: 36 }}><Icon name="shield" size={18} /></span>
+          <div className="row"><Art name="shield" size={36} />
             <div><div className="b">{t("Garant orqali sotib olish")} <span className="pill-b g" style={{ fontSize: 10, padding: "2px 7px" }}>{t("Xavfsiz")}</span></div><div className="mut xs">{t("Pul kafolatlanadi, akkaunt tekshiriladi")}</div></div></div>
           <div className="row sm"><span className="g"><Icon name="check" size={14} /></span>{t("To'lov qilsangiz, akkaunt ma'lumotlari ochiladi")}</div>
           <div className="row sm"><span className="g"><Icon name="check" size={14} /></span>{t("Tasdiqlaganingizdan so'ng pul sotuvchiga o'tadi")}</div>
@@ -377,7 +377,7 @@ export function PayListing() {
                   ))}
                 </div>
                 <div className="card row">
-                  <span className="hd-ico" style={{ width: 40, height: 40, background: "rgba(255,214,10,.12)", color: "var(--y)" }}><Icon name="wallet" /></span>
+                  <Art name="wallet" size={40} />
                   <div className="grow"><div className="mut xs mono">{t("HAMYON BALANSI")}</div><div className="bb">{som(bal)}</div></div>
                 </div>
                 <div className="card">

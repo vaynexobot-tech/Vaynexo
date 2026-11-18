@@ -12,7 +12,7 @@ export function Deals() {
   const st = useLoad(() => api.get<Deal[]>(`/deals?role=${role}`), [role]);
   return (
     <>
-      <Header title={t("Mening bitimlarim")} />
+      <Header title={t("Mening bitimlarim")} icon="doc" />
       <div className="page">
         <Seg value={role} onChange={setRole} options={[{ v: "buyer", label: t("Xaridlarim") }, { v: "seller", label: t("Sotuvlarim") }]} />
         <div className="grid2">

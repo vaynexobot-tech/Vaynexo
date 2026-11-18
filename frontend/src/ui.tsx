@@ -174,6 +174,32 @@ export function BalancePill() {
 }
 
 /** Ichki sahifa sarlavhasi. Telegram'ning tizim «Orqaga» tugmasi ham ulanadi. */
+// ---------------------------------------------------------------- rangli belgilar (Art)
+// Har bir bo'lim/tugma uchun o'ziga mos rangli, yaltiroq belgi: gradient fon + oq ikonka.
+const ART: Record<string, [string, string]> = {
+  grid: ["#ffd60a", "#ff8a00"], market: ["#ffd60a", "#ff8a00"],
+  bag: ["#4facfe", "#2b5cff"], rent: ["#4facfe", "#2b5cff"],
+  bolt: ["#ff5f6d", "#c81d77"], boost: ["#ff5f6d", "#c81d77"],
+  send: ["#37aee2", "#1e74c9"], tg: ["#37aee2", "#1e74c9"],
+  arena: ["#a855f7", "#5b21b6"], trophy: ["#ffcf40", "#d97706"], top: ["#ffcf40", "#d97706"],
+  play: ["#ff4d6d", "#9d174d"], partner: ["#ff4d6d", "#9d174d"],
+  settings: ["#94a3b8", "#475569"], wallet: ["#1de9b6", "#0d9488"], clock: ["#60a5fa", "#4338ca"],
+  doc: ["#fbbf24", "#ea580c"], sell: ["#fbbf24", "#ea580c"], globe: ["#22d3ee", "#0369a1"],
+  gift: ["#f472b6", "#be185d"], bell: ["#facc15", "#ca8a04"], card: ["#34d399", "#047857"],
+  shield: ["#2dd4bf", "#0f766e"], help: ["#818cf8", "#4338ca"], admin: ["#f87171", "#991b1b"],
+  lock: ["#a3a3a3", "#404040"], ai: ["#c084fc", "#6d28d9"], user: ["#38bdf8", "#1d4ed8"],
+};
+const ART_ICON: Record<string, string> = { market: "grid", rent: "bag", boost: "bolt", tg: "send", top: "trophy", partner: "play", sell: "doc" };
+
+export function Art({ name, size = 40, radius }: { name: string; size?: number; radius?: number }) {
+  const [a, b] = ART[name] ?? ["#ffd60a", "#ff8a00"];
+  return (
+    <span className="art" style={{ width: size, height: size, borderRadius: radius ?? size * 0.3, background: `linear-gradient(145deg, ${a}, ${b})`, boxShadow: `0 6px 16px -6px ${b}` }}>
+      <Icon name={ART_ICON[name] ?? name} size={Math.round(size * 0.5)} />
+    </span>
+  );
+}
+
 export function Header({ title, sub, right, back = true, icon }: { title: string; sub?: string; right?: ReactNode; back?: boolean; icon?: string }) {
   const nav = useNavigate();
   const goBack = useCallback(() => (window.history.length > 1 ? nav(-1) : nav("/")), [nav]);
@@ -194,11 +220,7 @@ export function Header({ title, sub, right, back = true, icon }: { title: string
             <Icon name="back" />
           </button>
         )}
-        {icon && !back && (
-          <div className="hd-ico">
-            <Icon name={icon} />
-          </div>
-        )}
+        {icon && (!back || tg) && <Art name={icon} size={38} radius={11} />}
         <div className="grow">
           <div className="hd-title ell">{title}</div>
           {sub && <div className="mut xs ell">{sub}</div>}
@@ -422,7 +444,7 @@ export function Copy({ value, label }: { value: string; label?: string }) {
 export function Row({ icon, title, sub, right, onClick }: { icon?: ReactNode; title: ReactNode; sub?: ReactNode; right?: ReactNode; onClick?: () => void }) {
   return (
     <div className="listrow" onClick={onClick} style={onClick ? { cursor: "pointer" } : undefined}>
-      {icon && <span className="rowico">{icon}</span>}
+      {icon && (typeof icon === "string" ? <Art name={icon} size={36} radius={10} /> : <span className="rowico">{icon}</span>)}
       <div className="grow">
         <div className="b ell">{title}</div>
         {sub && <div className="mut sm ell">{sub}</div>}

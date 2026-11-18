@@ -232,7 +232,7 @@ export function RentSell() {
   if (loading) return <><Header title={t("Ijaraga berish")} /><Spinner /></>;
   return (
     <>
-      <Header title={editId ? t("Ijara e'lonini tahrirlash") : t("Ijaraga berish")} sub={t("Akkauntingizni soatbay ijaraga qo'ying")} />
+      <Header title={editId ? t("Ijara e'lonini tahrirlash") : t("Ijaraga berish")} sub={t("Akkauntingizni soatbay ijaraga qo'ying")} icon="rent" />
       <div className="page">
         <KycBanner area="rental" />
         <Seg value={f.game} onChange={(v) => set("game", v)} options={[{ v: "ML", label: "Mobile Legends" }, { v: "MC", label: "Magic Chess" }]} />
@@ -282,7 +282,7 @@ export function MyRentals() {
   const { run } = useAction();
   return (
     <>
-      <Header title={t("Mening ijaralarim")} />
+      <Header title={t("Mening ijaralarim")} icon="rent" />
       <div className="page">
         <Seg value={tab} onChange={setTab} options={[{ v: "renter", label: t("Olganlarim") }, { v: "owner", label: t("Berganlarim") }, { v: "listings", label: t("E'lonlarim") }]} />
         <Loadable state={st}>

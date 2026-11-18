@@ -185,7 +185,7 @@ export function BoostOrders() {
   const st = useLoad(() => api.get<BoostT[]>("/boost/orders"));
   return (
     <>
-      <Header title={t("Boost buyurtmalarim")} />
+      <Header title={t("Boost buyurtmalarim")} icon="boost" />
       <div className="page">
         <Loadable state={st}>
           {(list) => list.length === 0 ? <Empty icon="🚀" text={t("Buyurtmalar yo'q")}><button className="btn small" onClick={() => nav("/boost")}>{t("Boost buyurtma qilish")}</button></Empty> : list.map((o) => (

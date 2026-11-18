@@ -2,11 +2,12 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { ApiError, type Me } from "./api";
 import { t } from "./i18n";
-import mcImg from "./assets/mc.webp";
-import mlImg from "./assets/ml.webp";
 import { haptic, tg } from "./tg";
 
-export const GAME_IMG: Record<string, string> = { ML: mlImg, MC: mcImg };
+// Rasmiy o'yin ikonkalari (App Store'dan): assets/games/<slug>.webp
+export const GAME_IMG: Record<string, string> = Object.fromEntries(
+  Object.entries(import.meta.glob("./assets/games/*.webp", { eager: true, import: "default" }) as Record<string, string>).map(([k, v]) => [k.split("/").pop()!.replace(".webp", ""), v]),
+);
 // Rasm yuklanmagan o'yinlar uchun chiroyli zaxira ko'rinish: [rang1, rang2, belgi]
 const GAME_STYLE: Record<string, [string, string, string]> = {
   "pubg-mobile": ["#f2a900", "#5b3a00", "🪖"],
@@ -320,7 +321,8 @@ export function useFeature(name: string): boolean {
 
 /** O'yin belgisi: logo bo'lsa rasm, bo'lmasa bosh harflar. */
 export function GameTile({ name, logo, slug, size = 64, radius = 16 }: { name: string; logo?: string | null; slug?: string; size?: number; radius?: number }) {
-  const img = logo || (slug ? GAME_IMG[slug] : undefined);
+  // Admin yuklagan rasm > rasmiy ikonka > provayder logotipi
+  const img = (logo && logo.includes("/game-image/") ? logo : undefined) || (slug ? GAME_IMG[slug] : undefined) || logo || undefined;
   if (img) return <img src={img} alt={name} loading="lazy" style={{ width: size, height: size, borderRadius: radius, objectFit: "cover", display: "block" }} />;
   const st = slug ? GAME_STYLE[slug] : undefined;
   const hue = [...name].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;

@@ -122,21 +122,6 @@ export default function Home() {
           <button className="btn small ghost" onClick={() => nav("/wallet")}>+ {t("To'ldirish")}</button>
         </div>
 
-        {trade.length > 0 && (
-          <>
-            <div className="sec-title">{t("Savdo va xizmatlar")}</div>
-            <div className="grid2">
-              {trade.map((x) => (
-                <div key={x.to} className="card click svc" onClick={() => nav(x.to)}>
-                  <div className="iconbtn y" style={{ width: 40, height: 40, background: "rgba(255,214,10,.08)" }}><Icon name={x.icon} /></div>
-                  <div className="b" style={{ marginTop: 10 }}>{x.title}</div>
-                  <div className="mut xs">{x.sub}</div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
         {f.top && (
           <div className="card click row between" onClick={() => nav("/top")}>
             <div className="row">
@@ -163,16 +148,6 @@ export default function Home() {
           </div>
         )}
 
-        <div className="card row between" style={{ opacity: 0.7 }}>
-          <div className="row">
-            <div className="iconbtn y" style={{ width: 44, height: 44, background: "rgba(255,214,10,.08)" }}><Icon name="ai" /></div>
-            <div>
-              <div className="b">{t("AI yordamchi")}</div>
-              <div className="mut xs">{t("Akkaunt topish va savollarga javob")}</div>
-            </div>
-          </div>
-          <span className="pill-b y">{t("Tez kunda")}</span>
-        </div>
       </div>
       <BottomNav />
     </>

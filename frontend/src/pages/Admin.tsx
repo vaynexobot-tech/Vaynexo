@@ -382,7 +382,7 @@ function ProvidersAdmin() {
                 <div className="sec-title">{edit.id ? "API tahrirlash" : "Yangi API"}</div>
                 <Field label="Nomi"><input className="input" value={edit.name ?? ""} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
                 {!edit.id && <Field label="Turi"><Seg value={edit.kind ?? "yupay"} onChange={(v) => setEdit({ ...edit, kind: v })} options={kindSeg} /></Field>}
-                <Field label={edit.kind === "http" ? "Manzil (https://...)" : "Manzil (bo'sh qoldirsangiz: api.yupay.uz)"}><input className="input mono" inputMode="url" autoCapitalize="off" value={edit.base_url ?? ""} onChange={(e) => setEdit({ ...edit, base_url: e.target.value })} placeholder={edit.kind === "http" ? "https://api.example.com/v1" : "https://api.yupay.uz/merchant/v1"} /></Field>
+                {edit.kind === "http" && <Field label="Manzil (https://...)"><input className="input mono" inputMode="url" autoCapitalize="off" value={edit.base_url ?? ""} onChange={(e) => setEdit({ ...edit, base_url: e.target.value })} placeholder="https://api.example.com/v1" /></Field>}
                 <Field label={edit.id && edit.key_set ? "API kalit (o'zgartirmaslik uchun bo'sh qoldiring)" : "API kalit"}><input className="input mono" type="password" autoComplete="off" autoCapitalize="off" value={edit.api_key ?? ""} onChange={(e) => setEdit({ ...edit, api_key: e.target.value.trim() })} placeholder={edit.kind === "yupay" ? "ypk_…" : ""} /></Field>
                 <div className="row between"><span className="sm">Faol</span><Toggle on={edit.is_active ?? true} onChange={(v) => setEdit({ ...edit, is_active: v })} /></div>
                 {edit.kind === "http" && (

@@ -866,7 +866,7 @@ async def donate_provider_create(body: ProviderIn, admin: AdminUser, session: Se
     if body.kind == "http" and not body.base_url.startswith("https://"):
         raise AppError("bad_url", "Manzil https:// bilan boshlansin")
     async with session.begin():
-        p = DonateProvider(name=body.name.strip(), kind=body.kind, base_url=body.base_url.strip(), key_enc=encrypt(key),
+        p = DonateProvider(name=body.name.strip(), kind=body.kind, base_url="" if body.kind == "yupay" and "/merchant/" not in body.base_url else body.base_url.strip(), key_enc=encrypt(key),
                            is_active=body.is_active, config=body.config or {})
         session.add(p)
     # Qo'shilishi bilan katalog avtomatik yuklanadi (xato bo'lsa provayder saqlanib qoladi, xatosi ko'rsatiladi)
@@ -896,7 +896,7 @@ async def donate_provider_update(pid: int, body: ProviderIn, admin: AdminUser, s
         p = await session.get(DonateProvider, pid)
         if p is None:
             raise NotFound("Provayder")
-        p.name, p.base_url, p.is_active = body.name.strip(), body.base_url.strip(), body.is_active
+        p.name, p.base_url, p.is_active = body.name.strip(), ("" if body.kind == "yupay" and "/merchant/" not in body.base_url else body.base_url.strip()), body.is_active
         if body.config is not None:
             p.config = body.config
         if (body.api_key or "").strip():

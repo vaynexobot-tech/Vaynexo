@@ -20,6 +20,12 @@ from app.providers.base import ProviderResult
 log = logging.getLogger(__name__)
 
 DEFAULT_URL = "https://api.yupay.uz/merchant/v1"
+
+
+def api_url(base_url: str) -> str:
+    """Faqat Merchant API manzili qabul qilinadi; kabinet/sayt sahifasi kiritilsa — standart API manzili."""
+    u = (base_url or "").strip().rstrip("/")
+    return u if u.startswith("https://") and "/merchant/" in u + "/" else DEFAULT_URL
 GAME_KEYWORD = {"ML": "mobile-legends", "MC": "magic-chess"}
 CATALOG_TTL = 300
 
@@ -63,7 +69,7 @@ class YupayProvider:
 
         self.settings = settings
         self.client = httpx.AsyncClient(
-            base_url=(base_url or DEFAULT_URL).rstrip("/"), timeout=timeout,
+            base_url=api_url(base_url), timeout=timeout,
             headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
         )
         self._catalog: list[dict] | None = None
@@ -73,8 +79,14 @@ class YupayProvider:
     async def catalog(self, force: bool = False) -> list[dict]:
         if force or self._catalog is None or time.monotonic() - self._catalog_at > CATALOG_TTL:
             r = await self.client.get("/catalog")
+            if r.status_code in (401, 403):
+                raise RuntimeError("API kalit noto'g'ri yoki bekor qilingan (Yupay kabinetida yangi kalit yarating)")
             r.raise_for_status()
-            self._catalog = r.json().get("brands") or []
+            try:
+                data = r.json()
+            except ValueError:
+                raise RuntimeError(f"Yupay JSON o'rniga sahifa qaytardi ({r.status_code}) — manzilni bo'sh qoldiring") from None
+            self._catalog = data.get("brands") or []
             self._catalog_at = time.monotonic()
         return self._catalog
 

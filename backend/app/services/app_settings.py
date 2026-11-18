@@ -138,7 +138,7 @@ FEATURES = {  # kalit: nomi
     "arena": "Arena (turnir, reyting)", "partner": "Hamkor dasturi", "ai": "AI yordamchi", "top": "Top xaridorlar",
 }
 for _k, _n in FEATURES.items():
-    SCHEMA[f"feature_{_k}"] = Spec("choice", "off", f"{_n}", "Bo'limlar (ilovada ko'rinishi)", choices={"on": "Yoqilgan", "off": "O'chirilgan"})
+    SCHEMA[f"feature_{_k}"] = Spec("choice", "off" if _k == "ai" else "on", f"{_n}", "Bo'limlar (ilovada ko'rinishi)", choices={"on": "Yoqilgan", "off": "O'chirilgan"})
 
 
 async def features(session: AsyncSession) -> dict[str, bool]:

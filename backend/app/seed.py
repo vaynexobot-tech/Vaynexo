@@ -28,19 +28,40 @@ ML = [
 MC = [("56 almaz", 56, 0, 12_500), ("172 almaz", 156, 16, 38_000), ("344 almaz", 312, 32, 74_000), ("706 almaz", 625, 81, 147_000)]
 
 
+_PID = {"key": "player_id", "label": "Player ID", "placeholder": "123456789", "pattern": r"^\d{5,20}$"}
+_ML = [{"key": "player_id", "label": "User ID", "placeholder": "12345678", "pattern": r"^\d{5,20}$"},
+       {"key": "server_id", "label": "Zone ID", "placeholder": "1234", "pattern": r"^\d{1,10}$"}]
+GAME_FIELDS: dict[str, list[dict]] = {
+    "ML": _ML,
+    "MC": _ML,
+    "pubg-mobile": [{"key": "player_id", "label": "Character ID", "placeholder": "5123456789", "pattern": r"^\d{5,15}$"}],
+    "steam": [{"key": "player_id", "label": "Steam login", "placeholder": "login", "pattern": r"^[A-Za-z0-9_.-]{2,64}$"}],
+    "free-fire": [_PID],
+    "standoff-2": [_PID],
+    "delta-force": [_PID],
+    "honor-of-kings": [_PID],
+    "blood-strike": [_PID],
+    "arena-breakout": [_PID],
+    "genshin-impact": [{"key": "player_id", "label": "UID", "placeholder": "700000000", "pattern": r"^\d{9,10}$"},
+                       {"key": "server_id", "label": "Server", "placeholder": "os_asia", "pattern": r"^[a-z_]{2,20}$"}],
+    "roblox": [{"key": "player_id", "label": "Roblox username", "placeholder": "username", "pattern": r"^[A-Za-z0-9_]{3,20}$"}],
+}
+
+
 async def seed_games() -> None:
-    """O'yinlar ro'yxati: faqat yo'q bo'lganlari qo'shiladi (admin o'zgartirganlari buzilmaydi). MC yashirin."""
+    """O'yinlar ro'yxati: faqat yo'q bo'lganlari qo'shiladi (admin o'zgartirganlari buzilmaydi). MC yashirin.
+    Maydonlari bo'sh qolgan o'yinlarga standart ID maydonlari qo'yiladi."""
     async with SessionLocal() as session, session.begin():
-        have = set(await session.scalars(select(DonateGame.slug)))
+        have = {g.slug: g for g in await session.scalars(select(DonateGame))}
         for i, (slug, name, slot, popular) in enumerate(GAMES):
             if slug not in have:
-                fields = ([{"key": "player_id", "label": "User ID", "placeholder": "12345678", "pattern": r"^\d{5,20}$"},
-                           {"key": "server_id", "label": "Zone ID", "placeholder": "1234", "pattern": r"^\d{1,10}$"}] if slug == "ML" else [])
-                session.add(DonateGame(slug=slug, name=name, featured_slot=slot, popular=popular, sort=i, fields=fields, is_active=True))
+                session.add(DonateGame(slug=slug, name=name, featured_slot=slot, popular=popular, sort=i,
+                                       fields=GAME_FIELDS.get(slug, [_PID]), is_active=True))
         if "MC" not in have:
-            session.add(DonateGame(slug="MC", name="Magic Chess", is_active=False, sort=99, fields=[
-                {"key": "player_id", "label": "User ID", "placeholder": "12345678", "pattern": r"^\d{5,20}$"},
-                {"key": "server_id", "label": "Zone ID", "placeholder": "1234", "pattern": r"^\d{1,10}$"}]))
+            session.add(DonateGame(slug="MC", name="Magic Chess", is_active=False, sort=99, fields=_ML))
+        for slug, g in have.items():
+            if not g.fields:
+                g.fields = GAME_FIELDS.get(slug, [_PID])
 
 
 async def main() -> None:

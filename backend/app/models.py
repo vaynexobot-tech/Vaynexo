@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -183,6 +184,8 @@ class DonateGame(Base):
     popular: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # «Mashhur» to'ri
     sort: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    image: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)  # admin yuklagan rasm (bazada — server diski o'chib ketadi)
+    image_ver: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
 
 class DonatePackage(Base):

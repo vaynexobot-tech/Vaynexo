@@ -893,4 +893,9 @@ export const ru: Record<string, string> = {
   "Hisobni to'ldirish": "Пополнение",
   "Donat shu akkauntga tushadi": "Донат поступит на этот аккаунт",
   "O'yinchi topilmadi. ID ni tekshiring.": "Игрок не найден. Проверьте ID.",
+  "Savdo va xizmatlar": "Торговля и услуги",
+  "Garant bilan xavfsiz": "Безопасно с гарантом",
+  "Soatbay ijara": "Почасовая аренда",
+  "Reyting ko'tarish": "Поднятие рейтинга",
+  "Premium va Stars": "Premium и Stars",
 };

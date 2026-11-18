@@ -409,7 +409,7 @@ function ProvidersAdmin() {
   );
 }
 
-interface AGame { slug: string; name: string; logo: string | null; category: string; is_active: boolean; featured_slot: number | null; popular: boolean; sort: number; packages: number; provider_id: number | null }
+interface AGame { slug: string; name: string; logo: string | null; category: string; is_active: boolean; featured_slot: number | null; popular: boolean; sort: number; packages: number; provider_id: number | null; has_image?: boolean }
 
 function GamesAdmin() {
   const st = useLoad(() => api.get<AGame[]>("/admin/donate/games"));
@@ -429,6 +429,20 @@ function GamesAdmin() {
                   <div className="mut xs">{g.packages} ta paket{g.provider_id ? " · API" : " · qo'lda"}{g.category ? ` · ${g.category}` : ""}</div>
                 </div>
                 <div className="col" style={{ alignItems: "flex-end", gap: 2 }}><span className="mut xs">Ko'rinadi</span><Toggle on={g.is_active} onChange={(v) => upd(g, { is_active: v })} /></div>
+              </div>
+              <div className="row" style={{ gap: 6 }}>
+                <label className="btn small ghost" style={{ cursor: "pointer" }}>
+                  🖼 {g.has_image ? "Rasmni almashtirish" : "Rasm yuklash"}
+                  <input type="file" accept="image/*" hidden disabled={busy} onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    const fd = new FormData();
+                    fd.append("file", file);
+                    run(async () => { await api.form(`/admin/donate/games/${encodeURIComponent(g.slug)}/image`, fd); st.reload(); });
+                  }} />
+                </label>
+                {g.has_image && <button className="btn small ghost" disabled={busy} onClick={() => run(async () => { await api.del(`/admin/donate/games/${encodeURIComponent(g.slug)}/image`); st.reload(); })}>O'chirish</button>}
               </div>
               {g.is_active && (
                 <div className="row between">

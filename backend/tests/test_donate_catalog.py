@@ -177,8 +177,30 @@ async def test_provider_webhook_uses_own_key(api, ctx):
     assert (await c.post(f"/api/yupay/webhook/{row.id + 5}", content=body, headers=hdr)).status_code == 404
 
 
-async def test_features_default_off_and_toggle(api):
+async def test_features_default_on_and_toggle(api):
     me = (await api(5).get("/me")).json()
-    assert me["features"]["market"] is False and me["features"]["rent"] is False and set(me["features"]) >= {"market", "tg", "arena"}
+    assert me["features"]["market"] is True and me["features"]["ai"] is False and set(me["features"]) >= {"market", "tg", "arena"}
+    assert (await api(1).put("/admin/settings", {"key": "feature_market", "value": "off"})).status_code == 200
+    assert (await api(5).get("/me")).json()["features"]["market"] is False
     assert (await api(1).put("/admin/settings", {"key": "feature_market", "value": "on"})).status_code == 200
     assert (await api(5).get("/me")).json()["features"]["market"] is True
+
+
+async def test_game_image_upload(api, client):
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (600, 300), "red").save(buf, "PNG")
+    await api(1).get("/me")
+    r = await client.post("/api/admin/donate/games/ML/image", files={"file": ("a.png", buf.getvalue(), "image/png")}, headers={"X-Dev-User": "1"})
+    assert r.status_code == 200, r.text
+    url = r.json()["logo"]
+    img = await client.get(url)
+    assert img.status_code == 200 and img.headers["content-type"] == "image/webp"
+    assert Image.open(io.BytesIO(img.content)).size == (256, 256)
+    games = (await api(5).get("/donate/games")).json()
+    assert games["featured"][0]["logo"] == url
+    r = await client.post("/api/admin/donate/games/ML/image", files={"file": ("a.png", b"x", "image/png")}, headers={"X-Dev-User": "5"})
+    assert r.status_code == 403

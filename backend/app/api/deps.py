@@ -154,7 +154,8 @@ async def admin_user(request: Request, user: CurrentUser) -> AsyncIterator[User]
     if request.method == "GET":
         yield user
         return
-    body = await request.body()
+    # Fayl yuklash (multipart) tanasi allaqachon o'qilgan — jurnalga faqat yo'l yoziladi
+    body = b"" if request.headers.get("content-type", "").startswith("multipart/") else await request.body()
     yield user
     # Faqat muvaffaqiyatli o'zgarishlar yoziladi (endpoint xato bersa, bu yerga yetib kelmaydi)
     from app.services import audit

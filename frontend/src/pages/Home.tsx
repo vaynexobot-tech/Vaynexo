@@ -1,15 +1,25 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, type DonateGameCard, type DonateGames } from "../api";
+import { api, type DonateGameCard, type DonateGames, type Tournament } from "../api";
 import { t } from "../i18n";
 import { tgPhoto } from "../tg";
-import { BalancePill, BottomNav, GameTile, Icon, Loadable, som, useApp, useLoad } from "../ui";
+import { BalancePill, BottomNav, GameTile, Icon, Loadable, money, som, useApp, useFeature, useLoad } from "../ui";
 
 export default function Home() {
   const nav = useNavigate();
   const { me, toast } = useApp();
   const [q, setQ] = useState("");
   const games = useLoad(() => api.get<DonateGames>("/donate/games"));
+  const arena = useFeature("arena");
+  const home = useLoad(() => (arena ? api.get<{ tournament: Tournament | null }>("/home") : Promise.resolve({ tournament: null })), [arena]);
+  const tour = home.data?.tournament;
+  const f = { market: useFeature("market"), rent: useFeature("rent"), boost: useFeature("boost"), tg: useFeature("tg"), top: useFeature("top") };
+  const trade = [
+    { on: f.market, to: "/market", icon: "grid", title: t("Account savdo"), sub: t("Garant bilan xavfsiz") },
+    { on: f.rent, to: "/rent", icon: "bag", title: t("Account ijara"), sub: t("Soatbay ijara") },
+    { on: f.boost, to: "/boost", icon: "bolt", title: t("Boost xizmati"), sub: t("Reyting ko'tarish") },
+    { on: f.tg, to: "/tg", icon: "send", title: t("TG xizmatlar"), sub: t("Premium va Stars") },
+  ].filter((x) => x.on);
   const photo = tgPhoto();
 
   const open = (g: DonateGameCard) => (g.available ? nav(`/donate/${g.slug}`) : toast(t("{n} tez kunda ochiladi", { n: g.name }), "info"));
@@ -40,11 +50,27 @@ export default function Home() {
       </div>
 
       <div className="page">
-        <div className="hero">
-          <span className="badge g">● VAYNEXO</span>
-          <div className="hf bb" style={{ fontSize: 20, margin: "12px 0 4px" }}>{t("Donat — tez va ishonchli")}</div>
-          <div className="mut sm">{t("O'yinni tanlang, ID kiriting — qolganini biz bajaramiz")}</div>
-        </div>
+        {tour ? (
+          <div className="hero click" onClick={() => nav(`/arena/${tour.id}`)}>
+            <div className="row between">
+              <span className="badge g">● {t("KONKURS")} · {tour.game === "MC" ? "Magic Chess" : "Mobile Legends"}</span>
+              <span className="mono y bb">{money(tour.prize_fund)} UZS</span>
+            </div>
+            <div className="hf bb" style={{ fontSize: 20, margin: "12px 0 4px" }}>{tour.title}</div>
+            <div className="mut sm">{t("Sovrinli turnir — ro'yxatdan o'ting va ishtirok eting")}</div>
+            <div className="divider" style={{ margin: "12px 0" }} />
+            <div className="row between">
+              <span className="mut sm">{tour.players_count} / {tour.max_players} {t("ishtirokchi")}</span>
+              <button className="btn small">{tour.joined ? t("Batafsil") : t("Qatnashish")}</button>
+            </div>
+          </div>
+        ) : (
+          <div className="hero">
+            <span className="badge g">● VAYNEXO</span>
+            <div className="hf bb" style={{ fontSize: 20, margin: "12px 0 4px" }}>{trade.length ? t("Donat, akkaunt va xizmatlar — bir joyda") : t("Donat — tez va ishonchli")}</div>
+            <div className="mut sm">{trade.length ? t("Har bir xarid garant bilan himoyalangan") : t("O'yinni tanlang, ID kiriting — qolganini biz bajaramiz")}</div>
+          </div>
+        )}
 
         <div className="row grow input" style={{ height: 52, borderRadius: 26, padding: "0 6px 0 16px" }}>
           <span className="mut"><Icon name="search" /></span>
@@ -94,6 +120,58 @@ export default function Home() {
             </div>
           </div>
           <button className="btn small ghost" onClick={() => nav("/wallet")}>+ {t("To'ldirish")}</button>
+        </div>
+
+        {trade.length > 0 && (
+          <>
+            <div className="sec-title">{t("Savdo va xizmatlar")}</div>
+            <div className="grid2">
+              {trade.map((x) => (
+                <div key={x.to} className="card click svc" onClick={() => nav(x.to)}>
+                  <div className="iconbtn y" style={{ width: 40, height: 40, background: "rgba(255,214,10,.08)" }}><Icon name={x.icon} /></div>
+                  <div className="b" style={{ marginTop: 10 }}>{x.title}</div>
+                  <div className="mut xs">{x.sub}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {f.top && (
+          <div className="card click row between" onClick={() => nav("/top")}>
+            <div className="row">
+              <div className="iconbtn" style={{ width: 44, height: 44 }}><Icon name="trophy" /></div>
+              <div>
+                <div className="b">{t("Top xaridorlar")}</div>
+                <div className="mut xs">{t("Botda eng ko'p xarid qilganlar reytingi")}</div>
+              </div>
+            </div>
+            <span className="mono y b">Top 100 ›</span>
+          </div>
+        )}
+
+        {f.market && (
+          <div className="card click row between" onClick={() => nav("/sell")}>
+            <div className="row">
+              <div className="hd-ico" style={{ width: 44, height: 44 }}><Icon name="doc" /></div>
+              <div>
+                <div className="b">{t("E'lon berish")}</div>
+                <div className="mut xs">{t("Account sotish uchun e'lon joylang")}</div>
+              </div>
+            </div>
+            <span className="y"><Icon name="right" /></span>
+          </div>
+        )}
+
+        <div className="card row between" style={{ opacity: 0.7 }}>
+          <div className="row">
+            <div className="iconbtn y" style={{ width: 44, height: 44, background: "rgba(255,214,10,.08)" }}><Icon name="ai" /></div>
+            <div>
+              <div className="b">{t("AI yordamchi")}</div>
+              <div className="mut xs">{t("Akkaunt topish va savollarga javob")}</div>
+            </div>
+          </div>
+          <span className="pill-b y">{t("Tez kunda")}</span>
         </div>
       </div>
       <BottomNav />

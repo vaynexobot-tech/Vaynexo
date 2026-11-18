@@ -7,6 +7,19 @@ import mlImg from "./assets/ml.webp";
 import { haptic, tg } from "./tg";
 
 export const GAME_IMG: Record<string, string> = { ML: mlImg, MC: mcImg };
+// Rasm yuklanmagan o'yinlar uchun chiroyli zaxira ko'rinish: [rang1, rang2, belgi]
+const GAME_STYLE: Record<string, [string, string, string]> = {
+  "pubg-mobile": ["#f2a900", "#5b3a00", "🪖"],
+  steam: ["#1b2838", "#2a75bb", "🎮"],
+  "free-fire": ["#ff6a00", "#7a1500", "🔥"],
+  "standoff-2": ["#3a4a5c", "#0e151d", "🎯"],
+  "delta-force": ["#4b6b3a", "#14200f", "🪂"],
+  "genshin-impact": ["#7fb8ff", "#3b2a6b", "✨"],
+  roblox: ["#e2231a", "#3a0705", "🧱"],
+  "honor-of-kings": ["#d4a84b", "#4a1d0c", "👑"],
+  "blood-strike": ["#b3001b", "#1c0004", "🩸"],
+  "arena-breakout": ["#6b5a3a", "#1a150c", "🎒"],
+};
 
 // ---------------------------------------------------------------- formatlash
 export const money = (n: number) => Math.round(n).toLocaleString("ru-RU").replace(/,/g, " ");
@@ -231,10 +244,8 @@ export function BottomNav() {
   }
   const items = [
     { to: "/", icon: "home", label: t("Bosh sahifa") },
-    { to: "/wallet", icon: "wallet", label: t("Hamyon") },
-    ...(on("partner") ? [{ to: "/partner", icon: "play", label: t("Hamkor") }] : []),
-    ...(on("arena") ? [{ to: "/arena", icon: "arena", label: t("Arena") }] : []),
-    { to: "/history", icon: "clock", label: t("Tarix") },
+    on("partner") ? { to: "/partner", icon: "play", label: t("Hamkor") } : { to: "/wallet", icon: "wallet", label: t("Hamyon") },
+    on("arena") ? { to: "/arena", icon: "arena", label: t("Arena") } : { to: "/history", icon: "clock", label: t("Tarix") },
     { to: "/settings", icon: "settings", label: t("Sozlamalar") },
   ];
   const first = tradeItems[0];
@@ -310,10 +321,18 @@ export function useFeature(name: string): boolean {
 /** O'yin belgisi: logo bo'lsa rasm, bo'lmasa bosh harflar. */
 export function GameTile({ name, logo, slug, size = 64, radius = 16 }: { name: string; logo?: string | null; slug?: string; size?: number; radius?: number }) {
   const img = logo || (slug ? GAME_IMG[slug] : undefined);
-  const hue = [...name].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
   if (img) return <img src={img} alt={name} loading="lazy" style={{ width: size, height: size, borderRadius: radius, objectFit: "cover", display: "block" }} />;
-  const ini = name.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
-  return <div aria-label={name} style={{ width: size, height: size, borderRadius: radius, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: size / 3, color: "#fff", background: `linear-gradient(135deg, hsl(${hue} 55% 38%), hsl(${(hue + 40) % 360} 60% 24%))` }}>{ini}</div>;
+  const st = slug ? GAME_STYLE[slug] : undefined;
+  const hue = [...name].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+  const bg = st ? `linear-gradient(140deg, ${st[0]}, ${st[1]})` : `linear-gradient(135deg, hsl(${hue} 55% 38%), hsl(${(hue + 40) % 360} 60% 24%))`;
+  const ini = name.split(/[\s-]+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  return (
+    <div aria-label={name} style={{ width: size, height: size, borderRadius: radius, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#fff", background: bg, boxShadow: "inset 0 0 0 1px rgba(255,255,255,.12)" }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 30% 20%, rgba(255,255,255,.28), transparent 55%)" }} />
+      <span style={{ fontSize: size / (st ? 2.4 : 3), lineHeight: 1, position: "relative" }}>{st ? st[2] : ini}</span>
+      {st && size >= 56 && <span style={{ fontSize: Math.max(9, size / 8), fontWeight: 800, letterSpacing: ".04em", marginTop: size / 16, position: "relative", textShadow: "0 1px 2px rgba(0,0,0,.4)" }}>{ini}</span>}
+    </div>
+  );
 }
 
 export function GameLogo({ game, size = 44 }: { game: string; size?: number }) {

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select, update
 
@@ -970,7 +970,8 @@ class GameIn(BaseModel):
 
 
 def _game_admin(g: DonateGame, n_pk: int) -> dict:
-    return {"slug": g.slug, "name": g.name, "logo": g.logo_url, "category": g.category, "is_active": g.is_active,
+    logo = f"/api/donate/game-image/{g.slug}?v={g.image_ver}" if g.image_ver else g.logo_url
+    return {"slug": g.slug, "name": g.name, "logo": logo, "has_image": bool(g.image_ver), "category": g.category, "is_active": g.is_active,
             "featured_slot": g.featured_slot, "popular": g.popular, "sort": g.sort, "provider_id": g.provider_id,
             "packages": n_pk, "synced_at": S.iso(g.synced_at)}
 
@@ -1002,3 +1003,47 @@ async def donate_game_update(slug: str, body: GameIn, admin: AdminUser, session:
             g.featured_slot = None
     await invalidate_packages_cache()
     return _game_admin(g, 0)
+
+
+@router.post("/donate/games/{slug}/image")
+async def donate_game_image(slug: str, file: UploadFile, admin: AdminUser, session: SessionDep):
+    """O'yin rasmini yuklash (kvadrat qilib kesiladi, 256×256 WEBP, bazada saqlanadi)."""
+    import io
+
+    from PIL import Image, ImageOps
+    from starlette.concurrency import run_in_threadpool
+
+    from app.api.media import IMAGE_MAX, _read_limited
+
+    if not (file.content_type or "").startswith("image/"):
+        raise AppError("bad_type", "Faqat rasm")
+    raw = await _read_limited(file, IMAGE_MAX)
+
+    def square(data: bytes) -> bytes:
+        try:
+            img = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("RGBA")
+            img = ImageOps.fit(img, (256, 256), Image.LANCZOS)
+            buf = io.BytesIO()
+            img.save(buf, "WEBP", quality=86, method=4)
+            return buf.getvalue()
+        except Exception as e:  # noqa: BLE001
+            raise AppError("bad_image", "Rasmni o'qib bo'lmadi") from e
+
+    data = await run_in_threadpool(square, raw)
+    async with session.begin():
+        g = await session.get(DonateGame, slug)
+        if g is None:
+            raise NotFound("O'yin")
+        g.image, g.image_ver = data, (g.image_ver or 0) + 1
+    await invalidate_packages_cache()
+    return {"logo": f"/api/donate/game-image/{slug}?v={g.image_ver}"}
+
+
+@router.delete("/donate/games/{slug}/image")
+async def donate_game_image_delete(slug: str, admin: AdminUser, session: SessionDep):
+    async with session.begin():
+        g = await session.get(DonateGame, slug)
+        if g is None:
+            raise NotFound("O'yin")
+        g.image, g.image_ver = None, 0
+    return {"ok": True}

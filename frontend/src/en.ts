@@ -880,4 +880,9 @@ export const en: Record<string, string> = {
   "Hisobni to'ldirish": "Account top-up",
   "Donat shu akkauntga tushadi": "The top-up goes to this account",
   "O'yinchi topilmadi. ID ni tekshiring.": "Player not found. Check the ID.",
+  "Savdo va xizmatlar": "Trade & services",
+  "Garant bilan xavfsiz": "Safe with escrow",
+  "Soatbay ijara": "Hourly rental",
+  "Reyting ko'tarish": "Rank boosting",
+  "Premium va Stars": "Premium & Stars",
 };

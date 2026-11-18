@@ -30,7 +30,8 @@ async def invalidate_packages_cache() -> None:
 def game_dict(g: DonateGame, available: bool) -> dict:
     fields = g.fields or ([{"key": "player_id", "label": "User ID", "placeholder": "12345678", "pattern": r"^\d{5,20}$"},
                            {"key": "server_id", "label": "Zone ID", "placeholder": "1234", "pattern": r"^\d{1,10}$"}] if g.slug in ("ML", "MC") else [])
-    return {"slug": g.slug, "name": g.name, "logo": g.logo_url, "hero": g.hero_url, "category": g.category,
+    logo = f"/api/donate/game-image/{g.slug}?v={g.image_ver}" if g.image_ver else g.logo_url
+    return {"slug": g.slug, "name": g.name, "logo": logo, "hero": None if g.image_ver else g.hero_url, "category": g.category,
             "fields": fields, "available": available, "slot": g.featured_slot}
 
 
@@ -48,6 +49,18 @@ async def games(user: CurrentUser, session: SessionDep):
     featured = sorted((x for x in d if x["slot"]), key=lambda x: x["slot"])[:3]
     popular = [game_dict(g, g.slug in have) for g in rows if g.popular and not g.featured_slot][:8]
     return {"featured": featured, "popular": popular, "all": d}
+
+
+@router.get("/game-image/{slug}")
+async def game_image(slug: str, session: SessionDep):
+    """O'yin rasmi (ochiq: <img> tegi sarlavha yubormaydi). Versiya parametri bilan uzoq keshlanadi."""
+    from fastapi import Response
+    from sqlalchemy.orm import undefer
+
+    g = await session.scalar(select(DonateGame).options(undefer(DonateGame.image)).where(DonateGame.slug == slug))
+    if g is None or not g.image:
+        raise NotFound("Rasm")
+    return Response(g.image, media_type="image/webp", headers={"Cache-Control": "public, max-age=604800, immutable"})
 
 
 @router.get("/games/{slug}")

@@ -753,6 +753,22 @@ on("GET", "/arena/team-posts", (_m, _b, q) => teamPosts.filter((p) => !q.get("la
 on("POST", "/arena/team-posts", (_m, b) => { const p = { id: nid(), ...b, mine: true }; teamPosts.unshift(p); return p; });
 on("POST", "/arena/team-posts/:id/close", (m) => { const i = teamPosts.findIndex((p) => p.id === +m[1]); teamPosts.splice(i, 1); return {}; });
 on("POST", "/arena/team-posts/:id/contact", () => ({ ok: true }));
+const mlProfile: Json = { nick: "", lane: "", rank: "", heroes: [], ml_id: "" };
+on("GET", "/arena/profile", () => mlProfile);
+on("PUT", "/arena/profile", (_m, b) => Object.assign(mlProfile, b));
+const QUIZ = [[109, "Aamon", ["Aamon", "Alucard", "Fanny", "Gusion"]], [4, "Alice", ["Lunox", "Alice", "Eudora", "Aurora"]], [9, "Akai", ["Akai", "Tigreal", "Franco", "Minotaur"]]] as const;
+const quizAns: Record<number, boolean> = {};
+on("GET", "/arena/quiz", () => ({ day: "demo", points_each: 10, score: Object.values(quizAns).filter(Boolean).length, done: Object.keys(quizAns).length === 4, roles: {},
+  questions: [...QUIZ.map(([h, a, o], n) => ({ n, type: "who", options: o, image: `/mlbb/heroes/${h}.webp`, answered: n in quizAns, correct: quizAns[n] ?? null, ...(n in quizAns ? { answer: a, hero: h } : {}) })),
+    { n: 3, type: "role", name: "Miya", options: ["tank", "fighter", "assassin", "mage", "marksman", "support"], image: "/mlbb/heroes/1.webp", answered: 3 in quizAns, correct: quizAns[3] ?? null }] }));
+on("POST", "/arena/quiz/:n", (m, b) => {
+  const n = +m[1]; const a = n < 3 ? QUIZ[n][1] : "marksman"; quizAns[n] = String(b.answer).toLowerCase() === a.toLowerCase();
+  if (quizAns[n]) state.me.points += 10;
+  return { correct: quizAns[n], answer: a, hero: n < 3 ? QUIZ[n][0] : 1, points: quizAns[n] ? 10 : 0 };
+});
+const votes: Json = { week: "demo", total: 41, my: null, points: 5, last_winner: 106, top: [{ hero: 109, votes: 14, pct: 34 }, { hero: 106, votes: 11, pct: 27 }, { hero: 4, votes: 9, pct: 22 }, { hero: 9, votes: 7, pct: 17 }] };
+on("GET", "/arena/hero-vote", () => votes);
+on("POST", "/arena/hero-vote", (_m, b) => { votes.my = b.hero_id; votes.total += 1; state.me.points += 5; return { ...votes, earned: 5 }; });
 const partnerVideos: Json[] = [
   { id: 1, platform: "tiktok", url: "https://tiktok.com/@aziz_edits/video/7431", status: "approved", views: 12_400, likes: 900, tier: 2, reward: "Turnirlarga bepul kirish · 1 oy", note: null, created_at: ago(20000) },
   { id: 2, platform: "instagram", url: "https://instagram.com/reel/C9xQ", status: "pending", views: 0, likes: 0, tier: 0, reward: "", note: null, created_at: ago(3000) },
@@ -763,7 +779,10 @@ on("GET", "/partner", () => {
   const best = Math.max(0, ...partnerVideos.filter((v) => v.status === "approved").map((v) => v.tier));
   return { tiers: PTIERS.map(([v, r], i) => ({ tier: i + 1, views: v, reward: r, done: i + 1 <= best })), videos: partnerVideos,
     stats: { sent: partnerVideos.length, views, pending: partnerVideos.filter((v) => v.status === "pending").length, to_official: Math.max(0, 50000 - views) },
-    rules: { min_views: 3000, count_days: 10, interval_days: 2, like_ratio: 3 } };
+    rules: { min_views: 3000, count_days: 10, interval_days: 2, like_ratio: 3 },
+    code: null, code_terms: { bonus: 3000, points: 50, need_videos: 1, approved: 1 },
+    leaderboard: [{ place: 1, name: "aziz_edits", views: 48_200, official: false }, { place: 2, name: "ml_uz_clips", views: 21_900, official: false }],
+    ideas: [{ title: "Donat 1 daqiqada", text: "Ekranni yozib, VAYNEXO'da ML almaz olishni boshidan oxirigacha ko'rsating." }], hashtags: "#vaynexo #vaynexobot #mlbb #mobilelegends" };
 });
 on("POST", "/partner/videos", (_m, b) => {
   const url = String(b.url);

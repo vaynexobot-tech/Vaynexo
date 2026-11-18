@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type Media } from "../api";
 import { t } from "../i18n";
+import { MlIcon, RankChips, rankKey } from "../mlbb";
 import { confirmDialog } from "../tg";
 import {
   BottomBar, BottomNav, Chips, KycBanner, Copy, dateTime, Empty, Field, GAME_IMG, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som,
@@ -87,7 +88,7 @@ export function Rent() {
                 <div key={x.id} className="gcard" style={x.busy_until ? { opacity: 0.75 } : undefined} onClick={() => nav(`/rent/${x.id}`)}>
                   <div className="gcov">
                     <img src={x.cover ?? GAME_IMG[x.game]} alt="" loading="lazy" style={x.busy_until ? { filter: "grayscale(.6) brightness(.75)" } : undefined} />
-                    {(x.collection_level || x.rank) && <span className="grank">{(x.collection_level || x.rank).toUpperCase()}</span>}
+                    {(x.collection_level || x.rank) && <span className="grank row" style={{ gap: 3 }}>{!x.collection_level && <MlIcon kind="rank" k={rankKey(x.rank)} size={14} />}{(x.collection_level || x.rank).toUpperCase()}</span>}
                   </div>
                   <div className="gbody">
                     <div className="b ell sm">{x.title}</div>
@@ -131,7 +132,7 @@ export function RentDetail() {
                   <div className="gallery">{l.media.map((m, i) => (m.type === "video" ? <video key={i} src={m.url} controls playsInline preload="metadata" /> : <img key={i} src={m.url} alt="" />))}</div>
                 ) : <img className="cover" src={GAME_IMG[l.game]} alt="" style={{ objectPosition: "center 25%" }} />}
                 <div className="row" style={{ gap: 6 }}>
-                  {l.rank && <span className="badge y">{l.rank.toUpperCase()}</span>}
+                  {l.rank && <span className="badge y" style={{ gap: 4 }}><MlIcon kind="rank" k={rankKey(l.rank)} size={16} />{l.rank.toUpperCase()}</span>}
                   <span className="badge m mono">#IJ-{l.id}</span>
                   <span className="xs b" style={{ marginLeft: "auto" }}><BusyLabel until={l.busy_until} /></span>
                 </div>
@@ -237,7 +238,7 @@ export function RentSell() {
         <KycBanner area="rental" />
         <Seg value={f.game} onChange={(v) => set("game", v)} options={[{ v: "ML", label: "Mobile Legends" }, { v: "MC", label: "Magic Chess" }]} />
         <Field label={t("Sarlavha")}><input className="input" maxLength={120} placeholder={t("Masalan: Mythic akkaunt · 120 skin")} value={f.title} onChange={(e) => set("title", e.target.value)} /></Field>
-        <Field label={t("Rank")}><Chips wrap value={f.rank} onChange={(v) => set("rank", v)} options={RANKS.map((r) => ({ v: r, label: r }))} /></Field>
+        <Field label={t("Rank")}>{f.game === "ML" ? <RankChips value={f.rank} onChange={(v) => set("rank", v)} options={RANKS} /> : <Chips wrap value={f.rank} onChange={(v) => set("rank", v)} options={RANKS.map((r) => ({ v: r, label: r }))} />}</Field>
         <Field label={t("Kolleksiya darajasi")}><Chips wrap value={f.collection_level} onChange={(v) => set("collection_level", f.collection_level === v ? "" : v)} options={LEVELS.map((l) => ({ v: l + " Collector", label: l }))} /></Field>
         <div className="grid3">
           <Field label={t("Skinlar")}><input className="input mono" inputMode="numeric" value={f.skins} onChange={(e) => set("skins", e.target.value ? Number(e.target.value.replace(/\D/g, "").slice(0, 4)) : "")} /></Field>

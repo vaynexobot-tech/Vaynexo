@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, type Boost, type Deal, type DonateOrder, type ListingFull, type Me, type Pkg, type TgOrder, type Topup, type Withdrawal } from "../api";
+import { api, isWebAdmin, type Boost, type Deal, type DonateOrder, type ListingFull, type Me, type Pkg, type TgOrder, type Topup, type Withdrawal } from "../api";
 import { t } from "../i18n";
 import { confirmDialog, openTg } from "../tg";
+import { HERO_BY_ID, HeroAva } from "../mlbb";
 import { Chips, Copy, dateTime, Empty, Field, GameTile, Header, Loadable, money, MoneyInput, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
 
-type Tab = "stats" | "analytics" | "audit" | "broadcast" | "promo" | "settings" | "rent" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments" | "kyc" | "partner" | "matches";
+type Tab = "stats" | "arena" | "analytics" | "audit" | "broadcast" | "promo" | "settings" | "rent" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments" | "kyc" | "partner" | "matches";
 
 type Section = { v: Tab; icon: string; label: string; count?: string[] };
 const QUEUE: Section[] = [
@@ -30,40 +31,105 @@ const MANAGE: Section[] = [
   { v: "packages", icon: "📦", label: "Donat paketlari" },
   { v: "tournaments", icon: "🏆", label: "Turnirlar" },
   { v: "matches", icon: "🎯", label: "Prognozlar" },
+  { v: "arena", icon: "🧠", label: "Arena: viktorina va ovozlar" },
 ];
+
+function useWide(min = 900) {
+  const q = `(min-width: ${min}px)`;
+  const [w, setW] = useState(() => typeof window !== "undefined" && window.matchMedia?.(q).matches);
+  useEffect(() => {
+    const m = window.matchMedia?.(q);
+    if (!m) return;
+    const on = () => setW(m.matches);
+    m.addEventListener?.("change", on);
+    return () => m.removeEventListener?.("change", on);
+  }, [q]);
+  return w;
+}
 
 export default function Admin() {
   const { me } = useApp();
   const [tab, setTab] = useState<Tab>("stats");
+  const wide = useWide();
   if (!me?.is_admin) return <><Header title="Admin" /><Empty icon="🔒" text={t("Ruxsat yo'q")} /></>;
   const sec = [...QUEUE, ...MANAGE].find((x) => x.v === tab);
+  const body = (
+    <>
+      {tab === "stats" && <Stats go={setTab} />}
+      {tab === "settings" && <AppSettings />}
+      {tab === "analytics" && <Analytics />}
+      {tab === "audit" && <AuditLog />}
+      {tab === "broadcast" && <Broadcast />}
+      {tab === "promo" && <Promos />}
+      {tab === "rent" && <RentAdmin />}
+      {tab === "incoming" && <Incoming />}
+      {tab === "withdraw" && <Withdrawals />}
+      {tab === "moderation" && <Moderation />}
+      {tab === "disputes" && <Disputes />}
+      {tab === "donate" && <DonateReview />}
+      {tab === "tg" && <TgAdmin />}
+      {tab === "boost" && <BoostAdmin />}
+      {tab === "users" && <Users />}
+      {tab === "packages" && <Packages />}
+      {tab === "tournaments" && <Tournaments />}
+      {tab === "kyc" && <KycAdmin />}
+      {tab === "partner" && <PartnerAdmin />}
+      {tab === "matches" && <MatchesAdmin />}
+      {tab === "arena" && <ArenaStatsAdmin />}
+    </>
+  );
+  if (wide) return (
+    <div className="adm-web">
+      <aside className="adm-side">
+        <div className="row" style={{ gap: 10, padding: "4px 6px 12px" }}>
+          <div className="hf" style={{ width: 36, height: 36, borderRadius: 10, background: "var(--y)", color: "#111", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>VX</div>
+          <div><div className="hf bb">VAYNEXO</div><div className="mut xs">{isWebAdmin ? "Web admin panel" : "Admin panel"}</div></div>
+        </div>
+        <SideNav tab={tab} go={setTab} />
+      </aside>
+      <main className="adm-main">
+        <div className="row between" style={{ marginBottom: 12 }}>
+          <div className="hf bb" style={{ fontSize: 22 }}>{sec ? `${sec.icon} ${sec.label}` : "📊 Umumiy ko'rinish"}</div>
+          <span className="mut xs">{me.name}</span>
+        </div>
+        <div className="adm-body">{body}</div>
+      </main>
+    </div>
+  );
   return (
     <>
       <Header title={sec ? `${sec.icon} ${sec.label}` : t("Admin panel")} right={<span />} />
       <div className="page">
         {tab !== "stats" && <button className="btn small ghost" style={{ alignSelf: "flex-start" }} onClick={() => setTab("stats")}>‹ Bo'limlar</button>}
-        {tab === "stats" && <Stats go={setTab} />}
-        {tab === "settings" && <AppSettings />}
-        {tab === "analytics" && <Analytics />}
-        {tab === "audit" && <AuditLog />}
-        {tab === "broadcast" && <Broadcast />}
-        {tab === "promo" && <Promos />}
-        {tab === "rent" && <RentAdmin />}
-        {tab === "incoming" && <Incoming />}
-        {tab === "withdraw" && <Withdrawals />}
-        {tab === "moderation" && <Moderation />}
-        {tab === "disputes" && <Disputes />}
-        {tab === "donate" && <DonateReview />}
-        {tab === "tg" && <TgAdmin />}
-        {tab === "boost" && <BoostAdmin />}
-        {tab === "users" && <Users />}
-        {tab === "packages" && <Packages />}
-        {tab === "tournaments" && <Tournaments />}
-        {tab === "kyc" && <KycAdmin />}
-        {tab === "partner" && <PartnerAdmin />}
-        {tab === "matches" && <MatchesAdmin />}
+        {body}
       </div>
     </>
+  );
+}
+
+function SideNav({ tab, go }: { tab: Tab; go: (t: Tab) => void }) {
+  const st = useLoad(() => api.get<Record<string, number>>("/admin/stats"));
+  useEffect(() => {
+    const id = setInterval(() => st.reload(), 60_000);
+    return () => clearInterval(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const s = st.data ?? {};
+  const item = (x: Section) => {
+    const n = (x.count ?? []).reduce((a, k) => a + (s[k] || 0), 0);
+    return (
+      <button key={x.v} className={"side-item" + (tab === x.v ? " on" : "")} onClick={() => go(x.v)}>
+        <span>{x.icon}</span><span className="grow ell">{x.label}</span>{n > 0 && <span className="adm-n on">{n}</span>}
+      </button>
+    );
+  };
+  return (
+    <nav className="col" style={{ gap: 2 }}>
+      <button className={"side-item" + (tab === "stats" ? " on" : "")} onClick={() => go("stats")}><span>📊</span><span className="grow">Umumiy</span></button>
+      <div className="side-h">Navbat</div>
+      {QUEUE.map(item)}
+      <div className="side-h">Boshqaruv</div>
+      {MANAGE.map(item)}
+    </nav>
   );
 }
 
@@ -1402,6 +1468,36 @@ function SmsSetup() {
             </div>
           )}
         </div>
+      )}
+    </Loadable>
+  );
+}
+
+interface ArenaStats { quiz_today: number; quiz_correct_today: number; quiz_players_week: number; votes_week: number; top_heroes: { hero: number; votes: number; pct: number }[];
+  profiles: number; team_posts_active: number; partner_codes: { code: string; uses: number; partner: string }[] }
+
+function ArenaStatsAdmin() {
+  const st = useLoad(() => api.get<ArenaStats>("/admin/arena/stats"));
+  return (
+    <Loadable state={st}>
+      {(d) => (
+        <>
+          <div className="grid2">
+            <StatCard label="Viktorina javoblari (bugun)" value={money(d.quiz_today)} sub={`${d.quiz_correct_today} to'g'ri`} />
+            <StatCard label="Viktorina o'yinchilari (7 kun)" value={money(d.quiz_players_week)} sub="kishi" />
+            <StatCard label="Qahramon ovozlari (hafta)" value={money(d.votes_week)} sub="ovoz" />
+            <StatCard label="MLBB kartalari" value={money(d.profiles)} sub={`${d.team_posts_active} faol jamoa e'loni`} />
+          </div>
+          <div className="sec-title">Haftaning qahramoni — top</div>
+          {d.top_heroes.length === 0 ? <Empty icon="👑" text="Bu hafta ovoz yo'q" /> : d.top_heroes.map((h, i) => (
+            <div key={h.hero} className="vote-bar"><i style={{ width: h.pct + "%" }} /><span className="mono b">{i + 1}</span><HeroAva id={h.hero} size={30} radius={8} /><span className="grow b">{HERO_BY_ID[h.hero]?.name}</span><span className="mono">{h.votes} · {h.pct}%</span></div>
+          ))}
+          <div className="sec-title">Hamkor promo-kodlari</div>
+          {d.partner_codes.length === 0 ? <Empty icon="🎟" text="Hali kod yo'q" /> : d.partner_codes.map((c) => (
+            <div key={c.code} className="card row tight"><span className="b mono grow">{c.code}</span><span className="mut sm">{c.partner}</span><span className="y mono b">{c.uses}×</span></div>
+          ))}
+          <div className="mut xs">Ball miqdorlari: Sozlamalar → «Arena: ball» (viktorina, ovoz) va «Hamkor dasturi» (promo-kod bonusi).</div>
+        </>
       )}
     </Loadable>
   );

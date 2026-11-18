@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { api } from "../api";
 import { t } from "../i18n";
-import { BottomNav, Empty, Header, Icon, Loadable, Seg, useAction, useApp, useLoad } from "../ui";
+import { copyText } from "../tg";
+import { BottomNav, Empty, Header, Icon, Loadable, som, useAction, useApp, useLoad } from "../ui";
 
 interface Tier { tier: number; views: number; reward: string; done: boolean }
 interface Video { id: number; platform: string; url: string; status: string; views: number; likes: number; tier: number; reward: string; note: string | null; created_at: string }
@@ -10,6 +11,11 @@ interface Overview {
   videos: Video[];
   stats: { sent: number; views: number; pending: number; to_official: number };
   rules: { min_views: number; count_days: number; interval_days: number; like_ratio: number };
+  code: { code: string; uses: number; max_uses: number; bonus: number; active: boolean } | null;
+  code_terms: { bonus: number; points: number; need_videos: number; approved: number };
+  leaderboard: { place: number; name: string; views: number; official: boolean }[];
+  ideas: { title: string; text: string }[];
+  hashtags: string;
 }
 
 const fmtN = (n: number) => n.toLocaleString("ru-RU").replace(/,/g, " ");
@@ -22,7 +28,7 @@ const PLATFORMS = [
 
 export default function Partner() {
   const st = useLoad(() => api.get<Overview>("/partner"));
-  const [tab, setTab] = useState<"rewards" | "rules" | "send">("rewards");
+  const [tab, setTab] = useState<"rewards" | "code" | "send" | "ideas" | "top" | "rules">("rewards");
   return (
     <>
       <Header title={t("Hamkor")} sub={t("Video joylang — mukofot oling")} back={false} icon="play" />
@@ -47,8 +53,15 @@ export default function Partner() {
                 <div className="progress"><i style={{ width: Math.min(100, Math.round((d.stats.views / (d.tiers[3]?.views || 1)) * 100)) + "%", background: "var(--g)" }} /></div>
                 <div className="mut xs">{d.stats.to_official > 0 ? t("«Rasmiy hamkor»gacha {n} ko'rish qoldi", { n: fmtN(d.stats.to_official) }) : t("Siz «Rasmiy hamkor»siz!")}</div>
               </div>
-              <Seg value={tab} onChange={setTab} options={[{ v: "rewards", label: t("Mukofotlar") }, { v: "rules", label: t("Shartlar") }, { v: "send", label: t("Yuborish") }]} />
+              <div className="tabs5">
+                {([["rewards", "Mukofotlar"], ["code", "Promo-kod"], ["send", "Yuborish"], ["ideas", "G'oyalar"], ["top", "Reyting"], ["rules", "Shartlar"]] as const).map(([v, l]) => (
+                  <button key={v} className={tab === v ? "on" : ""} onClick={() => setTab(v)}>{t(l)}</button>
+                ))}
+              </div>
               {tab === "rewards" && <Rewards d={d} />}
+              {tab === "code" && <Code d={d} onDone={st.reload} />}
+              {tab === "ideas" && <Ideas d={d} />}
+              {tab === "top" && <PartnerTop d={d} />}
               {tab === "rules" && <Rules d={d} />}
               {tab === "send" && <Send d={d} onSent={st.reload} />}
             </>
@@ -140,5 +153,72 @@ function Send({ d, onSent }: { d: Overview; onSent: () => void }) {
         );
       })}
     </>
+  );
+}
+
+function Code({ d, onDone }: { d: Overview; onDone: () => void }) {
+  const { toast } = useApp();
+  const [code, setCode] = useState("");
+  const { busy, run } = useAction();
+  const ct = d.code_terms;
+  if (d.code) return (
+    <div className="card col" style={{ borderColor: "rgba(255,214,10,.45)", gap: 10 }}>
+      <div className="mut xs">{t("Shaxsiy promo-kodingiz")}</div>
+      <button className="hf bb y" style={{ fontSize: 30, background: "none", border: 0, letterSpacing: ".06em" }} onClick={() => { copyText(d.code!.code); toast(t("Nusxalandi"), "ok"); }}>{d.code.code} ⧉</button>
+      <div className="row" style={{ gap: 18 }}>
+        <div><div className="hf bb" style={{ fontSize: 20 }}>{d.code.uses}</div><div className="mut xs">{t("foydalanildi")}</div></div>
+        <div><div className="hf bb g" style={{ fontSize: 20 }}>+{fmtN(d.code.uses * ct.points)}</div><div className="mut xs">{t("ball oldingiz")}</div></div>
+      </div>
+      <div className="sm">{t("Tomoshabin kodni Hamyon → Promo-kod bo'limida kiritadi va {b} bonus oladi. Siz har foydalanishda +{p} ball olasiz.", { b: som(ct.bonus), p: ct.points })}</div>
+      <button className="btn ghost full" onClick={() => { copyText(`${d.code!.code} — VAYNEXO promo-kodi: hamyonga ${som(ct.bonus)} bonus! @vaynexobot`); toast(t("Nusxalandi"), "ok"); }}>{t("Video tavsifi uchun matnni nusxalash")}</button>
+    </div>
+  );
+  const can = ct.approved >= ct.need_videos;
+  return (
+    <div className="card col">
+      <div className="b">{t("Shaxsiy promo-kod oling")}</div>
+      <div className="sm">{t("Videoda kodingizni ayting: tomoshabin {b} bonus oladi, siz esa har foydalanishda +{p} ball.", { b: som(ct.bonus), p: ct.points })}</div>
+      {can ? (
+        <>
+          <input className="input mono" maxLength={16} placeholder="NIKNAME" value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))} />
+          <button className="btn full" disabled={code.length < 4 || busy} onClick={() => run(async () => { await api.post("/partner/code", { code }); toast(t("Promo-kod yaratildi"), "ok"); onDone(); })}>{t("Kod yaratish")}</button>
+        </>
+      ) : (
+        <div className="pill-b y" style={{ alignSelf: "flex-start" }}>{t("Kamida {n} ta tasdiqlangan video kerak ({h}/{n})", { n: ct.need_videos, h: ct.approved })}</div>
+      )}
+    </div>
+  );
+}
+
+function Ideas({ d }: { d: Overview }) {
+  const { toast } = useApp();
+  return (
+    <>
+      <div className="card row" style={{ borderColor: "rgba(255,214,10,.4)" }}>
+        <div className="grow"><div className="b sm">{t("Heshteglar")}</div><div className="mut xs mono">{d.hashtags}</div></div>
+        <button className="btn small ghost" onClick={() => { copyText(d.hashtags); toast(t("Nusxalandi"), "ok"); }}>{t("Nusxa")}</button>
+      </div>
+      {d.ideas.map((x, i) => (
+        <div key={x.title} className="card row" style={{ alignItems: "flex-start" }}>
+          <span className="mono y bb" style={{ width: 22 }}>{i + 1}</span>
+          <div className="grow"><div className="b">{t(x.title)}</div><div className="mut sm">{t(x.text)}</div></div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+function PartnerTop({ d }: { d: Overview }) {
+  return d.leaderboard.length === 0 ? <Empty icon="🏆" text={t("Bu oy hali tasdiqlangan videolar yo'q")} /> : (
+    <div className="card" style={{ padding: "4px 14px" }}>
+      <div className="mut xs" style={{ padding: "8px 0" }}>{t("Oxirgi 30 kun · tasdiqlangan ko'rishlar")}</div>
+      {d.leaderboard.map((r) => (
+        <div key={r.place} className="listrow">
+          <span className="mono b" style={{ width: 28 }}>{["🥇", "🥈", "🥉"][r.place - 1] ?? r.place}</span>
+          <span className="grow b ell">{r.name} {r.official && <span className="pill-b y" style={{ fontSize: 10 }}>{t("Rasmiy hamkor")}</span>}</span>
+          <span className="y mono b">{fmtN(r.views)}</span>
+        </div>
+      ))}
+    </div>
   );
 }

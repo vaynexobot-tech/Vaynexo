@@ -6,6 +6,24 @@ export class ApiError extends Error {
   }
 }
 
+/** Kompyuterdagi admin panel: havola #wt=<token> bilan ochiladi (token 12 soat, faqat adminlar). */
+const WT_KEY = "vx_web_token";
+export const webToken: string | null = (() => {
+  if (tg?.initData) return null;
+  const m = location.hash.match(/wt=([\w.]+)/);
+  if (m) {
+    localStorageSet(WT_KEY, m[1]);
+    history.replaceState(null, "", location.pathname + location.search);
+    return m[1];
+  }
+  const v = localStorageGet(WT_KEY);
+  if (!v) return null;
+  const exp = Number(v.split(".")[1] || 0);
+  if (exp * 1000 < Date.now()) return null;
+  return v;
+})();
+export const isWebAdmin = !!webToken;
+
 /** Brauzerda sinash uchun: ?dev=12345 (backend DEV_MODE=true bo'lishi kerak). */
 const devUser = new URLSearchParams(location.search).get("dev") || localStorageGet("devUser");
 if (devUser) localStorageSet("devUser", devUser);
@@ -55,6 +73,7 @@ function headers(json = true): Record<string, string> {
   if (pin) h["X-Pin-Token"] = pin;
   if (json) h["Content-Type"] = "application/json";
   if (tg?.initData) h["Authorization"] = "tma " + tg.initData;
+  else if (webToken) h["Authorization"] = "web " + webToken;
   else if (devUser) h["X-Dev-User"] = devUser;
   return h;
 }

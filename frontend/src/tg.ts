@@ -72,6 +72,12 @@ export function openTg(url: string) {
   else window.open(url, "_blank");
 }
 
+/** Tashqi brauzerda ochish (Telegram ichida — tizim brauzeri). */
+export function openExternal(url: string) {
+  if (tg) tg.openLink(url);
+  else window.open(url, "_blank");
+}
+
 export const startParam = (): string | undefined =>
   tg?.initDataUnsafe.start_param || new URLSearchParams(location.search).get("tgWebAppStartParam") || undefined;
 
@@ -106,4 +112,26 @@ export async function bioRead(reason: string): Promise<string | null> {
 export async function bioClear(): Promise<void> {
   const bm = await bioManager();
   if (bm?.isBiometricTokenSaved) await new Promise((r) => bm.updateBiometricToken("", r));
+}
+
+/** Matnni nusxalash (Telegram WebView'da clipboard API bo'lmasa — eski usul). */
+export function copyText(text: string): void {
+  try {
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+      return;
+    }
+  } catch { /* pastdagi usul */ }
+  fallbackCopy(text);
+}
+
+function fallbackCopy(text: string): void {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); } catch { /* yo'q */ }
+  ta.remove();
 }

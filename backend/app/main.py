@@ -54,6 +54,9 @@ async def lifespan(app: FastAPI):
                 allowed_updates=dp.resolve_used_update_types(),
             )
             log.info("Bot webhook o'rnatildi")
+            from app.bot.handlers import set_commands
+
+            await set_commands(get_bot())
             from app.release import notify_admins_once
 
             await notify_admins_once()
@@ -117,6 +120,8 @@ app.mount(settings.media_url, StaticFiles(directory=settings.media_dir), name="m
 if settings.frontend_dir and Path(settings.frontend_dir, "index.html").is_file():
     _dist = Path(settings.frontend_dir).resolve()
     app.mount("/assets", StaticFiles(directory=_dist / "assets"), name="assets")
+    if (_dist / "mlbb").is_dir():  # MLBB rasmiy rasmlari (qahramonlar, liniya, rank)
+        app.mount("/mlbb", StaticFiles(directory=_dist / "mlbb"), name="mlbb")
 
     @app.get("/{path:path}", include_in_schema=False)
     async def spa(path: str):

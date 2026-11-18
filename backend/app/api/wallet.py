@@ -138,8 +138,12 @@ async def redeem_promo(body: PromoIn, user: CurrentUser, session: SessionDep):
     from app.services import promo
 
     await rate_limit(f"promo:{user.id}", limit=8, window=600)
+    from app.services.notify import Outbox
+
+    out = Outbox()
     async with session.begin():
-        amount = await promo.redeem(session, user.id, body.code)
+        amount = await promo.redeem(session, user.id, body.code, out)
+    await out.flush()
     u = await session.get(User, user.id)
     return {"ok": True, "amount": amount, "balance": u.balance}
 

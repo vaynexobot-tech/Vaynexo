@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError, setPinToken, type Me, type PayCard } from "../api";
 import { LANGS, t, type Lang } from "../i18n";
-import { bioClear, bioManager, bioRead, bioSave, confirmDialog, haptic, tgPhoto } from "../tg";
+import { bioClear, bioManager, bioRead, bioSave, confirmDialog, copyText, haptic, openExternal, tgPhoto } from "../tg";
 import { Art, BottomBar, BottomNav, errorText, Field, Header, Icon, Loadable, money, Row, Sheet, Toggle, useAction, useApp, useLoad } from "../ui";
 
 const KYC_PILL: Record<Me["kyc_status"], [string, string]> = {
@@ -17,6 +17,7 @@ export function Settings() {
   const nav = useNavigate();
   const { me, setMe, fail } = useApp();
   const [langOpen, setLangOpen] = useState(false);
+  const [adminPick, setAdminPick] = useState(false);
   if (!me) return null;
   const photo = tgPhoto();
   const patch = async (body: Partial<Me>) => {
@@ -87,13 +88,48 @@ export function Settings() {
           <Row icon="shield" title={t("Xavfsizlik")} onClick={() => nav("/security")} />
           <Row icon="help" title={t("Yordam va aloqa")} onClick={() => nav("/help")} />
           <Row icon="doc" title={t("Qoidalar va shartlar")} onClick={() => nav("/legal/terms")} />
-          {me.is_admin && <Row icon="admin" title={<span className="y">{t("Admin panel")}</span>} onClick={() => nav("/admin")} />}
+          {me.is_admin && <Row icon="admin" title={<span className="y">{t("Admin panel")}</span>} onClick={() => setAdminPick(true)} />}
         </div>
         <div className="mut xs center">VAYNEXO · v1.1</div>
       </div>
       <LangSheet open={langOpen} current={me.lang} onClose={() => setLangOpen(false)} onPick={(l) => patch({ lang: l })} />
+      {adminPick && <AdminPick onClose={() => setAdminPick(false)} onMobile={() => { setAdminPick(false); nav("/admin"); }} />}
       <BottomNav />
     </>
+  );
+}
+
+/** Admin panel: telefonda (shu yerda) yoki kompyuter brauzerida (keng ko'rinish) ochish. */
+function AdminPick({ onClose, onMobile }: { onClose: () => void; onMobile: () => void }) {
+  const { toast } = useApp();
+  const [link, setLink] = useState<string | null>(null);
+  const { busy, run } = useAction();
+  return (
+    <Sheet open onClose={onClose}>
+      <div className="sec-title" style={{ marginTop: 0 }}>{t("Admin panel")}</div>
+      <div className="col">
+        <button className="card click row" style={{ textAlign: "left" }} onClick={onMobile}>
+          <Art name="user" size={44} />
+          <div className="grow"><div className="b">📱 {t("Mobil")}</div><div className="mut xs">{t("Shu yerda, Telegram ichida ochiladi")}</div></div>
+        </button>
+        <button className="card click row" style={{ textAlign: "left" }} disabled={busy} onClick={() => run(async () => {
+          const r = await api.post<{ url: string; ttl_hours: number }>("/admin/web-link");
+          setLink(r.url);
+        })}>
+          <Art name="grid" size={44} />
+          <div className="grow"><div className="b">💻 {t("Web (kompyuter)")}</div><div className="mut xs">{t("Keng ekran, yon menyu — kompyuter brauzerida ochiladi")}</div></div>
+        </button>
+        {link && (
+          <div className="card col" style={{ borderColor: "rgba(255,214,10,.45)" }}>
+            <div className="mut xs">{t("Shaxsiy havola 12 soat amal qiladi. Uni hech kimga bermang.")}</div>
+            <div className="row">
+              <button className="btn grow" onClick={() => openExternal(link)}>{t("Brauzerda ochish")}</button>
+              <button className="btn ghost" onClick={() => { copyText(link); toast(t("Nusxalandi — kompyuterda oching"), "ok"); }}>{t("Nusxa")}</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Sheet>
   );
 }
 

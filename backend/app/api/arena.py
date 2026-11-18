@@ -26,6 +26,7 @@ def match_dict(m: PredictionMatch, pick: str | None = None, counts: dict | None 
 
 def post_dict(p: TeamPost, u: User | None, me: int) -> dict:
     return {"id": p.id, "kind": p.kind, "name": p.name, "lane": p.lane, "rank": p.rank, "online": p.online, "note": p.note,
+            "heroes": p.heroes or [], "author_rank": (u.ml_rank or "") if u else "",
             "expires_at": p.expires_at.isoformat(), "created_at": p.created_at.isoformat() if p.created_at else None,
             "mine": p.user_id == me, "username": u.username if u else None}
 
@@ -45,7 +46,7 @@ async def summary(user: CurrentUser, session: SessionDep):
         match = {**match_dict(m, pick), "points": pts}
     return {"points": u.points, "passes": u.tournament_passes, "vip_credit_days": u.vip_credit_days,
             "boost_coupon_percent": u.boost_coupon_percent, "prediction": match,
-            "points_rules": {k: await app_settings.get_value(session, k) for k in ("pts_tournament_win", "pts_tournament_join", "pts_prediction")}}
+            "points_rules": {k: await app_settings.get_value(session, k) for k in ("pts_tournament_win", "pts_tournament_join", "pts_prediction", "pts_quiz", "pts_vote")}}
 
 
 @router.get("/arena/missions")
@@ -106,6 +107,7 @@ class PostIn(BaseModel):
     rank: str = Field("", max_length=32)
     online: str = Field("", max_length=32)
     note: str = Field("", max_length=300)
+    heroes: list[int] = Field(default_factory=list, max_length=10)
 
 
 @router.post("/arena/team-posts")
@@ -141,6 +143,71 @@ async def contact(pid: int, user: CurrentUser, session: SessionDep):
              + (f"\nYozish: https://t.me/{user.username}" if user.username else "\nUsername yo'q — u sizga botda javob kutadi."))
     await out.flush()
     return {"ok": True, "username": None}
+
+
+# ---------------------------------------------------------------- MLBB kartasi, viktorina, haftaning qahramoni
+class ProfileIn(BaseModel):
+    nick: str = Field("", max_length=32)
+    lane: str = Field("", max_length=16)
+    rank: str = Field("", max_length=16)
+    heroes: list[int] = Field(default_factory=list, max_length=10)
+
+
+@router.get("/arena/profile")
+async def ml_profile(user: CurrentUser, session: SessionDep):
+    from app.services import mlbb
+
+    return mlbb.profile_dict(await session.get(User, user.id))
+
+
+@router.put("/arena/profile")
+async def ml_profile_save(body: ProfileIn, user: CurrentUser, session: SessionDep):
+    from app.services import mlbb
+
+    async with session.begin():
+        u = await session.get(User, user.id, with_for_update=True)
+        mlbb.update_profile(u, body.model_dump())
+    return mlbb.profile_dict(u)
+
+
+@router.get("/arena/quiz")
+async def quiz(user: CurrentUser, session: SessionDep):
+    from app.services import mlbb
+
+    return await mlbb.quiz(session, user.id)
+
+
+class AnswerIn(BaseModel):
+    answer: str = Field(max_length=64)
+
+
+@router.post("/arena/quiz/{n}")
+async def quiz_answer(n: int, body: AnswerIn, user: CurrentUser, session: SessionDep):
+    from app.services import mlbb
+
+    await rate_limit(f"quiz:{user.id}", limit=30, window=600)
+    async with session.begin():
+        return await mlbb.answer(session, user.id, n, body.answer)
+
+
+@router.get("/arena/hero-vote")
+async def hero_vote(user: CurrentUser, session: SessionDep):
+    from app.services import mlbb
+
+    return await mlbb.vote_results(session, user.id)
+
+
+class VoteIn(BaseModel):
+    hero_id: int
+
+
+@router.post("/arena/hero-vote")
+async def hero_vote_post(body: VoteIn, user: CurrentUser, session: SessionDep):
+    from app.services import mlbb
+
+    async with session.begin():
+        pts = await mlbb.vote(session, user.id, body.hero_id)
+    return {**(await mlbb.vote_results(session, user.id)), "earned": pts}
 
 
 # ---------------------------------------------------------------- admin
@@ -211,6 +278,19 @@ async def partner_overview(user: CurrentUser, session: SessionDep):
     return await partner.overview(session, user.id)
 
 
+class CodeIn(BaseModel):
+    code: str = Field(max_length=32)
+
+
+@router.post("/partner/code")
+async def partner_code(body: CodeIn, user: CurrentUser, session: SessionDep):
+    from app.services import partner
+
+    async with session.begin():
+        p = await partner.create_code(session, user.id, body.code)
+    return partner.code_dict(p)
+
+
 class VideoIn(BaseModel):
     url: str = Field(min_length=8, max_length=400)
 
@@ -245,3 +325,27 @@ async def admin_partner_review(vid: int, body: ReviewIn, admin: AdminUser, sessi
         v = await partner.review(session, vid, body.approve, body.views, body.likes, body.note, out)
     await out.flush()
     return partner.video_dict(v)
+
+
+@router.get("/admin/arena/stats")
+async def admin_arena_stats(admin: AdminUser, session: SessionDep):
+    from datetime import timedelta
+
+    from sqlalchemy import func
+
+    from app.models import HeroVote, PromoCode, QuizAnswer
+    from app.services import mlbb
+
+    day, since = mlbb.today(), _now() - timedelta(days=7)
+    q_today = await session.scalar(select(func.count()).select_from(QuizAnswer).where(QuizAnswer.day == day)) or 0
+    q_ok = await session.scalar(select(func.count()).select_from(QuizAnswer).where(QuizAnswer.day == day, QuizAnswer.correct.is_(True))) or 0
+    q_players = await session.scalar(select(func.count(func.distinct(QuizAnswer.user_id))).where(QuizAnswer.created_at >= since)) or 0
+    votes = await mlbb.vote_results(session, admin.id)
+    profiles = await session.scalar(select(func.count()).select_from(User).where(User.ml_rank.is_not(None))) or 0
+    posts = await session.scalar(select(func.count()).select_from(TeamPost).where(TeamPost.status == "active", TeamPost.expires_at > _now())) or 0
+    codes = list(await session.scalars(select(PromoCode).where(PromoCode.partner_id.is_not(None)).order_by(PromoCode.used.desc()).limit(30)))
+    users = {u.id: u for u in await session.scalars(select(User).where(User.id.in_([c.partner_id for c in codes] or [0])))}
+    return {"quiz_today": q_today, "quiz_correct_today": q_ok, "quiz_players_week": q_players, "votes_week": votes["total"],
+            "top_heroes": votes["top"], "profiles": profiles, "team_posts_active": posts,
+            "partner_codes": [{"code": c.code, "uses": c.used, "partner": (users[c.partner_id].username or users[c.partner_id].first_name)
+                               if c.partner_id in users else str(c.partner_id)} for c in codes]}

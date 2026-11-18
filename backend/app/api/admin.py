@@ -1062,3 +1062,12 @@ async def donate_game_image_delete(slug: str, admin: AdminUser, session: Session
             raise NotFound("O'yin")
         g.image, g.image_ver = None, 0
     return {"ok": True}
+
+
+@router.post("/web-link")
+async def web_link(admin: AdminUser):
+    """Admin panelni kompyuter brauzerida ochish uchun 12 soatlik havola (token URL fragmentida — serverga yozilmaydi)."""
+    from app.security import WEB_TOKEN_TTL, make_web_token
+
+    token = make_web_token(admin.id)
+    return {"url": f"{settings.webapp_url.rstrip('/')}/admin?web=1#wt={token}", "ttl_hours": WEB_TOKEN_TTL // 3600}

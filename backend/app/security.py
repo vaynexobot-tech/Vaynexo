@@ -115,3 +115,29 @@ def check_pin_token(token: str | None, user_id: int, pin_ver: int) -> bool:
         return False
     calc = hmac.new(_pin_secret(), f"{uid}.{ver}.{exp}".encode(), hashlib.sha256).hexdigest()[:32]
     return hmac.compare_digest(calc, sig)
+
+
+# ---------------------------------------------------------------- admin panel (kompyuter brauzerida)
+WEB_TOKEN_TTL = 12 * 3600
+
+
+def _web_secret() -> bytes:
+    return hashlib.sha256(_pin_secret() + b":web-admin").digest()
+
+
+def make_web_token(user_id: int, ttl: int = WEB_TOKEN_TTL) -> str:
+    exp = int(time.time()) + ttl
+    msg = f"{user_id}.{exp}"
+    return f"{msg}.{hmac.new(_web_secret(), msg.encode(), hashlib.sha256).hexdigest()[:40]}"
+
+
+def check_web_token(token: str | None) -> int | None:
+    """Imzo va muddat to'g'ri bo'lsa foydalanuvchi ID, aks holda None."""
+    try:
+        uid, exp, sig = (token or "").split(".")
+        if int(exp) < time.time():
+            return None
+    except ValueError:
+        return None
+    calc = hmac.new(_web_secret(), f"{uid}.{exp}".encode(), hashlib.sha256).hexdigest()[:40]
+    return int(uid) if hmac.compare_digest(calc, sig) else None

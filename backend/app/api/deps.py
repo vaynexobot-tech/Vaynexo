@@ -81,14 +81,25 @@ async def current_user(
     x_pin_token: Annotated[str | None, Header()] = None,
 ) -> User:
     tg: dict | None = None
+    via_web = False
     if authorization and authorization.startswith("tma "):
         tg = validate_init_data(authorization[4:], settings.bot_token)
+    elif authorization and authorization.startswith("web "):
+        from app.security import check_web_token
+
+        wuid = check_web_token(authorization[4:])
+        if wuid:
+            tg, via_web = {"id": wuid}, True
     elif settings.dev_mode and x_dev_user:
         tg = {"id": int(x_dev_user), "first_name": f"Dev {x_dev_user}", "username": f"dev{x_dev_user}"}
     if tg is None:
         raise AppError("unauthorized", "Ilovani Telegram orqali oching", 401)
 
     uid = int(tg["id"])
+    if via_web:  # kompyuterdagi admin panel: faqat mavjud adminlar
+        u0 = await session.get(User, uid)
+        if u0 is None or not (u0.is_admin or uid in settings.admin_ids):
+            raise AppError("unauthorized", "Havola eskirgan yoki ruxsat yo'q", 401)
     from app.services import launch
 
     if not await launch.allowed(uid):
@@ -118,7 +129,7 @@ async def current_user(
             await arena.bump(session, ref, "invite")  # taklif qilganning vazifasi
         await session.commit()
     else:
-        if tg.get("username") != user.username:
+        if not via_web and tg.get("username") != user.username:
             user.username = tg.get("username")
         if uid in settings.admin_ids and not user.is_admin:
             user.is_admin = True

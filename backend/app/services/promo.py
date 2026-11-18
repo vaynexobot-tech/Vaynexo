@@ -17,7 +17,7 @@ def clean_code(code: str) -> str:
     return re.sub(r"[^A-Z0-9_-]", "", (code or "").strip().upper())[:32]
 
 
-async def redeem(session: AsyncSession, user_id: int, code: str) -> int:
+async def redeem(session: AsyncSession, user_id: int, code: str, out=None) -> int:
     code = clean_code(code)
     if len(code) < 3:
         raise AppError("bad_promo", "Promo-kodni kiriting")
@@ -29,6 +29,8 @@ async def redeem(session: AsyncSession, user_id: int, code: str) -> int:
         raise AppError("promo_expired", "Promo-kod muddati tugagan")
     if p.used >= p.max_uses:
         raise AppError("promo_used_up", "Promo-kod limiti tugagan")
+    if p.partner_id == user_id:
+        raise AppError("promo_own", "O'z promo-kodingizdan foydalana olmaysiz")
     if p.need_topup:
         topped = await session.scalar(select(func.count()).select_from(LedgerEntry)
                                       .where(LedgerEntry.user_id == user_id, LedgerEntry.kind == "topup"))
@@ -42,6 +44,10 @@ async def redeem(session: AsyncSession, user_id: int, code: str) -> int:
     p.used += 1
     await wallet.credit(session, user_id, p.amount, "promo", f"promo:{p.id}:{user_id}", ref_type="promo", ref_id=p.id,
                         note=f"Promo-kod {p.code}")
+    if p.partner_id and out is not None:
+        from app.services import partner
+
+        await partner.on_code_redeemed(session, p, user_id, out)
     return p.amount
 
 

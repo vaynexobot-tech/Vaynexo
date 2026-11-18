@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type ListingCard, type ListingFull, type Media } from "../api";
 import { t } from "../i18n";
+import { RankChips } from "../mlbb";
 import { confirmDialog } from "../tg";
 import { BottomBar, Chips, Empty, Field, Header, Icon, KycBanner, Loadable, money, MoneyInput, Seg, Sheet, som, Spinner, useAction, useApp, useLoad } from "../ui";
 import { ListingRow } from "./Market";
@@ -104,7 +105,7 @@ export function Sell() {
           <input className="input" maxLength={120} placeholder={t("Masalan: Mythic akkaunt · 120 skin")} value={f.title} onChange={(e) => set("title", e.target.value)} />
         </Field>
         <Field label={t("Rank")}>
-          <Chips wrap value={f.rank} onChange={(v) => set("rank", v)} options={RANKS.map((r) => ({ v: r, label: r }))} />
+          {f.game === "ML" ? <RankChips value={f.rank} onChange={(v) => set("rank", v)} options={RANKS} /> : <Chips wrap value={f.rank} onChange={(v) => set("rank", v)} options={RANKS.map((r) => ({ v: r, label: r }))} />}
         </Field>
         <Field label={t("Kolleksiya darajasi")}>
           <Chips wrap value={f.collection_level} onChange={(v) => set("collection_level", f.collection_level === v ? "" : v)} options={LEVELS.map((r) => ({ v: r, label: r.replace(" Collector", "") }))} />

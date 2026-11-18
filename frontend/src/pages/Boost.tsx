@@ -3,10 +3,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api, type Boost as BoostT } from "../api";
 import { t } from "../i18n";
 import { confirmDialog } from "../tg";
+import { HERO_BY_ID, HeroSlots, LANES, LanePicker, RankChips } from "../mlbb";
 import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, Header, Loadable, money, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
 
 const DIVS = ["V", "IV", "III", "II", "I"];
-const LANES = ["Gold", "Mid", "EXP", "Jungle", "Roam"];
 const METHODS = [
   { v: "telegram", label: "Telegram", sub: "Booster siz bilan Telegram orqali bog'lanadi" },
   { v: "moonton", label: "Moonton ID", sub: "Email va parol" },
@@ -29,6 +29,7 @@ export function Boost() {
   const [extra, setExtra] = useState(false);
   const [heroOn, setHeroOn] = useState(false);
   const [hero, setHero] = useState("");
+  const [heroIds, setHeroIds] = useState<number[]>([]);
   const [laneOn, setLaneOn] = useState(false);
   const [lane, setLane] = useState("");
   const [note, setNote] = useState("");
@@ -41,7 +42,7 @@ export function Boost() {
 
   const body = {
     game, current_rank: cur, current_division: div, current_stars: curStars, target_rank: target, target_stars: stars, express,
-    hero: extra && heroOn ? hero.trim() : "", lane: extra && laneOn ? lane : "", note, login_method: method, credentials: creds,
+    hero: extra && heroOn ? hero.trim() : "", lane: extra && laneOn ? (LANES.find((l) => l.v === lane)?.label ?? "") : "", note, login_method: method, credentials: creds,
   };
 
   useEffect(() => {
@@ -75,7 +76,7 @@ export function Boost() {
         <Seg value={game} onChange={setGame} options={[{ v: "ML", label: "Mobile Legends" }, { v: "MC", label: "Magic Chess" }]} />
         <div className="card col">
           <div className="b">{t("Hozirgi rank")}</div>
-          <Chips value={cur} onChange={setCur} options={["Epic", "Legend", "Mythic"].map((v) => ({ v, label: v }))} />
+          <RankChips value={cur} onChange={setCur} options={["Epic", "Legend", "Mythic"]} />
           {cur !== "Mythic" ? (
             <Field label={t("Daraja")}><Chips value={div} onChange={setDiv} options={DIVS.map((v) => ({ v, label: v }))} /></Field>
           ) : (
@@ -84,7 +85,7 @@ export function Boost() {
         </div>
         <div className="card col">
           <div className="b">{t("Kerakli rank")}</div>
-          <Chips value={target} onChange={setTarget} options={targets.map((v) => ({ v, label: v }))} />
+          <RankChips value={target} onChange={setTarget} options={targets} />
           {target !== "Legend" && (
             <Field label={t("Nechta yulduzgacha?")}>
               <Counter value={stars} onChange={setStars} min={target === "M. Glory" ? 50 : 1} />
@@ -114,12 +115,12 @@ export function Boost() {
                 <div className="b sm">{t("Qahramon tanlash")} {pct.boost_hero_percent != null && <span className="badge y">+{pct.boost_hero_percent}%</span>}</div>
                 <Toggle on={heroOn} onChange={setHeroOn} />
               </div>
-              {heroOn && <input className="input" maxLength={32} placeholder={t("Qahramon nomi, masalan: Fanny")} value={hero} onChange={(e) => setHero(e.target.value)} />}
+              {heroOn && <HeroSlots max={1} value={heroIds} onChange={(v) => { setHeroIds(v); setHero(v[0] ? HERO_BY_ID[v[0]]?.name ?? "" : ""); }} />}
               <div className="row between">
                 <div className="b sm">{t("Liniya tanlash")} {pct.boost_lane_percent != null && <span className="badge y">+{pct.boost_lane_percent}%</span>}</div>
                 <Toggle on={laneOn} onChange={setLaneOn} />
               </div>
-              {laneOn && <Chips value={lane} onChange={setLane} options={LANES.map((v) => ({ v, label: v }))} />}
+              {laneOn && <LanePicker value={lane} allowEmpty={false} onChange={setLane} />}
             </>
           )}
         </div>
@@ -274,3 +275,4 @@ export function BoostOrderPage() {
     </>
   );
 }
+

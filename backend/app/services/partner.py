@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.errors import AppError, BadState, NotFound
-from app.models import PartnerVideo, User
+from app.models import PartnerVideo, PromoCode, User
 from app.services import app_settings, arena
 from app.services.notify import Outbox, webapp_button
 
@@ -116,6 +116,61 @@ def video_dict(v: PartnerVideo) -> dict:
             "tier": v.tier, "reward": v.reward, "note": v.note, "created_at": v.created_at.isoformat() if v.created_at else None}
 
 
+IDEAS = [
+    ("Donat 1 daqiqada", "Ekranni yozib, VAYNEXO'da ML almaz olishni boshidan oxirigacha ko'rsating."),
+    ("Akkaunt savdo — garant bilan", "Garant qanday ishlashini va pul qanday himoyalanishini oddiy tilda tushuntiring."),
+    ("Turnir g'olibi", "Arena turniridan lavha, sovrin va g'alaba lahzasi."),
+    ("Qahramonni top", "Arena viktorinasini do'stingiz bilan yeching — kim ko'p topadi?"),
+    ("Haftaning qahramoni", "Ovoz berish natijasi: nega aynan shu qahramon kuchli?"),
+    ("Promo-kod bilan bonus", "Shaxsiy promo-kodingizni ko'rsating — tomoshabinlar hamyoniga bonus oladi."),
+]
+HASHTAGS = "#vaynexo #vaynexobot #mlbb #mobilelegends"
+
+
+def code_dict(p: PromoCode | None) -> dict | None:
+    return {"code": p.code, "uses": p.used, "max_uses": p.max_uses, "bonus": p.amount, "active": p.active} if p else None
+
+
+async def partner_leaderboard(session: AsyncSession, limit: int = 10) -> list[dict]:
+    since = _now() - timedelta(days=30)
+    views = func.sum(PartnerVideo.views).label("v")
+    rows = (await session.execute(select(PartnerVideo.user_id, views).where(
+        PartnerVideo.status == "approved", PartnerVideo.reviewed_at >= since)
+        .group_by(PartnerVideo.user_id).order_by(views.desc()).limit(limit))).all()
+    users = {u.id: u for u in await session.scalars(select(User).where(User.id.in_([r[0] for r in rows] or [0])))}
+    return [{"place": i + 1, "name": (users[uid].username or users[uid].first_name) if uid in users else "—", "views": int(v),
+             "official": bool(uid in users and users[uid].badge == "partner")} for i, (uid, v) in enumerate(rows)]
+
+
+async def create_code(session: AsyncSession, user_id: int, code: str) -> PromoCode:
+    from app.services.promo import clean_code
+
+    if await session.scalar(select(PromoCode).where(PromoCode.partner_id == user_id)):
+        raise BadState("Sizda shaxsiy promo-kod bor")
+    need = int(await app_settings.get_value(session, "partner_code_min_videos"))
+    have = await session.scalar(select(func.count()).select_from(PartnerVideo).where(
+        PartnerVideo.user_id == user_id, PartnerVideo.status == "approved")) or 0
+    if have < need:
+        raise BadState(f"Promo-kod uchun kamida {need} ta tasdiqlangan video kerak")
+    code = clean_code(code)
+    if not 4 <= len(code) <= 16:
+        raise AppError("bad_code", "Kod 4–16 ta lotin harf yoki raqam bo'lsin")
+    if await session.scalar(select(PromoCode.id).where(PromoCode.code == code)):
+        raise BadState("Bu kod band — boshqasini tanlang")
+    bonus = int(await app_settings.get_value(session, "partner_code_bonus"))
+    p = PromoCode(code=code, amount=bonus, max_uses=100_000, need_topup=True, active=True, created_by=user_id, partner_id=user_id)
+    session.add(p)
+    await session.flush()
+    return p
+
+
+async def on_code_redeemed(session: AsyncSession, p: PromoCode, user_id: int, out: Outbox) -> None:
+    """Hamkor kodi ishlatildi: hamkorga ball va xabar."""
+    pts = int(await app_settings.get_value(session, "partner_code_points"))
+    await arena.add_points(session, p.partner_id, pts, "partner_code", f"pcode:{p.id}:{user_id}")
+    out.user(p.partner_id, f"🎉 Promo-kodingiz {p.code} ishlatildi! +{pts} ball. Jami: {p.used} marta.")
+
+
 async def overview(session: AsyncSession, user_id: int) -> dict:
     vids = list(await session.scalars(select(PartnerVideo).where(PartnerVideo.user_id == user_id).order_by(PartnerVideo.id.desc()).limit(30)))
     t = await tiers(session)
@@ -126,4 +181,11 @@ async def overview(session: AsyncSession, user_id: int) -> dict:
             "stats": {"sent": len(vids), "views": total, "pending": sum(v.status == "pending" for v in vids),
                       "to_official": max(0, t[-1]["views"] - total)},
             "rules": {"min_views": t[0]["views"], "count_days": s["partner_count_days"], "interval_days": s["partner_interval_days"],
-                      "like_ratio": s["partner_min_like_ratio"]}}
+                      "like_ratio": s["partner_min_like_ratio"]},
+            "code": code_dict(await session.scalar(select(PromoCode).where(PromoCode.partner_id == user_id))),
+            "code_terms": {"bonus": int(await app_settings.get_value(session, "partner_code_bonus")),
+                           "points": int(await app_settings.get_value(session, "partner_code_points")),
+                           "need_videos": int(await app_settings.get_value(session, "partner_code_min_videos")),
+                           "approved": sum(v.status == "approved" for v in vids)},
+            "leaderboard": await partner_leaderboard(session),
+            "ideas": [{"title": a, "text": b} for a, b in IDEAS], "hashtags": HASHTAGS}

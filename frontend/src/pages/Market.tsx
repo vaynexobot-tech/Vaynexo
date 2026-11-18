@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, type Deal, type ListingCard, type ListingFull } from "../api";
 import { t } from "../i18n";
+import { MlIcon, rankKey } from "../mlbb";
 import {
   Art, BottomBar, BottomNav, Chips, KycBanner, Empty, Field, GAME_IMG, GameLogo, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Spinner, Status,
   useAction, useApp, useLoad,
@@ -130,7 +131,7 @@ export function GridCard({ x, onClick }: { x: ListingCard; onClick: () => void }
       <div className="gcov">
         <img src={x.cover ?? GAME_IMG[x.game]} alt="" loading="lazy" />
         {x.vip ? <span className="gflag vip">VIP</span> : isNew(x.created_at) ? <span className="gflag new">{t("YANGI")}</span> : null}
-        {x.rank && <span className="grank">{x.rank.toUpperCase()}</span>}
+        {x.rank && <span className="grank row" style={{ gap: 3 }}><MlIcon kind="rank" k={rankKey(x.rank)} size={14} />{x.rank.toUpperCase()}</span>}
       </div>
       <div className="gbody">
         <div className="b ell sm">{x.title}</div>
@@ -149,7 +150,7 @@ export function ListingRow({ x, onClick, extra }: { x: ListingCard; onClick?: ()
         <img className="thumb" src={x.cover ?? GAME_IMG[x.game]} alt="" loading="lazy" />
         <div className="grow col" style={{ gap: 3 }}>
           <div className="row" style={{ gap: 6 }}>
-            {x.rank && <span className="badge y">{x.rank.toUpperCase()}</span>}
+            {x.rank && <span className="badge y" style={{ gap: 4 }}><MlIcon kind="rank" k={rankKey(x.rank)} size={16} />{x.rank.toUpperCase()}</span>}
             {x.status !== "active" && <Status s={x.status} />}
           </div>
           <div className="b ell">{x.title}</div>
@@ -221,7 +222,7 @@ export function ListingDetail() {
                 ) : <img className="cover" src={GAME_IMG[l.game]} alt="" style={{ objectPosition: "center 25%" }} />}
                 <div className="row" style={{ gap: 6 }}>
                   {l.vip && <span className="badge" style={{ background: "#ffb020", color: "#111" }}>VIP</span>}
-                  {l.rank && <span className="badge y">{l.rank.toUpperCase()}</span>}
+                  {l.rank && <span className="badge y" style={{ gap: 4 }}><MlIcon kind="rank" k={rankKey(l.rank)} size={16} />{l.rank.toUpperCase()}</span>}
                   <span className="badge m mono">#VX-{l.id}</span>
                   {l.status !== "active" && <Status s={l.status} />}
                 </div>

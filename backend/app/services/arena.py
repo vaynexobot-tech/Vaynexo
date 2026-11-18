@@ -142,8 +142,12 @@ async def leaderboard(session: AsyncSession, user_id: int, limit: int = 100) -> 
          .group_by(PointsEntry.user_id).order_by(earned.desc(), PointsEntry.user_id))
     rows = (await session.execute(q.limit(limit))).all()
     users = {u.id: u for u in await session.scalars(select(User).where(User.id.in_([r[0] for r in rows] or [0])))}
-    items = [{"place": i + 1, "user_id": uid, "name": (users[uid].username or users[uid].first_name) if uid in users else "—",
-              "points": int(p)} for i, (uid, p) in enumerate(rows)]
+    def card(uid: int) -> dict:
+        u = users.get(uid)
+        return {"hero": (u.ml_heroes or [None])[0] if u else None, "rank": (u.ml_rank or "") if u else "", "lane": (u.ml_lane or "") if u else ""}
+
+    items = [{"place": i + 1, "user_id": uid, "name": (users[uid].ml_nick or users[uid].username or users[uid].first_name) if uid in users else "—",
+              "points": int(p), **card(uid)} for i, (uid, p) in enumerate(rows)]
     mine = next((x for x in items if x["user_id"] == user_id), None)
     if mine is None:
         my_pts = await session.scalar(select(func.coalesce(func.sum(PointsEntry.amount), 0)).where(
@@ -205,8 +209,11 @@ def validate_post(data: dict) -> dict:
     lane = data.get("lane") or ""
     if lane and lane not in LANES:
         raise AppError("bad_lane", "Liniya noto'g'ri")
+    from app.services.mlbb import valid_heroes
+
     return {"kind": kind, "name": name, "lane": lane, "rank": (data.get("rank") or "").strip()[:32],
-            "online": (data.get("online") or "").strip()[:32], "note": (data.get("note") or "").strip()[:300]}
+            "online": (data.get("online") or "").strip()[:32], "note": (data.get("note") or "").strip()[:300],
+            "heroes": valid_heroes(data.get("heroes"))}
 
 
 async def create_post(session: AsyncSession, user_id: int, data: dict) -> TeamPost:

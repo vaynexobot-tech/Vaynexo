@@ -11,8 +11,21 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-18.donat-katalog"
-NOTES = """🎮 Bosh sahifa yangilandi: 3 ta asosiy o'yin + mashhur o'yinlar (4×2). Faqat donat qoldi; boshqa bo'limlar yashirin
+RELEASE = "2026-11-18.arena-mlbb"
+NOTES = """🏆 Arena yangilandi (rasmiy MLBB rasmlari bilan):
+   🪪 MLBB kartasi — rank nishoni, liniya, 3 ta sevimli qahramon (reyting va jamoa e'lonlarida ko'rinadi)
+   🧠 «Qahramonni top» — kuniga 5 savol (qahramonni rasmidan topish, rolini topish), har to'g'ri javob +10 ball
+   👑 Haftaning qahramoni — har hafta ovoz, jamoatchilik meta reytingi (+5 ball)
+   🤝 Jamoa e'lonlari: liniya ikonkalari, rank nishoni, qahramonlar
+🎬 Hamkor: shaxsiy promo-kod (tomoshabinga bonus, hamkorga ball), hamkorlar reytingi, video g'oyalari va heshteglar
+🚀 Boost / Savdo / Ijara: rasmiy rank nishonlari, liniya ikonkalari, qahramon tanlash
+💻 Admin panel: Sozlamalar → Admin panel → «Mobil» yoki «Web (kompyuter)» — keng ekran, yon menyu
+   Botda /administ → «💻 Web havolasi». Yangi bo'lim: Admin → «Arena: viktorina va ovozlar»
+🤖 Bot menyusi: /arena, /donat, /hamyon; /start da bo'limlarga tezkor tugmalar
+⚙️ Ball miqdorlari: Admin → Sozlamalar → «Arena: ball», promo-kod bonusi → «Hamkor dasturi»
+
+💎 Donat katalogi (oldingi yangilanish):
+   🎮 Bosh sahifa yangilandi: 3 ta asosiy o'yin + mashhur o'yinlar (4×2). Faqat donat qoldi; boshqa bo'limlar yashirin
    (Admin → Sozlamalar → «Bo'limlar» dan qayta yoqiladi). Magic Chess yashirildi.
 🔌 Bir nechta donat API: Admin → Donat → API → «+ API qo'shish» (kalit shifrlanadi). Katalog va narxlar API'dan avtomatik (har 30 daqiqa)
    O'yinlar: Admin → Donat → O'yinlar (ko'rinish, asosiy/mashhur). Narx: dollar kursi va ustama «API» tabida

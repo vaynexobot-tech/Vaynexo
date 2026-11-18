@@ -74,6 +74,8 @@ SCHEMA.update({
     "pts_tournament_join": Spec("money", 20, "Ball: turnirda ishtirok", "Arena: ball", 0, 100_000),
     "pts_tournament_win": Spec("money", 100, "Ball: turnirda g'alaba", "Arena: ball", 0, 100_000),
     "pts_prediction": Spec("money", 50, "Ball: to'g'ri prognoz", "Arena: ball", 0, 100_000),
+    "pts_quiz": Spec("money", 10, "Ball: viktorinada to'g'ri javob", "Arena: ball", 0, 100_000),
+    "pts_vote": Spec("money", 5, "Ball: haftaning qahramoniga ovoz", "Arena: ball", 0, 100_000),
     "season_days": Spec("money", 30, "Sezon davomiyligi (kun)", "Arena: ball", 1, 365),
     "ex_boost_discount_cost": Spec("money", 500, "Almashtirish: Boost chegirmasi (ball)", "Arena: almashtirish", 1, 1_000_000),
     "ex_boost_discount_percent": Spec("percent", 5, "Boost chegirmasi (%)", "Arena: almashtirish", 1, 90),
@@ -87,6 +89,8 @@ MISSIONS = {  # kalit: (davr, nom, maqsad, standart mukofot)
     "play_3": ("weekly", "3 ta turnirda qatnashish", 3, 100),
     "partner_video": ("weekly", "Hamkor videosi yuborish", 1, 50),
     "any_service": ("weekly", "Istalgan xizmatdan foydalanish", 1, 30),
+    "quiz": ("daily", "«Qahramonni top» viktorinasini yechish", 5, 30),
+    "hero_vote": ("weekly", "Haftaning qahramoniga ovoz berish", 1, 20),
 }
 for _k, (_p, _n, _g, _r) in MISSIONS.items():
     SCHEMA[f"mission_{_k}"] = Spec("money", _r, f"Vazifa mukofoti: {_n} (ball)", "Arena: vazifalar", 0, 100_000)
@@ -100,6 +104,9 @@ SCHEMA.update({
     "partner_tier2_views": Spec("money", 10_000, "2-daraja: ko'rish", "Hamkor dasturi", 1, 100_000_000),
     "partner_tier3_views": Spec("money", 25_000, "3-daraja: ko'rish", "Hamkor dasturi", 1, 100_000_000),
     "partner_tier4_views": Spec("money", 50_000, "4-daraja: ko'rish", "Hamkor dasturi", 1, 100_000_000),
+    "partner_code_bonus": Spec("money", 3_000, "Hamkor promo-kodi: foydalanuvchiga bonus (so'm)", "Hamkor dasturi", 0, 1_000_000),
+    "partner_code_points": Spec("money", 50, "Hamkor promo-kodi: hamkorga ball (har foydalanish)", "Hamkor dasturi", 0, 100_000),
+    "partner_code_min_videos": Spec("money", 1, "Promo-kod olish uchun tasdiqlangan video soni", "Hamkor dasturi", 0, 100),
 })
 
 # Stars paketlari bonusi (paket -> qo'shimcha yulduz)

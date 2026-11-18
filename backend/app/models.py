@@ -40,6 +40,11 @@ class User(TimestampMixin, Base):
     lang: Mapped[str] = mapped_column(String(2), default="uz")
     phone: Mapped[str | None] = mapped_column(String(32))
     ml_id: Mapped[str | None] = mapped_column(String(32))
+    # MLBB kartasi (Arena): nik, asosiy liniya, rank, sevimli qahramonlar (rasmiy hero id)
+    ml_nick: Mapped[str | None] = mapped_column(String(32))
+    ml_lane: Mapped[str | None] = mapped_column(String(16))
+    ml_rank: Mapped[str | None] = mapped_column(String(16))
+    ml_heroes: Mapped[list | None] = mapped_column(JSONB)
     bio: Mapped[str | None] = mapped_column(String(300))
     balance: Mapped[int] = mapped_column(BigInteger, default=0)
     tickets: Mapped[int] = mapped_column(Integer, default=0)  # konkurs biletlari
@@ -535,8 +540,34 @@ class TeamPost(TimestampMixin, Base):
     rank: Mapped[str] = mapped_column(String(32), default="")
     online: Mapped[str] = mapped_column(String(32), default="")
     note: Mapped[str] = mapped_column(String(300), default="")
+    heroes: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]")
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     status: Mapped[str] = mapped_column(String(16), default="active")
+
+
+class QuizAnswer(TimestampMixin, Base):
+    """Kunlik «Qahramonni top» viktorinasi javoblari (savollar serverda urug' bilan yasaladi)."""
+
+    __tablename__ = "quiz_answers"
+    __table_args__ = (UniqueConstraint("user_id", "day", "n", name="uq_quiz_answer"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    day: Mapped[str] = mapped_column(String(8))
+    n: Mapped[int] = mapped_column(Integer)
+    correct: Mapped[bool] = mapped_column(Boolean)
+
+
+class HeroVote(TimestampMixin, Base):
+    """«Haftaning eng kuchli qahramoni» ovozi — har kim haftada 1 marta."""
+
+    __tablename__ = "hero_votes"
+    __table_args__ = (UniqueConstraint("user_id", "week", name="uq_hero_vote"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    week: Mapped[str] = mapped_column(String(8), index=True)
+    hero_id: Mapped[int] = mapped_column(Integer)
 
 
 # ---------------------------------------------------------------- Hamkor dasturi
@@ -583,6 +614,7 @@ class PromoCode(TimestampMixin, Base):
     need_topup: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")  # faqat to'ldirganlar
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_by: Mapped[int] = mapped_column(BigInteger)
+    partner_id: Mapped[int | None] = mapped_column(BigInteger, index=True)  # hamkorning shaxsiy kodi
 
 
 class PromoRedemption(TimestampMixin, Base):

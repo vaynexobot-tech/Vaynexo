@@ -1,7 +1,7 @@
 import { StrictMode, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
-import { api, ApiError, DEMO, pinToken, type Me } from "./api";
+import { api, ApiError, DEMO, isWebAdmin, pinToken, type Me } from "./api";
 import { setLang, t } from "./i18n";
 import Admin from "./pages/Admin";
 import Partner from "./pages/Partner";
@@ -100,7 +100,7 @@ function App() {
 
   return (
     <AppCtx.Provider value={{ me, setMe, refreshMe, toast: show, fail }}>
-      <div className="app" key={me.lang}>
+      <div className={"app" + (isWebAdmin ? " web" : "")} key={me.lang}>
         {node}
         {DEMO && <div className="demo-bar">DEMO · namuna ma'lumotlar · haqiqiy to'lov va yuborish yo'q</div>}
         <DeepLink />

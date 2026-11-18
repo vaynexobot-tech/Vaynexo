@@ -31,6 +31,34 @@ def open_app_kb(text: str = "🎮 VAYNEXO ni ochish", path: str = "") -> InlineK
     ]])
 
 
+def menu_kb() -> InlineKeyboardMarkup:
+    """/start menyusi: asosiy bo'limlarga to'g'ridan-to'g'ri tugmalar."""
+    u = settings.webapp_url.rstrip("/")
+    b = lambda text, path: InlineKeyboardButton(text=text, web_app=WebAppInfo(url=u + path))  # noqa: E731
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [b("🎮 VAYNEXO ni ochish", "")],
+        [b("💎 Donat", "/donate/ML"), b("🛒 Savdo", "/market")],
+        [b("🏆 Arena", "/arena"), b("🎬 Hamkor", "/partner")],
+        [b("💳 Hamyon", "/wallet"), b("🚀 Boost", "/boost")],
+    ])
+
+
+async def set_commands(bot) -> None:
+    """Bot menyusidagi buyruqlar ro'yxati (chap pastdagi «Menu»)."""
+    from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
+
+    try:
+        await bot.set_my_commands([
+            BotCommand(command="start", description="Bosh menyu"),
+            BotCommand(command="arena", description="Arena: viktorina, turnir, reyting"),
+            BotCommand(command="donat", description="Almaz donat"),
+            BotCommand(command="hamyon", description="Hamyon va balans"),
+            BotCommand(command="help", description="Yordam"),
+        ], scope=BotCommandScopeAllPrivateChats())
+    except Exception:  # noqa: BLE001
+        log.exception("Bot buyruqlari o'rnatilmadi")
+
+
 def is_admin(user_id: int) -> bool:
     return user_id in settings.admin_ids
 
@@ -88,10 +116,37 @@ async def start(message: Message, command: CommandObject):
         return
     await message.answer(
         "Assalomu alaykum! 👋\n\nVAYNEXO — raqamli o'yin bozori:\n"
-        "💎 Mobile Legends va Magic Chess almaz donat\n🛒 Akkaunt savdo (garant bilan)\n"
-        "🚀 Rank boost\n⭐️ Telegram Premium, Stars, Gift\n🏆 Turnirlar\n\nBoshlash uchun pastdagi tugmani bosing.",
-        reply_markup=open_app_kb(),
+        "💎 Almaz donat — MLBB, PUBG, Steam va boshqalar\n🛒 Akkaunt savdo va ijara (garant bilan)\n"
+        "🚀 Rank boost\n⭐️ Telegram Premium, Stars\n"
+        "🏆 Arena: turnirlar, «Qahramonni top» viktorinasi, haftaning qahramoni\n🎬 Hamkor: video qiling — mukofot oling\n\n"
+        "Kerakli bo'limni tanlang 👇",
+        reply_markup=menu_kb(),
     )
+
+
+async def _quick(message: Message, text: str, btn: str, path: str) -> None:
+    from app.services import launch
+
+    if not await launch.allowed(message.from_user.id):
+        await message.answer(launch.COMING_SOON)
+        return
+    await message.answer(text, reply_markup=open_app_kb(btn, path))
+
+
+@router.message(Command("arena"), F.chat.type == "private")
+async def arena_cmd(message: Message):
+    await _quick(message, "🏆 Arena: bugungi «Qahramonni top» viktorinasi, haftaning qahramoni ovozi, turnirlar va reyting.",
+                 "🏆 Arenani ochish", "/arena")
+
+
+@router.message(Command("donat"), F.chat.type == "private")
+async def donat_cmd(message: Message):
+    await _quick(message, "💎 O'yinni tanlang, ID kiriting — donat bir necha daqiqada tushadi.", "💎 Donat", "/")
+
+
+@router.message(Command("hamyon"), F.chat.type == "private")
+async def wallet_cmd(message: Message):
+    await _quick(message, "💳 Hamyon: balans, to'ldirish va promo-kod.", "💳 Hamyonni ochish", "/wallet")
 
 
 @router.message(Command("ochish"))
@@ -161,7 +216,28 @@ async def administ(message: Message):
             ("🚀 Booster kutayotgan boost", await cnt(select(BoostOrder).where(BoostOrder.status == "searching").subquery())),
         ]
     text = f"🛠 VAYNEXO admin\n👥 Foydalanuvchilar: {users}\n\n" + "\n".join(f"{n}: {c}" for n, c in rows)
-    await message.answer(text, reply_markup=open_app_kb("🛠 Admin panelni ochish", "/admin"))
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📱 Mobil (shu yerda)", web_app=WebAppInfo(url=settings.webapp_url.rstrip("/") + "/admin"))],
+        [InlineKeyboardButton(text="💻 Web (kompyuter) havolasi", callback_data="webadmin")],
+    ])
+    await message.answer(text, reply_markup=kb)
+
+
+@router.callback_query(F.data == "webadmin")
+async def web_admin_link(call: CallbackQuery):
+    """Admin: kompyuter brauzerida ochiladigan 12 soatlik shaxsiy havola."""
+    if not is_admin(call.from_user.id):
+        await call.answer()
+        return
+    from app.security import WEB_TOKEN_TTL, make_web_token
+
+    url = f"{settings.webapp_url.rstrip('/')}/admin?web=1#wt={make_web_token(call.from_user.id)}"
+    await call.message.answer(
+        f"💻 Admin panel (kompyuter uchun), {WEB_TOKEN_TTL // 3600} soat amal qiladi.\n"
+        "Havolani hech kimga bermang — u orqali admin sifatida kiriladi.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="💻 Brauzerda ochish", url=url)]]),
+    )
+    await call.answer()
 
 
 @router.message(Command("booster"), F.chat.type == "private")

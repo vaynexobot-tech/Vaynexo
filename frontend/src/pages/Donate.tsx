@@ -104,8 +104,7 @@ function DonateFlow({ game: g }: { game: DonateGameCard }) {
             </div>
             {nick === "" && (
               <div className="card tight col">
-                <div className="r sm">{t("O'yinchi topilmadi. ID ni tekshiring.")}</div>
-                <button className="btn small ghost" onClick={() => setStep(2)}>{t("ID to'g'ri, davom etish")}</button>
+                <div className="r sm">❌ {t("O'yinchi topilmadi. ID ni tekshiring.")}</div>
               </div>
             )}
             {game === "ML" && <div className="card tight mut sm">ℹ️ {t("O'yinda chap yuqoridagi profil rasmingizni bosing — ID va Zone ID qavs ichida yozilgan: 12345678 (1234)")}</div>}

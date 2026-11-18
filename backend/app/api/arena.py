@@ -245,6 +245,42 @@ async def hero_vote_post(body: VoteIn, user: CurrentUser, session: SessionDep):
     return {**(await mlbb.vote_results(session, user.id)), "earned": pts}
 
 
+# ---------------------------------------------------------------- tirik MLBB statistikasi (Rone Arena)
+async def _stats_on(session) -> None:
+    from app.errors import AppError
+
+    if await app_settings.get_value(session, "mlbb_live_stats") != "on":
+        raise AppError("stats_off", "Statistika o'chirilgan", 404)
+
+
+@router.get("/mlbb/stats")
+async def mlbb_stats(user: CurrentUser, session: SessionDep, rank: str = "all", days: int = 7):
+    from app.services import mlstats
+
+    await _stats_on(session)
+    await session.rollback()
+    return {"rank": rank, "days": days, "items": await mlstats.rank_stats(rank, days), "source": "Rone Arena", "source_url": "https://arena.rone.dev"}
+
+
+@router.get("/mlbb/risers")
+async def mlbb_risers(user: CurrentUser, session: SessionDep, rank: str = "all"):
+    from app.services import mlstats
+
+    await _stats_on(session)
+    await session.rollback()
+    return {"items": await mlstats.risers(rank), "source": "Rone Arena", "source_url": "https://arena.rone.dev"}
+
+
+@router.get("/mlbb/counters/{hero_id}")
+async def mlbb_counters(hero_id: int, user: CurrentUser, session: SessionDep, rank: str = "all"):
+    from app.services import mlstats
+
+    await rate_limit(f"mlc:{user.id}", limit=60, window=600)
+    await _stats_on(session)
+    await session.rollback()
+    return await mlstats.counters(hero_id, rank)
+
+
 # ---------------------------------------------------------------- admin
 class MatchIn(BaseModel):
     title: str = Field(max_length=120)

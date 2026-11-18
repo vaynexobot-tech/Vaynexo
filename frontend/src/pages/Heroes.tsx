@@ -1,9 +1,10 @@
 // MLBB qahramonlar ensiklopediyasi: rasmiy ma'lumot (mobilelegends.com) — skillar, tavsiya buyumlar, counter, juftlik.
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { api } from "../api";
 import { t } from "../i18n";
 import { HERO_BY_ID, HEROES, HeroAva, HeroPicker, LANES, laneLabel, MlIcon, ROLES, roleLabel } from "../mlbb";
-import { BottomNav, Chips, Empty, Header, Spinner } from "../ui";
+import { BottomNav, Chips, Empty, Header, Spinner, useLoad } from "../ui";
 
 interface Rel { id: number; tip: string }
 interface HeroFull { attr: { phy: number; mag: number; alive: number; diff: number }; skills: { name: string; des: string }[]; build: number[]; best: Rel | null; counters: Rel | null; countered: Rel | null }
@@ -28,24 +29,174 @@ const hide = (e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.st
 
 export function Heroes() {
   const nav = useNavigate();
-  const [tab, setTab] = useState<"list" | "counter" | "items">(() => (sessionStorage.getItem("vx_heroes_tab") as never) || "list");
+  const [tab, setTab] = useState<"list" | "tier" | "counter" | "items">(() => (sessionStorage.getItem("vx_heroes_tab") as never) || "list");
   const pick = (v: typeof tab) => { setTab(v); try { sessionStorage.setItem("vx_heroes_tab", v); } catch { /* yo'q */ } };
   return (
     <>
       <Header title={t("Qahramonlar")} sub={t("{n} ta qahramon · rasmiy ma'lumot", { n: HEROES.length })} />
       <div className="page">
         <div className="tabs5">
-          {([["list", "Ro'yxat"], ["counter", "Counter"], ["items", "Buyumlar"]] as const).map(([v, l]) => (
+          {([["list", "Ro'yxat"], ["tier", "Tier"], ["counter", "Counter"], ["items", "Buyumlar"]] as const).map(([v, l]) => (
             <button key={v} className={tab === v ? "on" : ""} onClick={() => pick(v)}>{t(l)}</button>
           ))}
         </div>
         {tab === "list" && <HeroList onOpen={(id) => nav(`/heroes/${id}`)} />}
+        {tab === "tier" && <TierList onOpen={(id) => nav(`/heroes/${id}`)} />}
         {tab === "counter" && <CounterTool onOpen={(id) => nav(`/heroes/${id}`)} />}
         {tab === "items" && <Items />}
-        <div className="mut xs center">{t("Ma'lumot manbasi: mobilelegends.com")}</div>
+        <div className="mut xs center">{t("Ma'lumot manbasi: mobilelegends.com")} · {t("Statistika")}: <a className="y" href="https://arena.rone.dev" target="_blank" rel="noreferrer">Rone Arena</a></div>
       </div>
       <BottomNav />
     </>
+  );
+}
+
+export interface Stat { hero: number; name: string; win: number; pick: number; ban: number; tier: string; mates: { hero: number; inc: number }[]; delta?: number }
+interface StatsRes { items: Stat[] }
+export const STAT_RANKS = [
+  { v: "all", label: "Barcha ranklar", icon: "" }, { v: "epic", label: "Epic", icon: "epic" }, { v: "legend", label: "Legend", icon: "legend" },
+  { v: "mythic", label: "Mythic", icon: "mythic" }, { v: "honor", label: "M. Honor", icon: "honor" }, { v: "glory", label: "M. Glory", icon: "glory" },
+];
+const TIER_COLOR: Record<string, string> = { S: "#ff5a6e", A: "#ff9f43", B: "#ffd60a", C: "#1de9b6", D: "#8a90a6" };
+const pct = (x: number) => `${x.toFixed(1)}%`;
+
+function RankChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="chips-scroll">
+      {STAT_RANKS.map((r) => (
+        <button key={r.v} className={"chip row" + (value === r.v ? " on" : "")} style={{ gap: 4 }} onClick={() => onChange(r.v)}>
+          {r.icon && <MlIcon kind="rank" k={r.icon} size={18} />}{t(r.label)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function TierList({ onOpen }: { onOpen: (id: number) => void }) {
+  const [rank, setRank] = useState("all");
+  const [days, setDays] = useState(7);
+  const [view, setView] = useState<"tier" | "table">("tier");
+  const [sort, setSort] = useState<"win" | "pick" | "ban">("win");
+  const st = useLoad(() => api.get<StatsRes>(`/mlbb/stats?rank=${rank}&days=${days}`), [rank, days]);
+  const items = (st.data?.items ?? []).filter((x) => HERO_BY_ID[x.hero]);
+  return (
+    <>
+      <RankChips value={rank} onChange={setRank} />
+      <div className="row between">
+        <Chips value={String(days)} onChange={(v) => setDays(Number(v))} options={[{ v: "1", label: t("1 kun") }, { v: "7", label: t("7 kun") }, { v: "30", label: t("30 kun") }]} />
+        <Chips value={view} onChange={setView} options={[{ v: "tier", label: "Tier" }, { v: "table", label: t("Jadval") }]} />
+      </div>
+      {st.error ? <Empty icon="📉" text={st.error} /> : !st.data ? <Spinner /> : view === "tier" ? (
+        ["S", "A", "B", "C", "D"].map((tr) => {
+          const row = items.filter((x) => x.tier === tr).sort((a, b) => b.win - a.win);
+          if (!row.length) return null;
+          return (
+            <div key={tr} className="card row" style={{ alignItems: "flex-start", gap: 10 }}>
+              <span className="tier-badge" style={{ background: TIER_COLOR[tr] }}>{tr}</span>
+              <div className="tier-heroes">
+                {row.map((x) => (
+                  <button key={x.hero} className="tier-hero" onClick={() => onOpen(x.hero)} title={`${x.name} · ${pct(x.win)}`}>
+                    <HeroAva id={x.hero} size={42} radius={10} />
+                    <span>{x.win.toFixed(1)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div className="card" style={{ padding: "4px 10px" }}>
+          <div className="stat-row head">
+            <span>#</span><span>{t("Qahramon")}</span>
+            {(["win", "pick", "ban"] as const).map((k) => (
+              <button key={k} className={sort === k ? "y" : ""} onClick={() => setSort(k)}>{k === "win" ? "WR" : k === "pick" ? "Pick" : "Ban"}{sort === k ? " ↓" : ""}</button>
+            ))}
+          </div>
+          {[...items].sort((a, b) => b[sort] - a[sort]).map((x, i) => (
+            <button key={x.hero} className="stat-row" onClick={() => onOpen(x.hero)}>
+              <span className="mut mono">{i + 1}</span>
+              <span className="row" style={{ gap: 8, minWidth: 0 }}><HeroAva id={x.hero} size={28} radius={8} /><span className="b ell">{x.name}</span></span>
+              <span className="mono" style={{ color: x.win >= 50 ? "var(--g)" : "var(--r)" }}>{pct(x.win)}</span>
+              <span className="mono">{pct(x.pick)}</span>
+              <span className="mono">{pct(x.ban)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="mut xs">{t("Tier: g'alaba foizi, tanlanish va ban asosida avtomatik baho. Ma'lumot har 6 soatda yangilanadi.")}</div>
+    </>
+  );
+}
+
+/** Qahramon sahifasi uchun: joriy statistika (barcha ranklar, 7 kun) va kuchli raqiblar. */
+function LiveHero({ id, onOpen }: { id: number; onOpen: (id: number) => void }) {
+  const [rank, setRank] = useState("all");
+  const st = useLoad(() => api.get<StatsRes>(`/mlbb/stats?rank=${rank}&days=7`), [rank]);
+  const ct = useLoad(() => api.get<{ counters: { hero: number; win: number; inc: number }[] }>(`/mlbb/counters/${id}?rank=${rank}`), [id, rank]);
+  const me = st.data?.items.find((x) => x.hero === id);
+  const total = st.data?.items.length ?? 0;
+  const place = me ? [...(st.data?.items ?? [])].sort((a, b) => b.win - a.win).findIndex((x) => x.hero === id) + 1 : 0;
+  if (st.error) return null;
+  return (
+    <>
+      <div className="sec-title">{t("Statistika (7 kun)")}</div>
+      <RankChips value={rank} onChange={setRank} />
+      {!st.data ? <Spinner /> : me ? (
+        <div className="card col">
+          <div className="grid3 center">
+            <div><div className="hf bb" style={{ fontSize: 20, color: me.win >= 50 ? "var(--g)" : "var(--r)" }}>{pct(me.win)}</div><div className="mut xs">{t("G'alaba")}</div></div>
+            <div><div className="hf bb" style={{ fontSize: 20 }}>{pct(me.pick)}</div><div className="mut xs">{t("Tanlanish")}</div></div>
+            <div><div className="hf bb" style={{ fontSize: 20 }}>{pct(me.ban)}</div><div className="mut xs">Ban</div></div>
+          </div>
+          <div className="row between sm"><span>Tier <b style={{ color: TIER_COLOR[me.tier] }}>{me.tier}</b></span><span className="mut">{t("G'alaba bo'yicha {p}-o'rin / {n}", { p: place, n: total })}</span></div>
+          {me.mates.length > 0 && (
+            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+              <span className="xs mut">{t("Yaxshi juftlar")}:</span>
+              {me.mates.filter((m) => HERO_BY_ID[m.hero]).map((m) => (
+                <button key={m.hero} className="row chip" style={{ gap: 4 }} onClick={() => onOpen(m.hero)}><HeroAva id={m.hero} size={22} radius={6} /><span className="g xs">+{m.inc.toFixed(1)}%</span></button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : <div className="mut sm">{t("Bu rank uchun statistika yo'q")}</div>}
+      {ct.data && ct.data.counters.length > 0 && (
+        <div className="card col">
+          <div className="b sm r">⚔️ {t("Kuchli raqiblari (counter)")}</div>
+          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+            {ct.data.counters.filter((c) => HERO_BY_ID[c.hero]).map((c) => (
+              <button key={c.hero} className="tier-hero" onClick={() => onOpen(c.hero)}>
+                <HeroAva id={c.hero} size={42} radius={10} />
+                <span className="r">+{c.inc.toFixed(1)}%</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Arena uchun: oxirgi haftada kuchayganlar (7 kunlik g'alaba foizi 30 kunlikdan yuqori). */
+export function Risers({ onOpen }: { onOpen: (id: number) => void }) {
+  const st = useLoad(() => api.get<StatsRes>("/mlbb/risers"));
+  const list = (st.data?.items ?? []).filter((x) => HERO_BY_ID[x.hero]).slice(0, 3);
+  if (st.error || (st.data && !list.length)) return null;
+  return (
+    <div className="card col">
+      <div className="b">⭐ {t("Bu hafta kuchayganlar")}</div>
+      {!st.data ? <Spinner /> : (
+        <div className="grid3">
+          {list.map((x) => (
+            <button key={x.hero} className="riser" onClick={() => onOpen(x.hero)}>
+              <HeroAva id={x.hero} size={58} radius={29} ring />
+              <span className="b sm ell">{x.name}</span>
+              <span className="mut xs">WR {pct(x.win)}</span>
+              <span className="g xs b">↗ +{(x.delta ?? 0).toFixed(1)}%</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -123,6 +274,7 @@ export function HeroPage() {
             </div>
           </div>
         </div>
+        <LiveHero id={id} onOpen={open} />
         {err && <div className="r sm">{t("Ma'lumotni yuklab bo'lmadi")}</div>}
         {!d && !err && <Spinner />}
         {f && (
@@ -179,6 +331,15 @@ function CounterTool({ onOpen }: { onOpen: (id: number) => void }) {
   const [enemy, setEnemy] = useState<number[]>([]);
   const [open, setOpen] = useState(false);
   const [lane, setLane] = useState("");
+  const [live, setLive] = useState<Record<number, { hero: number; inc: number }[]>>({});
+  useEffect(() => {
+    for (const e of enemy) {
+      if (live[e]) continue;
+      api.get<{ counters: { hero: number; inc: number }[] }>(`/mlbb/counters/${e}`)
+        .then((r) => setLive((x) => ({ ...x, [e]: r.counters })))
+        .catch(() => setLive((x) => ({ ...x, [e]: [] })));
+    }
+  }, [enemy]); // eslint-disable-line react-hooks/exhaustive-deps
   const recs = useMemo(() => {
     if (!d || !enemy.length) return [];
     const score = new Map<number, { s: number; vs: number[] }>();
@@ -190,6 +351,7 @@ function CounterTool({ onOpen }: { onOpen: (id: number) => void }) {
       score.set(hid, x);
     };
     for (const e of enemy) {
+      for (const c of live[e] ?? []) add(c.hero, e, 2 + Math.max(0, c.inc)); // tirik statistika: raqibga qarshi g'alaba oshishi
       const f = d.heroes[String(e)];
       if (f?.countered) add(f.countered.id, e, 3); // dushmanni to'g'ridan-to'g'ri yengadi
       for (const [hid, g] of Object.entries(d.heroes)) {
@@ -198,7 +360,7 @@ function CounterTool({ onOpen }: { onOpen: (id: number) => void }) {
     }
     return [...score.entries()].filter(([hid]) => !lane || HERO_BY_ID[hid]?.lane === lane)
       .sort((a, b) => b[1].s - a[1].s).slice(0, 12);
-  }, [d, enemy, lane]);
+  }, [d, enemy, lane, live]);
   return (
     <>
       <div className="card col" style={{ borderColor: "rgba(255,90,110,.45)" }}>
@@ -227,7 +389,7 @@ function CounterTool({ onOpen }: { onOpen: (id: number) => void }) {
                 <div className="row" style={{ gap: 6 }}><span className="b">{HERO_BY_ID[hid]?.name}</span><MlIcon kind="lane" k={HERO_BY_ID[hid]?.lane ?? ""} size={16} /></div>
                 <div className="mut xs ell">{t("Qarshi")}: {x.vs.map((v) => HERO_BY_ID[v]?.name).join(", ")}</div>
               </div>
-              <span className="pill-b g">{x.s >= 5 ? t("Juda mos") : t("Mos")}</span>
+              <span className="pill-b g">{x.s >= 7 ? t("Juda mos") : t("Mos")}</span>
             </button>
           ))}
         </>

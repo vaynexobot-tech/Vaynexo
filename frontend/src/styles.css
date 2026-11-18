@@ -461,3 +461,15 @@ textarea.input { height: auto; min-height: 90px; padding: 12px 14px; resize: ver
 .build-item img { width: 46px; height: 46px; border-radius: 10px; background: var(--card2); }
 .build-item span { max-width: 100%; text-align: center; }
 .item-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+
+.chips-scroll { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.chips-scroll::-webkit-scrollbar { display: none; }
+.chips-scroll .chip { flex-shrink: 0; white-space: nowrap; }
+.tier-badge { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-weight: 900; font-size: 20px; color: #111; flex-shrink: 0; }
+.tier-heroes { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.tier-hero { display: flex; flex-direction: column; align-items: center; gap: 2px; background: none; border: 0; color: inherit; font-size: 10px; font-family: monospace; padding: 0; }
+.stat-row { display: grid; grid-template-columns: 24px 1fr 62px 56px 56px; gap: 6px; align-items: center; padding: 7px 0; border: 0; border-bottom: 1px solid var(--line); background: none; color: inherit; width: 100%; text-align: left; font-size: 12px; }
+.stat-row.head { font-size: 11px; color: var(--mut); font-weight: 700; }
+.stat-row.head button { background: none; border: 0; color: inherit; font-weight: 700; text-align: left; padding: 0; }
+.riser { display: flex; flex-direction: column; align-items: center; gap: 3px; background: var(--card2); border: 1px solid var(--line); border-radius: 16px; padding: 10px 4px; color: inherit; min-width: 0; }
+.riser > span { max-width: 100%; }

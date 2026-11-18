@@ -74,6 +74,8 @@ SCHEMA.update({
     "pts_tournament_join": Spec("money", 20, "Ball: turnirda ishtirok", "Arena: ball", 0, 100_000),
     "pts_tournament_win": Spec("money", 100, "Ball: turnirda g'alaba", "Arena: ball", 0, 100_000),
     "pts_prediction": Spec("money", 50, "Ball: to'g'ri prognoz", "Arena: ball", 0, 100_000),
+    "mlbb_live_stats": Spec("choice", "on", "Tirik MLBB statistikasi (Rone Arena API: g'alaba %, tier, counter)", "Arena: ball",
+                            choices={"on": "Yoqilgan", "off": "O'chirilgan"}),
     "pts_quiz": Spec("money", 10, "Ball: viktorinada to'g'ri javob", "Arena: ball", 0, 100_000),
     "pts_vote": Spec("money", 5, "Ball: haftaning qahramoniga ovoz", "Arena: ball", 0, 100_000),
     "season_days": Spec("money", 30, "Sezon davomiyligi (kun)", "Arena: ball", 1, 365),

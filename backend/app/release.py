@@ -11,8 +11,11 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-18.heroes"
-NOTES = """📖 Qahramonlar ensiklopediyasi (Arena → O'yinlar yoki /qahramonlar): 124 qahramon, skillar, tavsiya buyumlar,
+RELEASE = "2026-11-18.live-stats"
+NOTES = """📊 Tirik MLBB statistikasi (Rone Arena): Qahramonlar → «Tier» (S–D, rank va kun bo'yicha, jadval), qahramon sahifasida g'alaba/tanlov/ban %,
+   kuchli raqiblar va yaxshi juftlar; Arena → «Bu hafta kuchayganlar». O'chirish: Sozlamalar → «Tirik MLBB statistikasi»
+   ⚠️ Rone Arena tijoriy foydalanish uchun egasi bilan kelishishni so'raydi: arena.rone.dev
+📖 Qahramonlar ensiklopediyasi (Arena → O'yinlar yoki /qahramonlar): 124 qahramon, skillar, tavsiya buyumlar,
    counter va eng yaxshi juft, raqib jamoasiga counter-pick, 68 buyum — rasmiy mobilelegends.com ma'lumoti
 🔗 MLBB akkauntni ulash: Game ID + server o'yinda tekshiriladi, nik avtomatik olinadi (✓ tasdiqlangan)
 

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api, type Tournament } from "../api";
 import { t } from "../i18n";
 import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, Sheet, som, useAction, useApp, useLoad } from "../ui";
+import { Risers } from "./Heroes";
 import { HERO_BY_ID, HeroAva, HeroPicker, HeroSlots, LANES, LanePicker, laneKey, laneLabel, MlIcon, RankPicker, rankKey, rankLabel, roleLabel } from "../mlbb";
 
 interface Summary {
@@ -186,6 +187,7 @@ function Games({ onPoints }: { onPoints: () => void }) {
         <div className="grow"><div className="b">📖 {t("Qahramonlar ensiklopediyasi")}</div><div className="mut xs">{t("Skillar, buyumlar, counter-pick — rasmiy ma'lumot")}</div></div>
         <Icon name="right" size={18} />
       </button>
+      <Risers onOpen={(id) => nav(`/heroes/${id}`)} />
       <Quiz onPoints={onPoints} />
       <HeroVoteCard onPoints={onPoints} />
     </>

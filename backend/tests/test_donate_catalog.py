@@ -17,11 +17,15 @@ CATALOG = {"brands": [
                  {"sku_id": "sku-172", "name": "172 Diamonds", "kind": "fixed", "price_usd": "2.40", "stock": None},
                  {"sku_id": "sku-out", "name": "Yo'q", "kind": "fixed", "price_usd": "9.00", "stock": 0},
                  {"sku_id": "sku-unit", "name": "Unit", "kind": "unit", "price_usd": "0.01"}]}]},
-    {"slug": "mobile-legends-ru", "name": "Mobile Legends RU", "products": [{"name": "x", "skus": [{"sku_id": "r1", "name": "RU 86", "kind": "fixed", "price_usd": "1"}]}]},
+    {"slug": "mobile-legends-ru", "name": "Mobile Legends RU", "products": [{"name": "x", "required_fields": [{"key": "player_id"}], "skus": [{"sku_id": "r1", "name": "RU 86", "kind": "fixed", "price_usd": "1"}]}]},
     {"slug": "pubg-mobile", "name": "PUBG Mobile", "logo_url": "https://cdn/pubg.png", "products": [{
         "name": "UC", "required_fields": [{"key": "player_id", "label": "Character ID", "pattern": ""}],
         "skus": [{"sku_id": "u60", "name": "60 UC", "kind": "fixed", "price_usd": "0.95"}]}]},
-    {"slug": "steam", "name": "Steam", "products": [{"name": "Wallet", "skus": [{"sku_id": "s1", "name": "$5", "kind": "fixed", "price_usd": "5.2"}]}]},
+    {"slug": "steam", "name": "Steam", "products": [{"name": "Wallet", "required_fields": [{"key": "steam_login"}], "skus": [
+        {"sku_id": "s1", "name": "$5", "kind": "fixed", "price_usd": "5.2"},
+        {"sku_id": "sa", "name": "Any", "kind": "amount", "unit_price_usd": "1.000000", "min_amount_usd": "1.00", "max_amount_usd": "30.00"}]}]},
+    {"slug": "mobile-legends-voucher", "name": "ML Voucher", "products": [{"name": "Cards", "required_fields": [],
+        "skus": [{"sku_id": "v1", "name": "56 Diamonds", "kind": "fixed", "price_usd": "0.94"}]}]},
 ]}
 
 
@@ -69,7 +73,7 @@ async def test_sync_creates_games_and_packages(api, monkeypatch):
     row = await _provider(monkeypatch)
     async with SessionLocal() as s, s.begin():
         stats = await dc.sync_provider(s, await s.get(DonateProvider, row.id))
-    assert stats["packages"] == 6 and "Mobile Legends RU" in stats["new_games"]
+    assert stats["packages"] == 9 and "Mobile Legends RU" in stats["new_games"]
     async with SessionLocal() as s:
         games = {g.slug: g for g in await s.scalars(select(DonateGame))}
         assert "pubg" not in games and games["pubg-mobile"].featured_slot == 2 and games["pubg-mobile"].provider_id == row.id
@@ -77,7 +81,9 @@ async def test_sync_creates_games_and_packages(api, monkeypatch):
         assert [f["key"] for f in games["ML"].fields] == ["player_id", "server_id"]
         assert games["mobile-legends-ru"].is_active is False  # yangi topilgan o'yin yashirin (admin yoqadi)
         pk = {p.provider_sku: p for p in await s.scalars(select(DonatePackage).where(DonatePackage.source == "api"))}
-        assert set(pk) == {"sku-86", "sku-172", "sku-out", "u60", "s1", "r1"}  # unit SKU kirmaydi
+        # unit SKU min/max'siz kirmaydi; vaucher (ma'lumot so'ralmaydi) kirmaydi; Steam erkin summa -> $5/$10/$20
+        assert set(pk) == {"sku-86", "sku-172", "sku-out", "u60", "s1", "r1", "sa@amt:5", "sa@amt:10", "sa@amt:20"}
+        assert pk["sa@amt:10"].name == "$10" and pk["sa@amt:10"].cost_usd == "10.00"
         assert pk["sku-172"].price == 33_800 and pk["sku-172"].cost_usd == "2.40"
         assert pk["sku-out"].is_active is False and pk["sku-86"].is_active is True
         manual = {p.name: p for p in await s.scalars(select(DonatePackage).where(DonatePackage.source == "manual"))}

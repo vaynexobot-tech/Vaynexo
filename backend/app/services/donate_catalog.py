@@ -174,6 +174,46 @@ def _log_samples(brands: list[dict]) -> None:
             log.info("KATALOG_NAMUNA %s", json.dumps(sample, ensure_ascii=False)[:3000])
 
 
+AMOUNT_PRESETS = (5, 10, 20, 50, 100)  # erkin summali SKU (Steam hamyon) uchun tayyor nominallar, USD
+UNIT_PRESETS = (50, 100, 250, 500, 1000, 2500, 5000)  # donalab SKU (Stars va h.k.)
+
+
+def _dec_or_none(v) -> Decimal | None:
+    try:
+        return Decimal(str(v)) if v not in (None, "") else None
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def sku_variants(s: dict, prod: dict, game_name: str) -> list[tuple[str, str, str]]:
+    """SKU -> [(provider_sku, nom, tannarx_usd)]. fixed — bitta; amount/unit — tayyor nominallar.
+    provider_sku: «<sku_id>» yoki «<sku_id>@amt:10» / «<sku_id>@qty:100»."""
+    sid = str(s.get("sku_id") or "")
+    if not sid:
+        return []
+    kind = s.get("kind") or "fixed"
+    if kind == "fixed":
+        if s.get("price_usd") in (None, ""):
+            return []
+        return [(sid, clean_name(str(s.get("name") or prod.get("name") or ""), game_name)[:128], str(s["price_usd"]))]
+    unit = _dec_or_none(s.get("unit_price_usd"))
+    if unit is None or unit <= 0:
+        return []
+    out = []
+    if kind == "amount":
+        lo, hi = _dec_or_none(s.get("min_amount_usd")) or Decimal(1), _dec_or_none(s.get("max_amount_usd")) or Decimal(500)
+        for a in AMOUNT_PRESETS:
+            if lo <= a <= hi:
+                out.append((f"{sid}@amt:{a}", f"${a}", str((unit * a).quantize(Decimal("0.01")))))
+    elif kind == "unit":
+        lo, hi = s.get("min_qty") or 1, s.get("max_qty") or 10**9
+        label = str(s.get("unit") or "dona")
+        for q in UNIT_PRESETS:
+            if lo <= q <= hi:
+                out.append((f"{sid}@qty:{q}", f"{q} {label}", str((unit * q).quantize(Decimal("0.01")))))
+    return out
+
+
 async def sync_provider(session: AsyncSession, row: DonateProvider) -> dict:
     """Katalogni olib, o'yinlar va paketlarni yangilaydi. Faqat qat'iy nominalli (fixed) SKU'lar."""
     prov = provider_instance(row)
@@ -218,25 +258,26 @@ async def sync_provider(session: AsyncSession, row: DonateProvider) -> dict:
             g.fields = _fields(products[0])
         game_pkgs: list[DonatePackage] = []
         for prod in products:
+            # Vaucher/kartalar (o'yinchi ma'lumoti so'ralmaydi — kod beriladi) hozircha sotilmaydi
+            if not prod.get("required_fields"):
+                continue
             for s in prod.get("skus") or []:
-                if s.get("kind") not in (None, "fixed") or not s.get("sku_id") or s.get("price_usd") in (None, ""):
-                    continue
-                key = (row.id, str(s["sku_id"]))
-                seen.add(f"{row.id}:{s['sku_id']}")
-                price = price_uzs(s["price_usd"], rate, markup)
-                if price <= 0:
-                    continue
-                name = clean_name(str(s.get("name") or prod.get("name") or ""), g.name)[:128]
-                p = pkgs.get(key)
-                if p is None:
-                    p = DonatePackage(game=slug, name=name, price=price, provider_sku=str(s["sku_id"]), provider_id=row.id, source="api")
-                    session.add(p)
-                    pkgs[key] = p
-                p.game, p.name, p.price, p.cost_usd = slug, name, price, str(s["price_usd"])
-                p.diamonds, p.bonus = parse_amount(name)
-                p.is_active = s.get("stock") != 0 and not p.admin_off
-                game_pkgs.append(p)
-                n_pk += 1
+                for sku, name, cost in sku_variants(s, prod, g.name):
+                    key = (row.id, sku)
+                    seen.add(f"{row.id}:{sku}")
+                    price = price_uzs(cost, rate, markup)
+                    if price <= 0:
+                        continue
+                    p = pkgs.get(key)
+                    if p is None:
+                        p = DonatePackage(game=slug, name=name, price=price, provider_sku=sku, provider_id=row.id, source="api")
+                        session.add(p)
+                        pkgs[key] = p
+                    p.game, p.name, p.price, p.cost_usd = slug, name, price, cost
+                    p.diamonds, p.bonus = parse_amount(name)
+                    p.is_active = s.get("stock") != 0 and not p.admin_off
+                    game_pkgs.append(p)
+                    n_pk += 1
         # Tartib: oddiy nominallar (miqdori bor) narx bo'yicha, keyin maxsus paketlar (pass, obuna) narx bo'yicha
         game_pkgs.sort(key=lambda x: (x.diamonds == 0, x.price))
         for i, p in enumerate(game_pkgs):

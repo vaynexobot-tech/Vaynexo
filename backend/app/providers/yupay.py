@@ -196,16 +196,28 @@ class YupayProvider:
     async def create(self, order_ref: str, sku: str, game: str, player_id: str, zone_id: str) -> ProviderResult:
         try:
             brands = await self.catalog()
-            found = self._find_sku(brands, sku) or self._find_sku(await self.catalog(force=True), sku)
+            base, _, opt = sku.partition("@")
+            found = self._find_sku(brands, base) or self._find_sku(await self.catalog(force=True), base)
         except (httpx.HTTPError, ValueError) as e:
             return ProviderResult("unknown", message=f"katalog: {e.__class__.__name__}")
         if not found:
             return ProviderResult("failed", message="unknown_sku: paketning Yupay SKU kodi katalogda yo'q (Admin → Donat paketlari)")
         product, s = found
-        if s.get("kind") not in (None, "fixed"):
-            return ProviderResult("failed", message=f"sku_kind_not_supported: {s.get('kind')}")
-        payload = {"merchant_order_id": order_ref, "sku_id": s["sku_id"], "expected_price": str(s.get("price_usd")),
-                   "fulfillment_data": self._fulfillment(product, player_id, zone_id)}
+        kind = s.get("kind") or "fixed"
+        payload = {"merchant_order_id": order_ref, "sku_id": s["sku_id"], "fulfillment_data": self._fulfillment(product, player_id, zone_id)}
+        if kind == "fixed":
+            payload["expected_price"] = str(s.get("price_usd"))
+        else:
+            # erkin summa / dona: «@amt:10» yoki «@qty:100»
+            what, _, val = opt.partition(":")
+            unit = _dec(s.get("unit_price_usd"))
+            if not val.isdigit() or unit is None or (kind, what) not in (("amount", "amt"), ("unit", "qty")):
+                return ProviderResult("failed", message=f"sku_kind_not_supported: {kind}")
+            if kind == "amount":
+                payload["amount_usd"] = f"{int(val)}.00"
+            else:
+                payload["quantity"] = int(val)
+            payload["expected_price"] = str((unit * int(val)).quantize(Decimal("0.01")))
         try:
             r = await self.client.post("/orders", json=payload)
         except httpx.HTTPError as e:

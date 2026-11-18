@@ -14,6 +14,8 @@ CATALOG = {"brands": [
         "name": "Diamonds", "product_id": "p1", "slug": "mobile-legends",
         "required_fields": [{"key": "player_id", "required": True}, {"key": "server_id", "required": True}],
         "skus": [{"sku_id": SKU, "name": "172 Diamonds", "kind": "fixed", "price_usd": "2.55", "stock": None}]}]},
+    {"slug": "steam", "name": "Steam", "products": [{"name": "Wallet", "required_fields": [{"key": "steam_login"}],
+        "skus": [{"sku_id": "st-1", "name": "Any", "kind": "amount", "unit_price_usd": "1.000000", "min_amount_usd": "1.00", "max_amount_usd": "500.00"}]}]},
     {"slug": "mobile-legends-ru", "name": "Mobile Legends RU", "products": []},
     {"slug": "magic-chess-gogo", "name": "Magic Chess", "products": []},
 ]}
@@ -76,6 +78,15 @@ async def test_create_order_success_and_payload():
     method, path, body = h.calls[-1]
     assert body == {"merchant_order_id": "VX-D7", "sku_id": SKU, "expected_price": "2.55",
                     "fulfillment_data": {"player_id": "12345678", "server_id": "1234"}}
+
+
+async def test_create_amount_sku_payload():
+    h = router(**{"POST /merchant/v1/orders": httpx.Response(201, json={"status": "delivered", "order_id": "O2"})})
+    r = await make(h).create("VX-D8", "st-1@amt:10", "steam", "mylogin", "")
+    assert r.status == "success"
+    body = h.calls[-1][2]
+    assert body == {"merchant_order_id": "VX-D8", "sku_id": "st-1", "amount_usd": "10.00", "expected_price": "10.00",
+                    "fulfillment_data": {"steam_login": "mylogin"}}
 
 
 @pytest.mark.parametrize("resp,status,needle", [

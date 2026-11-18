@@ -2,16 +2,17 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 
 from app.api import schemas as S
 from app.api.deps import AdminUser, SessionDep, rate_limit
 from app.api.donate import invalidate_packages_cache
 from app.config import settings
+from app.db import SessionLocal
 from app.errors import AppError, BadState, NotFound
 from app.models import (
     Rental, RentListing,
-    BoostOrder, Deal, DonateOrder, DonatePackage, IncomingPayment, Listing, P2PCard, PartnerVideo, TgOrder, Topup, Tournament,
+    BoostOrder, Deal, DonateGame, DonateOrder, DonatePackage, DonateProvider, IncomingPayment, Listing, P2PCard, PartnerVideo, TgOrder, Topup, Tournament,
     TournamentEntry, User, Withdrawal,
 )
 from app.queue import enqueue
@@ -305,7 +306,7 @@ async def donate_orders(admin: AdminUser, session: SessionDep, status: str = "re
     return [{**S.donate_order(o), "user_id": o.user_id, "provider_ref": o.provider_ref, "attempts": o.attempts} for o in rows]
 
 
-@router.post("/donate/{order_id}")
+@router.post("/donate/{order_id:int}")
 async def donate_resolve(order_id: int, body: ResolveIn, admin: AdminUser, session: SessionDep):
     out = Outbox()
     if body.action == "retry":
@@ -409,8 +410,8 @@ async def adjust(user_id: int, body: AdjustIn, admin: AdminUser, session: Sessio
 
 # ------------------------------------------------------------------ paketlar
 class PackageIn(BaseModel):
-    game: str = Field(pattern="^(ML|MC)$")
-    name: str = Field(max_length=64)
+    game: str = Field(min_length=1, max_length=64)
+    name: str = Field(max_length=128)
     diamonds: int = Field(0, ge=0)
     bonus: int = Field(0, ge=0)
     price: int = Field(gt=0)
@@ -443,6 +444,8 @@ async def update_package(pkg_id: int, body: PackageIn, admin: AdminUser, session
             raise NotFound("Paket")
         for k, v in body.model_dump().items():
             setattr(p, k, v)
+        if p.source == "api":
+            p.admin_off = not body.is_active  # sinxronlash admin yashirganini qayta yoqmasin
     await invalidate_packages_cache()
     return S.package(p)
 
@@ -601,13 +604,17 @@ async def donate_provider_test(admin: AdminUser):
 
 
 @router.get("/donate/yupay/skus")
-async def yupay_skus(admin: AdminUser, game: str = "ML"):
+async def yupay_skus(admin: AdminUser, session: SessionDep, game: str = "ML"):
     """Paket SKU'sini tanlash uchun Yupay katalogi (faqat tanlangan o'yin brendlari)."""
     from app.providers import get_provider
+    from app.services import donate_catalog
 
     p = get_provider()
-    if not hasattr(p, "skus_for"):
-        raise BadState("Yupay ulanmagan")
+    if not hasattr(p, "skus_for"):  # Render'dagi sozlama yo'q — admin paneldan qo'shilgan birinchi Yupay API
+        row = await session.scalar(select(DonateProvider).where(DonateProvider.kind == "yupay", DonateProvider.is_active.is_(True)).order_by(DonateProvider.id).limit(1))
+        if row is None:
+            raise BadState("Yupay ulanmagan")
+        p = donate_catalog.provider_instance(row)
     try:
         return await p.skus_for(game)
     except Exception as e:  # noqa: BLE001
@@ -814,3 +821,184 @@ async def broadcast(body: BroadcastIn, admin: AdminUser, session: SessionDep):
 
     _broadcast["task"] = asyncio.create_task(run())
     return {k: v for k, v in _broadcast.items() if k != "task"}
+
+
+# ------------------------------------------------------------------ donat provayderlari (bir nechta API)
+KINDS = {"yupay": "Yupay Merchant API", "http": "Umumiy HTTP API (qo'lda paketlar)"}
+
+
+class ProviderIn(BaseModel):
+    name: str = Field(min_length=2, max_length=64)
+    kind: str = Field("yupay", pattern="^(yupay|http)$")
+    base_url: str = Field("", max_length=200)
+    api_key: str | None = Field(None, max_length=300)  # bo'sh/None — eski kalit saqlanadi
+    is_active: bool = True
+    config: dict | None = None
+
+
+def _provider_dict(p: DonateProvider) -> dict:
+    from urllib.parse import urlparse
+
+    return {"id": p.id, "name": p.name, "kind": p.kind, "kind_label": KINDS.get(p.kind, p.kind),
+            "base_url": p.base_url, "host": urlparse(p.base_url).netloc if p.base_url else ("api.yupay.uz" if p.kind == "yupay" else None),
+            "key_set": bool(p.key_enc), "is_active": p.is_active, "config": p.config or {},
+            "last_ok_at": S.iso(p.last_ok_at), "last_error": p.last_error, "synced_at": S.iso(p.synced_at),
+            "balance_usd": p.balance_usd,
+            "webhook_url": f"{settings.webapp_url.rstrip('/')}/api/yupay/webhook/{p.id}" if p.kind == "yupay" else None}
+
+
+@router.get("/donate/providers")
+async def donate_providers(admin: AdminUser, session: SessionDep):
+    rows = list(await session.scalars(select(DonateProvider).order_by(DonateProvider.id)))
+    legacy = settings.donate_provider in ("yupay", "http") and bool(settings.donate_provider_key)
+    return {"providers": [_provider_dict(p) for p in rows], "legacy_env": legacy,
+            "usd_rate": int(await app_settings.get_value(session, "donate_usd_rate")),
+            "markup": int(await app_settings.get_value(session, "donate_markup_percent"))}
+
+
+@router.post("/donate/providers")
+async def donate_provider_create(body: ProviderIn, admin: AdminUser, session: SessionDep):
+    from app.security import encrypt
+
+    key = (body.api_key or "").strip()
+    if not key:
+        raise AppError("no_key", "API kalitni kiriting")
+    if body.kind == "http" and not body.base_url.startswith("https://"):
+        raise AppError("bad_url", "Manzil https:// bilan boshlansin")
+    async with session.begin():
+        p = DonateProvider(name=body.name.strip(), kind=body.kind, base_url=body.base_url.strip(), key_enc=encrypt(key),
+                           is_active=body.is_active, config=body.config or {})
+        session.add(p)
+    return _provider_dict(p)
+
+
+@router.put("/donate/providers/{pid}")
+async def donate_provider_update(pid: int, body: ProviderIn, admin: AdminUser, session: SessionDep):
+    from app.security import encrypt
+    from app.services import donate_catalog
+
+    async with session.begin():
+        p = await session.get(DonateProvider, pid)
+        if p is None:
+            raise NotFound("Provayder")
+        p.name, p.base_url, p.is_active = body.name.strip(), body.base_url.strip(), body.is_active
+        if body.config is not None:
+            p.config = body.config
+        if (body.api_key or "").strip():
+            p.key_enc = encrypt(body.api_key.strip())
+    donate_catalog.forget_provider(pid)
+    return _provider_dict(p)
+
+
+@router.delete("/donate/providers/{pid}")
+async def donate_provider_delete(pid: int, admin: AdminUser, session: SessionDep):
+    from app.services import donate_catalog
+
+    async with session.begin():
+        p = await session.get(DonateProvider, pid)
+        if p is None:
+            raise NotFound("Provayder")
+        busy = await session.scalar(select(func.count()).select_from(DonateOrder).where(
+            DonateOrder.status == "processing", DonateOrder.package_id.in_(select(DonatePackage.id).where(DonatePackage.provider_id == pid))))
+        if busy:
+            raise BadState("Bu API orqali bajarilayotgan buyurtmalar bor — tugagach o'chiring")
+        await session.execute(update(DonatePackage).where(DonatePackage.provider_id == pid, DonatePackage.source == "api").values(is_active=False))
+        await session.delete(p)
+    donate_catalog.forget_provider(pid)
+    await invalidate_packages_cache()
+    return {"ok": True}
+
+
+@router.post("/donate/providers/{pid}/test")
+async def donate_provider_test_one(pid: int, admin: AdminUser, session: SessionDep):
+    from app.services import donate_catalog
+
+    p = await session.get(DonateProvider, pid)
+    if p is None:
+        raise NotFound("Provayder")
+    inst = donate_catalog.provider_instance(p)
+    res = await inst.ping()
+    async with session.begin():
+        row = await session.get(DonateProvider, pid)
+        row.balance_usd = str(res.get("balance_usd")) if res.get("ok") and res.get("balance_usd") is not None else row.balance_usd
+        if res.get("ok"):
+            row.last_ok_at, row.last_error = datetime.now(timezone.utc), None
+        else:
+            row.last_error = str(res.get("error"))[:300]
+    return res
+
+
+@router.post("/donate/providers/{pid}/sync")
+async def donate_provider_sync(pid: int, admin: AdminUser, session: SessionDep):
+    from app.services import donate_catalog
+
+    p = await session.get(DonateProvider, pid)
+    if p is None:
+        raise NotFound("Provayder")
+    await session.rollback()
+    try:
+        async with SessionLocal() as s, s.begin():
+            row = await s.get(DonateProvider, pid)
+            stats = await donate_catalog.sync_provider(s, row)
+    except Exception as e:  # noqa: BLE001
+        async with SessionLocal() as s, s.begin():
+            row = await s.get(DonateProvider, pid)
+            row.last_error = f"{e.__class__.__name__}: {str(e)[:200]}"
+        raise AppError("sync_failed", f"Katalogni olib bo'lmadi: {e.__class__.__name__}. Kalit va manzilni tekshiring", 502) from None
+    await invalidate_packages_cache()
+    return stats
+
+
+@router.post("/donate/reprice")
+async def donate_reprice(admin: AdminUser, session: SessionDep):
+    """Dollar kursi yoki ustama o'zgargach — so'm narxlarni qayta hisoblash (API'siz)."""
+    from app.services import donate_catalog
+
+    async with session.begin():
+        n = await donate_catalog.reprice(session)
+    await invalidate_packages_cache()
+    return {"changed": n}
+
+
+# ------------------------------------------------------------------ o'yinlar (bosh sahifa)
+class GameIn(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=80)
+    is_active: bool | None = None
+    featured_slot: int | None = Field(None, ge=0, le=3)  # 0 — katta kartadan olish
+    popular: bool | None = None
+    sort: int | None = Field(None, ge=0, le=10_000)
+
+
+def _game_admin(g: DonateGame, n_pk: int) -> dict:
+    return {"slug": g.slug, "name": g.name, "logo": g.logo_url, "category": g.category, "is_active": g.is_active,
+            "featured_slot": g.featured_slot, "popular": g.popular, "sort": g.sort, "provider_id": g.provider_id,
+            "packages": n_pk, "synced_at": S.iso(g.synced_at)}
+
+
+@router.get("/donate/games")
+async def donate_games_admin(admin: AdminUser, session: SessionDep):
+    counts = dict((await session.execute(select(DonatePackage.game, func.count()).where(DonatePackage.is_active.is_(True)).group_by(DonatePackage.game))).all())
+    rows = await session.scalars(select(DonateGame).order_by(DonateGame.is_active.desc(), DonateGame.sort, DonateGame.name))
+    return [_game_admin(g, counts.get(g.slug, 0)) for g in rows]
+
+
+@router.put("/donate/games/{slug}")
+async def donate_game_update(slug: str, body: GameIn, admin: AdminUser, session: SessionDep):
+    async with session.begin():
+        g = await session.get(DonateGame, slug)
+        if g is None:
+            raise NotFound("O'yin")
+        data = body.model_dump(exclude_unset=True)
+        if "featured_slot" in data:
+            slot = data.pop("featured_slot") or None
+            if slot:  # bitta joyda bitta o'yin
+                await session.execute(update(DonateGame).where(DonateGame.featured_slot == slot, DonateGame.slug != slug).values(featured_slot=None))
+            g.featured_slot = slot
+            if slot:
+                g.popular = False
+        for k, v in data.items():
+            setattr(g, k, v)
+        if g.featured_slot and not g.is_active:
+            g.featured_slot = None
+    await invalidate_packages_cache()
+    return _game_admin(g, 0)

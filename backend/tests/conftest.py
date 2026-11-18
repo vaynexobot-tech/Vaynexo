@@ -42,6 +42,11 @@ async def db():
             _schema_ready = True
         tables = ", ".join(t.name for t in Base.metadata.sorted_tables)
         await conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
+    from app.models import DonateGame
+
+    async with SessionLocal() as s, s.begin():  # asosiy o'yinlar (productionda app.seed qo'shadi)
+        s.add(DonateGame(slug="ML", name="Mobile Legends", featured_slot=1, sort=0, fields=[]))
+        s.add(DonateGame(slug="MC", name="Magic Chess", sort=1, fields=[], is_active=False))
     yield
 
 

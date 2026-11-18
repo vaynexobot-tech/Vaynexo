@@ -126,6 +126,25 @@ for _code, _name, _price in (("gift", "NFT sovg'a", 350_000), ("username", "User
     SCHEMA[f"nft_price_{_code}"] = Spec("money", _price, f"NFT: {_name} (so'm)", "Telegram: Gift va NFT", 1)
 
 
+# ---------------------------------------------------------------- Donat narxi (API tannarxi USD → so'm)
+SCHEMA.update({
+    "donate_usd_rate": Spec("money", 12_800, "Dollar kursi (1 USD necha so'm) — API narxlarini so'mga o'giradi", "Donat narxi", 1_000, 100_000),
+    "donate_markup_percent": Spec("percent", 10, "Ustama: tannarxga necha foiz qo'shiladi (%)", "Donat narxi", 0, 300),
+})
+
+# ---------------------------------------------------------------- Bo'limlarni yoqish/o'chirish (standart: faqat donat)
+FEATURES = {  # kalit: nomi
+    "market": "Account savdo", "rent": "Account ijara", "boost": "Boost xizmati", "tg": "Telegram xizmatlar (Premium/Stars)",
+    "arena": "Arena (turnir, reyting)", "partner": "Hamkor dasturi", "ai": "AI yordamchi", "top": "Top xaridorlar",
+}
+for _k, _n in FEATURES.items():
+    SCHEMA[f"feature_{_k}"] = Spec("choice", "off", f"{_n}", "Bo'limlar (ilovada ko'rinishi)", choices={"on": "Yoqilgan", "off": "O'chirilgan"})
+
+
+async def features(session: AsyncSession) -> dict[str, bool]:
+    return {k: (await get_value(session, f"feature_{k}")) == "on" for k in FEATURES}
+
+
 def _default(key: str):
     spec = SCHEMA[key]
     return spec.default if spec.default is not None else getattr(settings, key)

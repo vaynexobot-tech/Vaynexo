@@ -23,15 +23,20 @@ _MAP = {"success": "success", "done": "success", "completed": "success", "pendin
 
 
 class HttpProvider:
-    def __init__(self, base_url: str, api_key: str, timeout: float = 20.0):
+    def __init__(self, base_url: str, api_key: str, timeout: float = 20.0, cfg: dict | None = None):
         from app.config import settings as c
 
-        self.paths = {"check": c.donate_check_path, "create": c.donate_create_path,
-                      "status": c.donate_status_path, "balance": c.donate_balance_path}
+        cfg = cfg or {}
+        self.paths = {"check": cfg.get("check_path") or c.donate_check_path, "create": cfg.get("create_path") or c.donate_create_path,
+                      "status": cfg.get("status_path") or c.donate_status_path, "balance": cfg.get("balance_path") or c.donate_balance_path}
+        header = cfg.get("auth_header") or c.donate_auth_header
+        prefix = cfg["auth_prefix"] if "auth_prefix" in cfg else c.donate_auth_prefix
         self.client = httpx.AsyncClient(
-            base_url=base_url.rstrip("/"), timeout=timeout,
-            headers={c.donate_auth_header: f"{c.donate_auth_prefix}{api_key}"},
+            base_url=base_url.rstrip("/"), timeout=timeout, headers={header: f"{prefix}{api_key}"},
         )
+
+    async def catalog(self, force: bool = False) -> list[dict]:
+        return []  # umumiy HTTP provayder katalog bermaydi: paketlar qo'lda kiritiladi
 
     async def ping(self) -> dict:
         """Ulanishni tekshirish: balans yo'li bo'lsa shuni, bo'lmasa o'yinchi tekshiruvini chaqiradi."""

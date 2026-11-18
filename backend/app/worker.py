@@ -117,27 +117,43 @@ async def cron_listing_channel(ctx):
     await channel.sync_batch()
 
 
-_low_alert_at = 0.0
+_low_alert_at: dict[str, float] = {}
 
 
 async def cron_provider_balance(ctx):
-    """Yupay depoziti kamayib ketsa — adminga ogohlantirish (6 soatda bir marta)."""
-    global _low_alert_at
+    """Donat API depoziti kamayib ketsa — adminga ogohlantirish (har provayder uchun 6 soatda bir marta)."""
     import time
 
-    from app.config import settings
-    from app.providers import get_provider
+    from sqlalchemy import select as _select
 
-    p = get_provider()
-    if not hasattr(p, "balance") or time.time() - _low_alert_at < 6 * 3600:
-        return
-    bal = await p.balance()
-    if bal is not None and float(bal) < settings.donate_low_balance_usd:
-        _low_alert_at = time.time()
-        out = Outbox()
-        out.admins(f"⚠️ Yupay depoziti kam: ${bal} (chegara ${settings.donate_low_balance_usd:g}).\n"
-                   "Depozitni to'ldiring, aks holda donat buyurtmalari rad etilib, pul foydalanuvchiga qaytariladi.", topic="donat")
-        await out.flush()
+    from app.config import settings
+    from app.models import DonateProvider
+    from app.providers import get_provider
+    from app.services import donate_catalog
+
+    targets: list[tuple[str, object]] = []
+    legacy = get_provider()
+    if hasattr(legacy, "balance"):
+        targets.append(("env", legacy))
+    async with SessionLocal() as s:
+        for row in await s.scalars(_select(DonateProvider).where(DonateProvider.is_active.is_(True), DonateProvider.kind == "yupay")):
+            targets.append((f"{row.id}:{row.name}", donate_catalog.provider_instance(row)))
+    for name, p in targets:
+        if time.time() - _low_alert_at.get(name, 0) < 6 * 3600:
+            continue
+        bal = await p.balance()
+        if bal is not None and float(bal) < settings.donate_low_balance_usd:
+            _low_alert_at[name] = time.time()
+            out = Outbox()
+            out.admins(f"⚠️ {name.split(':')[-1]}: API depoziti kam: ${bal} (chegara ${settings.donate_low_balance_usd:g}).\n"
+                       "Depozitni to'ldiring, aks holda donat buyurtmalari rad etilib, pul foydalanuvchiga qaytariladi.", topic="donat")
+            await out.flush()
+
+
+async def cron_donate_sync(ctx):
+    from app.services import donate_catalog
+
+    await donate_catalog.sync_all()
 
 
 async def cron_daily_report(ctx):
@@ -171,6 +187,7 @@ class WorkerSettings:
     cron_jobs = [
         cron(cron_expire_topups, second=0),
         cron(cron_provider_balance, minute={7, 37}, second=50),
+        cron(cron_donate_sync, minute={3, 33}, second=20),
         cron(cron_listing_channel, second=40),
         cron(cron_daily_report, minute=set(range(0, 60, 10)), second=30),
         cron(cron_auto_release, minute=set(range(0, 60, 5)), second=10),

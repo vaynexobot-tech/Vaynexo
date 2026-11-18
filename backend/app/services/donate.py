@@ -6,13 +6,14 @@
   o'tadi va admin qaror qiladi (aks holda ham almaz, ham pul berib yuborilishi mumkin).
 """
 
+import re
 from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.errors import AppError, BadState, NotFound
-from app.models import DonateOrder, DonatePackage
+from app.models import DonateGame, DonateOrder, DonatePackage
 from app.providers import get_provider
 from app.services import wallet
 from app.services.notify import Outbox, fmt, webapp_button
@@ -27,19 +28,39 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _clean_id(value: str, max_len: int) -> str:
+ID_RE = re.compile(r"^[A-Za-z0-9_.@:+-]{1,64}$")
+
+
+def _clean_field(value: str, pattern: str, label: str) -> str:
     value = (value or "").strip()
-    if not value.isdigit() or len(value) > max_len:
-        raise AppError("bad_player_id", "ID faqat raqamlardan iborat bo'lishi kerak")
+    if not ID_RE.match(value) or (pattern and not _safe_match(pattern, value)):
+        raise AppError("bad_player_id", f"{label} noto'g'ri kiritilgan")
     return value
+
+
+def _safe_match(pattern: str, value: str) -> bool:
+    try:
+        return re.fullmatch(pattern.removeprefix("^").removesuffix("$"), value) is not None
+    except re.error:
+        return True  # noto'g'ri namuna bo'lsa tekshiruv o'tkazib yuboriladi (provayder o'zi tekshiradi)
 
 
 async def create_order(session: AsyncSession, user_id: int, package_id: int, player_id: str, zone_id: str) -> DonateOrder:
     pkg = await session.get(DonatePackage, package_id)
     if pkg is None or not pkg.is_active:
         raise NotFound("Paket")
-    player_id = _clean_id(player_id, 20)
-    zone_id = _clean_id(zone_id, 10) if pkg.game == "ML" else (zone_id or "").strip()[:10]
+    game = await session.get(DonateGame, pkg.game)
+    if game is not None and not game.is_active:
+        raise NotFound("O'yin")
+    fields = (game.fields if game else None) or []
+    if pkg.game in ("ML", "MC") and not fields:
+        fields = [{"label": "User ID", "pattern": r"^\d{5,20}$"}, {"label": "Zone ID", "pattern": r"^\d{1,10}$"}]
+    f1 = fields[0] if fields else {}
+    player_id = _clean_field(player_id, f1.get("pattern", ""), f1.get("label") or "ID")
+    if len(fields) > 1:
+        zone_id = _clean_field(zone_id, fields[1].get("pattern", ""), fields[1].get("label") or "Server ID")
+    else:
+        zone_id = (zone_id or "").strip()[:64]
     order = DonateOrder(
         user_id=user_id,
         package_id=pkg.id,
@@ -101,6 +122,9 @@ async def fulfil_step(sessions: async_sessionmaker, order_id: int, mode: str, ou
         order = await session.scalar(select(DonateOrder).where(DonateOrder.id == order_id).with_for_update().execution_options(populate_existing=True))
         if order is None or order.status != "processing":
             return None
+        from app.services.donate_catalog import provider_for_package
+
+        provider = await provider_for_package(session, order.package)
         order.attempts += 1
         attempts = order.attempts
         ref = order_ref(order)

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, type Boost, type Deal, type DonateOrder, type ListingFull, type Me, type Pkg, type TgOrder, type Topup, type Withdrawal } from "../api";
 import { t } from "../i18n";
 import { confirmDialog, openTg } from "../tg";
-import { Chips, Copy, dateTime, Empty, Field, Header, Loadable, money, MoneyInput, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
+import { Chips, Copy, dateTime, Empty, Field, GameTile, Header, Loadable, money, MoneyInput, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
 
 type Tab = "stats" | "analytics" | "audit" | "broadcast" | "promo" | "settings" | "rent" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments" | "kyc" | "partner" | "matches";
 
@@ -308,53 +308,142 @@ function Disputes() {
   );
 }
 
-interface ProvInfo { mode: string; mode_invalid?: boolean; live: boolean; yupay: boolean; url_set: boolean; host: string | null; key_set: boolean; webhook_url: string; low_balance_usd: number }
+interface Prov { id: number; name: string; kind: string; kind_label: string; base_url: string; host: string | null; key_set: boolean; is_active: boolean; config: Record<string, string>; last_ok_at: string | null; last_error: string | null; synced_at: string | null; balance_usd: string | null; webhook_url: string | null }
+interface ProvList { providers: Prov[]; legacy_env: boolean; usd_rate: number; markup: number }
 interface PingRes { ok: boolean; status?: number; ms?: number; error?: string; sample?: string; balance_usd?: string; title?: string; account?: string }
+interface SyncRes { games: number; packages: number; new_games: string[] }
 
-function DonateApi() {
-  const st = useLoad(() => api.get<ProvInfo>("/admin/donate/provider"));
-  const [open, setOpen] = useState(false);
-  const [res, setRes] = useState<PingRes | null>(null);
+function ProvidersAdmin() {
+  const { toast } = useApp();
+  const st = useLoad(() => api.get<ProvList>("/admin/donate/providers"));
+  const [edit, setEdit] = useState<(Partial<Prov> & { api_key?: string }) | null>(null);
+  const [res, setRes] = useState<Record<number, string>>({});
+  const [rate, setRate] = useState<number | "">("");
+  const [markup, setMarkup] = useState<number | "">("");
+  const [adv, setAdv] = useState(false);
   const { busy, run } = useAction();
+  const kindSeg = [{ v: "yupay", label: "Yupay" }, { v: "http", label: "Boshqa API" }];
+  const save = () => run(async () => {
+    const body = { name: edit!.name, kind: edit!.kind ?? "yupay", base_url: edit!.base_url ?? "", api_key: edit!.api_key || null, is_active: edit!.is_active ?? true, config: edit!.config ?? null };
+    if (edit!.id) await api.put(`/admin/donate/providers/${edit!.id}`, body);
+    else await api.post("/admin/donate/providers", body);
+    toast("Saqlandi", "ok"); setEdit(null); st.reload();
+  });
   return (
     <Loadable state={st}>
       {(d) => (
-        <div className="card col" style={{ borderColor: d.live ? "rgba(29,233,182,.45)" : "rgba(255,214,10,.45)" }}>
-          <div className="row between">
-            <span className="b">🔌 Donat API {d.yupay ? "· Yupay" : ""}</span>
-            <span className={"pill-b " + (d.live ? "g" : "y")}>{d.live ? "Avtomatik" : "Qo'lda rejim"}</span>
-          </div>
-          <div className="mut xs">{d.live ? `Provayder: ${d.host}` : "API ulanmagan: buyurtmalar guruhga tushadi, almazni o'zingiz tashlaysiz."}</div>
-          {d.mode_invalid && <div className="r xs">⚠️ Render'dagi DONATE_PROVIDER qiymati noto'g'ri (kalit adashib shu yerga yozilgan bo'lishi mumkin). To'g'risi: DONATE_PROVIDER = yupay, kalit esa DONATE_PROVIDER_KEY ga.</div>}
-          <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-            <span className={"badge " + (d.mode === "yupay" || d.mode === "http" ? "g" : "m")}>DONATE_PROVIDER: {d.mode}</span>
-            <span className={"badge " + (d.key_set ? "g" : "m")}>Kalit {d.key_set ? "✓" : "—"}</span>
-          </div>
-          <div className="row">
-            <button className="btn small grow" disabled={busy || !d.live} onClick={() => run(async () => setRes(await api.post<PingRes>("/admin/donate/provider/test")))}>Ulanishni tekshirish</button>
-            <button className="btn small ghost" onClick={() => setOpen(!open)}>{open ? "Yopish" : "Qanday ulash"}</button>
-          </div>
-          {res && (
-            <div className="card tight" style={{ borderColor: res.ok ? "rgba(29,233,182,.45)" : "rgba(255,90,110,.45)" }}>
-              <div className="b sm">{res.ok ? `✅ Ulandi${res.ms ? ` · ${res.ms} ms` : ""}` : `❌ ${res.error ?? "Xato"}`}</div>
-              {res.ok && res.balance_usd != null && <div className="sm">Depozit: <b className="y mono">${res.balance_usd}</b>{res.title ? ` · ${res.title}` : ""}{res.account && res.account !== "active" ? ` · ${res.account}` : ""}</div>}
-              {res.sample && <div className="mut xs mono pre" style={{ wordBreak: "break-all" }}>{res.sample}</div>}
+        <>
+          <div className="mut xs">Bir nechta API ulash mumkin. Katalog (o'yinlar, paketlar, narxlar) API'dan o'zi olinadi va har 30 daqiqada yangilanadi. Kalit shifrlangan holda saqlanadi va qayta ko'rsatilmaydi.</div>
+          {d.providers.length === 0 && <Empty icon="🔌" text="Hali API ulanmagan" />}
+          {d.providers.map((p) => (
+            <div key={p.id} className="card col" style={{ borderColor: p.last_error ? "rgba(255,90,110,.45)" : p.last_ok_at ? "rgba(29,233,182,.45)" : "rgba(255,214,10,.45)", opacity: p.is_active ? 1 : 0.6 }}>
+              <div className="row between"><span className="b">{p.name}</span><span className={"pill-b " + (p.is_active ? "g" : "m")}>{p.is_active ? "Faol" : "O'chiq"}</span></div>
+              <div className="mut xs">{p.kind_label}{p.host ? ` · ${p.host}` : ""}{p.balance_usd ? ` · depozit $${p.balance_usd}` : ""}</div>
+              <div className="mut xs">{p.synced_at ? `Katalog: ${dateTime(p.synced_at)}` : "Katalog hali olinmagan"}</div>
+              {p.last_error && <div className="r xs">⚠️ {p.last_error}</div>}
+              {res[p.id] && <div className="card tight sm pre" style={{ wordBreak: "break-word" }}>{res[p.id]}</div>}
+              <div className="row" style={{ flexWrap: "wrap" }}>
+                <button className="btn small grow" disabled={busy || !p.key_set} onClick={() => run(async () => {
+                  const r = await api.post<PingRes>(`/admin/donate/providers/${p.id}/test`);
+                  setRes({ ...res, [p.id]: r.ok ? `✅ Ulandi${r.ms ? ` · ${r.ms} ms` : ""}${r.balance_usd != null ? `\nDepozit: $${r.balance_usd}` : ""}${r.title ? ` · ${r.title}` : ""}` : `❌ ${r.error ?? "Xato"}` });
+                  st.reload();
+                })}>Tekshirish</button>
+                <button className="btn small grow" disabled={busy || p.kind !== "yupay"} onClick={() => run(async () => {
+                  const r = await api.post<SyncRes>(`/admin/donate/providers/${p.id}/sync`);
+                  setRes({ ...res, [p.id]: `✅ ${r.games} ta o'yin, ${r.packages} ta paket${r.new_games.length ? `\nYangi (yashirin): ${r.new_games.join(", ")}\nO'yinlar bo'limidan yoqing.` : ""}` });
+                  st.reload();
+                })}>Katalogni yangilash</button>
+                <button className="btn small ghost" onClick={() => { setEdit({ ...p }); setAdv(false); }}>Tahrirlash</button>
+              </div>
+              {p.webhook_url && <details><summary className="mut xs">Vebhuk manzili (ixtiyoriy, Yupay kabinetiga)</summary><Copy value={p.webhook_url} /></details>}
             </div>
-          )}
-          {open && (
-            <div className="col sm">
-              <div><b>1.</b> Yupay kabinet → <b>Sozlamalar</b> → «Kalit yaratish» (<span className="mono">ypk_…</span>, bir marta ko'rsatiladi). Kalitning IP ro'yxatini <b>bo'sh</b> qoldiring.</div>
-              <div><b>2.</b> <a href="https://dashboard.render.com/" target="_blank" rel="noreferrer">Render</a> → <b>vaynexo</b> → <b>Environment</b>:</div>
-              <Copy label="Rejim" value="DONATE_PROVIDER=yupay" />
-              <Copy label="Kalit (faqat Render'ga yozing)" value="DONATE_PROVIDER_KEY=" />
-              <div><b>3.</b> Qayta ishga tushgach «Ulanishni tekshirish» — depozit summasi chiqsa, ulandi.</div>
-              <div><b>4.</b> Yupay kabinet → <b>Vebhuk</b> manzili (tezroq natija uchun, ixtiyoriy):</div>
-              <Copy value={d.webhook_url} />
-              <div><b>5.</b> <b>Donat paketlari</b> da har bir paketga Yupay SKU'sini «Yupay katalogidan tanlash» bilan biriktiring.</div>
-              <div className="r xs">⚠️ Yupay'da sinov muhiti yo'q: har bir buyurtma haqiqiy pul yechadi. Birinchi sinovni eng arzon nominalda qiling. Depozit ${d.low_balance_usd} dan kamaysa, guruhga ogohlantirish keladi.</div>
+          ))}
+          <button className="btn full" onClick={() => { setEdit({ kind: "yupay", is_active: true, name: "Yupay" }); setAdv(false); }}>+ API qo'shish</button>
+          {d.legacy_env && <div className="mut xs">ℹ️ Render'dagi eski sozlama (DONATE_PROVIDER_KEY) ham ishlayapti: u paketlari uchun. Yangi API'larni shu yerdan qo'shing.</div>}
+
+          <div className="card col">
+            <div className="b">💱 Narx hisoblash</div>
+            <div className="mut xs">API narxi dollarda. So'm narx = tannarx × kurs × (1 + ustama). Hozir: 1$ = {money(d.usd_rate)} so'm, ustama {d.markup}%.</div>
+            <div className="row">
+              <div className="grow"><Field label="Dollar kursi (so'm)"><MoneyInput value={rate === "" ? d.usd_rate : rate} onChange={(v) => setRate(v)} /></Field></div>
+              <div style={{ width: 100 }}><Field label="Ustama %"><input className="input mono" inputMode="numeric" value={markup === "" ? d.markup : markup} onChange={(e) => setMarkup(e.target.value === "" ? "" : Math.min(300, Number(e.target.value.replace(/\D/g, ""))))} /></Field></div>
             </div>
-          )}
-        </div>
+            <button className="btn small" disabled={busy || (rate === "" && markup === "")} onClick={() => run(async () => {
+              if (rate !== "") await api.put("/admin/settings", { key: "donate_usd_rate", value: Number(rate) });
+              if (markup !== "") await api.put("/admin/settings", { key: "donate_markup_percent", value: Number(markup) });
+              const r = await api.post<{ changed: number }>("/admin/donate/reprice");
+              toast(`${r.changed} ta paket narxi yangilandi`, "ok"); setRate(""); setMarkup(""); st.reload();
+            })}>Saqlash va narxlarni yangilash</button>
+          </div>
+
+          <Sheet open={!!edit} onClose={() => setEdit(null)}>
+            {edit && (
+              <div className="col">
+                <div className="sec-title">{edit.id ? "API tahrirlash" : "Yangi API"}</div>
+                <Field label="Nomi"><input className="input" value={edit.name ?? ""} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
+                {!edit.id && <Field label="Turi"><Seg value={edit.kind ?? "yupay"} onChange={(v) => setEdit({ ...edit, kind: v })} options={kindSeg} /></Field>}
+                <Field label={edit.kind === "http" ? "Manzil (https://...)" : "Manzil (bo'sh qoldirsangiz: api.yupay.uz)"}><input className="input mono" inputMode="url" autoCapitalize="off" value={edit.base_url ?? ""} onChange={(e) => setEdit({ ...edit, base_url: e.target.value })} placeholder={edit.kind === "http" ? "https://api.example.com/v1" : "https://api.yupay.uz/merchant/v1"} /></Field>
+                <Field label={edit.id && edit.key_set ? "API kalit (o'zgartirmaslik uchun bo'sh qoldiring)" : "API kalit"}><input className="input mono" type="password" autoComplete="off" autoCapitalize="off" value={edit.api_key ?? ""} onChange={(e) => setEdit({ ...edit, api_key: e.target.value.trim() })} placeholder={edit.kind === "yupay" ? "ypk_…" : ""} /></Field>
+                <div className="row between"><span className="sm">Faol</span><Toggle on={edit.is_active ?? true} onChange={(v) => setEdit({ ...edit, is_active: v })} /></div>
+                {edit.kind === "http" && (
+                  <>
+                    <button className="btn small ghost" onClick={() => setAdv(!adv)}>{adv ? "Qo'shimchani yopish" : "Qo'shimcha sozlamalar"}</button>
+                    {adv && (["auth_header", "auth_prefix", "check_path", "create_path", "status_path", "balance_path"] as const).map((k) => (
+                      <Field key={k} label={k}><input className="input mono" value={edit.config?.[k] ?? ""} onChange={(e) => setEdit({ ...edit, config: { ...(edit.config ?? {}), [k]: e.target.value } })} /></Field>
+                    ))}
+                  </>
+                )}
+                <div className="mut xs">Kalit faqat shu so'rovda yuboriladi, serverda shifrlanadi va keyin ko'rsatilmaydi. Yupay'da kalitning IP ro'yxatini bo'sh qoldiring.</div>
+                <div className="row">
+                  <button className="btn grow" disabled={busy || (edit.name ?? "").trim().length < 2 || (!edit.id && !edit.api_key)} onClick={save}>Saqlash</button>
+                  {edit.id && <button className="btn danger" disabled={busy} onClick={async () => {
+                    if (await confirmDialog("API o'chirilsinmi? Uning paketlari yashiriladi.")) run(async () => { await api.del(`/admin/donate/providers/${edit.id}`); setEdit(null); st.reload(); });
+                  }}>O'chirish</button>}
+                </div>
+              </div>
+            )}
+          </Sheet>
+        </>
+      )}
+    </Loadable>
+  );
+}
+
+interface AGame { slug: string; name: string; logo: string | null; category: string; is_active: boolean; featured_slot: number | null; popular: boolean; sort: number; packages: number; provider_id: number | null }
+
+function GamesAdmin() {
+  const st = useLoad(() => api.get<AGame[]>("/admin/donate/games"));
+  const { busy, run } = useAction();
+  const upd = (g: AGame, body: Record<string, unknown>) => run(async () => { await api.put(`/admin/donate/games/${encodeURIComponent(g.slug)}`, body); st.reload(); });
+  return (
+    <Loadable state={st}>
+      {(list) => (
+        <>
+          <div className="mut xs">Bosh sahifada: <b>Asosiy</b> — 3 ta katta karta, <b>Mashhur</b> — 4×2 to'r. Paketi yo'q o'yin «Tez kunda» bo'lib ko'rinadi. API'dan yangi topilgan o'yinlar yashirin: «Ko'rinadi» ni yoqing.</div>
+          {list.length === 0 ? <Empty icon="🎮" text="O'yinlar yo'q" /> : list.map((g) => (
+            <div key={g.slug} className="card col" style={{ opacity: g.is_active ? 1 : 0.6 }}>
+              <div className="row">
+                <GameTile name={g.name} logo={g.logo} slug={g.slug} size={40} radius={10} />
+                <div className="grow" style={{ minWidth: 0 }}>
+                  <div className="b ell">{g.name}</div>
+                  <div className="mut xs">{g.packages} ta paket{g.provider_id ? " · API" : " · qo'lda"}{g.category ? ` · ${g.category}` : ""}</div>
+                </div>
+                <div className="col" style={{ alignItems: "flex-end", gap: 2 }}><span className="mut xs">Ko'rinadi</span><Toggle on={g.is_active} onChange={(v) => upd(g, { is_active: v })} /></div>
+              </div>
+              {g.is_active && (
+                <div className="row between">
+                  <div className="row" style={{ gap: 4 }}>
+                    <span className="mut xs">Asosiy:</span>
+                    {[0, 1, 2, 3].map((n) => (
+                      <button key={n} className={"chip" + ((g.featured_slot ?? 0) === n ? " on" : "")} disabled={busy} onClick={() => upd(g, { featured_slot: n })}>{n === 0 ? "—" : n}</button>
+                    ))}
+                  </div>
+                  {!g.featured_slot && <div className="row"><span className="mut xs">Mashhur</span><Toggle on={g.popular} onChange={(v) => upd(g, { popular: v })} /></div>}
+                </div>
+              )}
+            </div>
+          ))}
+        </>
       )}
     </Loadable>
   );
@@ -369,9 +458,18 @@ function DonateReview() {
     await api.post(`/admin/donate/${o.id}`, { action });
     st.reload();
   });
+  const [view, setView] = useState<"orders" | "games" | "api">("orders");
+  if (view !== "orders") {
+    return (
+      <>
+        <Seg value={view} onChange={setView} options={[{ v: "orders", label: "Buyurtmalar" }, { v: "games", label: "O'yinlar" }, { v: "api", label: "API" }]} />
+        {view === "games" ? <GamesAdmin /> : <ProvidersAdmin />}
+      </>
+    );
+  }
   return (
     <>
-      <DonateApi />
+      <Seg value={view} onChange={setView} options={[{ v: "orders", label: "Buyurtmalar" }, { v: "games", label: "O'yinlar" }, { v: "api", label: "API" }]} />
       <Seg value={status} onChange={setStatus} options={[{ v: "review", label: "Tekshiruv" }, { v: "processing", label: "Jarayonda" }, { v: "refunded", label: "Qaytarilgan" }, { v: "done", label: "Bajarilgan" }]} />
       <Loadable state={st}>
         {(list) => list.length === 0 ? <Empty text="Bo'sh" /> : list.map((o) => (

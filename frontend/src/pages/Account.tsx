@@ -45,7 +45,7 @@ export function Settings() {
             </div>
             <button className="btn small ghost" onClick={() => nav("/profile")}>{t("Tahrirlash")}</button>
           </div>
-          <div className="row between">
+          {(me.features?.market || me.features?.rent) && <><div className="row between">
             <div className="row">
               <span className="hf bb y" style={{ fontSize: 26 }}>{me.rating ?? "—"}</span>
               <div>
@@ -59,10 +59,10 @@ export function Settings() {
             <div><div className="bb">{me.sales}</div><div className="mut xs">{t("Savdo")}</div></div>
             <div><div className="bb">{me.rent_count}</div><div className="mut xs">{t("Ijara")}</div></div>
             <div><div className="bb g">{me.positive_percent != null ? me.positive_percent + "%" : "—"}</div><div className="mut xs">{t("Yaxshi baho")}</div></div>
-          </div>
+          </div></>}
         </div>
 
-        <div className="card click row kyc-card" onClick={() => nav("/kyc")}>
+        {(me.features?.market || me.features?.rent || me.kyc_status !== "none") && <div className="card click row kyc-card" onClick={() => nav("/kyc")}>
           <div className="hd-ico" style={{ width: 44, height: 44 }}><Icon name="shield" /></div>
           <div className="grow">
             <div className="b">{t("Identifikatsiya")}</div>
@@ -70,11 +70,11 @@ export function Settings() {
           </div>
           <span className={"pill-b " + kycCls}>{t(kycLabel)}</span>
           {chev}
-        </div>
+        </div>}
 
         <div className="card" style={{ padding: "4px 14px" }}>
-          <Row icon={<Icon name="doc" />} title={t("Mening e'lonlarim")}
-            right={<><span className="pill-b g">{t("{n} faol", { n: me.active_listings })}</span>{chev}</>} onClick={() => nav("/my-listings")} />
+          {me.features?.market && <Row icon={<Icon name="doc" />} title={t("Mening e'lonlarim")}
+            right={<><span className="pill-b g">{t("{n} faol", { n: me.active_listings })}</span>{chev}</>} onClick={() => nav("/my-listings")} />}
           <Row icon={<Icon name="clock" />} title={t("Xaridlar tarixi")}
             right={<><span className="pill-b y">{t("{n} ta", { n: me.purchases_count })}</span>{chev}</>} onClick={() => nav("/history")} />
           <Row icon={<Icon name="globe" />} title={t("Til")}

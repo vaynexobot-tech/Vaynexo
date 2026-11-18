@@ -9,7 +9,7 @@ from app.models import AdminLog
 
 log = logging.getLogger(__name__)
 
-SECRET_KEYS = {"api_hash", "password", "credentials", "pin", "secret", "number", "card_number"}
+SECRET_KEYS = {"api_key", "api_hash", "password", "credentials", "pin", "secret", "number", "card_number"}
 
 # yo'l → odam o'qiydigan nom
 ACTIONS = [
@@ -25,6 +25,8 @@ ACTIONS = [
     (r"/admin/listings/\d+/moderate$", "E'lon moderatsiyasi"),
     (r"/admin/deals/\d+", "Nizo qarori"),
     (r"/admin/rent", "Ijara"),
+    (r"/admin/donate/providers", "Donat API (provayder)"),
+    (r"/admin/donate/games", "Donat: o'yin ko'rinishi"),
     (r"/admin/donate", "Donat"),
     (r"/admin/tg", "TG buyurtma"),
     (r"/admin/boost", "Boost"),

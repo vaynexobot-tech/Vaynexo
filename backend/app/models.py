@@ -147,12 +147,50 @@ class Withdrawal(TimestampMixin, Base):
 
 
 # ---------------------------------------------------------------- Donat
+class DonateProvider(TimestampMixin, Base):
+    """Donat yetkazib beruvchi API (bir nechta bo'lishi mumkin). Kalit shifrlangan holda saqlanadi."""
+
+    __tablename__ = "donate_providers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(16), default="yupay")  # yupay | http
+    base_url: Mapped[str] = mapped_column(String(200), default="")
+    key_enc: Mapped[str] = mapped_column(Text, default="")
+    config: Mapped[dict] = mapped_column(JSONB, default=dict)  # http turi: sarlavha va yo'llar
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    last_ok_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(300))
+    synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    balance_usd: Mapped[str | None] = mapped_column(String(24))
+
+
+class DonateGame(Base):
+    """Bosh sahifada ko'rinadigan o'yin/servis. Katalog API'dan sinxronlanadi, ko'rinishini admin boshqaradi."""
+
+    __tablename__ = "donate_games"
+
+    slug: Mapped[str] = mapped_column(String(64), primary_key=True)  # ML | MC | pubg-mobile ...
+    name: Mapped[str] = mapped_column(String(80))
+    brand_slug: Mapped[str] = mapped_column(String(64), default="")  # provayderdagi brend (ID tekshirish uchun)
+    logo_url: Mapped[str | None] = mapped_column(String(300))
+    hero_url: Mapped[str | None] = mapped_column(String(300))
+    category: Mapped[str] = mapped_column(String(64), default="")
+    fields: Mapped[list] = mapped_column(JSONB, default=list)  # [{key,label,placeholder,pattern}] — ID, server
+    provider_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("donate_providers.id", ondelete="SET NULL"))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    featured_slot: Mapped[int | None] = mapped_column(Integer)  # 1..3 — bosh sahifadagi katta kartalar
+    popular: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # «Mashhur» to'ri
+    sort: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class DonatePackage(Base):
     __tablename__ = "donate_packages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    game: Mapped[str] = mapped_column(String(8), index=True)  # ML | MC
-    name: Mapped[str] = mapped_column(String(64))  # "172 almaz", "Haftalik propusk"
+    game: Mapped[str] = mapped_column(String(64), index=True)  # DonateGame.slug: ML | MC | pubg-mobile ...
+    name: Mapped[str] = mapped_column(String(128))  # "172 almaz", "Haftalik propusk"
     diamonds: Mapped[int] = mapped_column(Integer, default=0)
     bonus: Mapped[int] = mapped_column(Integer, default=0)
     price: Mapped[int] = mapped_column(BigInteger)
@@ -160,6 +198,10 @@ class DonatePackage(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_hot: Mapped[bool] = mapped_column(Boolean, default=False)
     sort: Mapped[int] = mapped_column(Integer, default=0)
+    provider_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("donate_providers.id", ondelete="SET NULL"), index=True)
+    source: Mapped[str] = mapped_column(String(8), default="manual", server_default="manual")  # manual | api
+    admin_off: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # admin yashirgan — sinxronlash qayta yoqmaydi
+    cost_usd: Mapped[str | None] = mapped_column(String(24))  # API tannarxi (USD satr); so'm narx shundan hisoblanadi
 
 
 class DonateOrder(TimestampMixin, Base):
@@ -168,10 +210,10 @@ class DonateOrder(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
     package_id: Mapped[int] = mapped_column(Integer, ForeignKey("donate_packages.id"))
-    game: Mapped[str] = mapped_column(String(8))
-    title: Mapped[str] = mapped_column(String(64))
-    player_id: Mapped[str] = mapped_column(String(32))
-    zone_id: Mapped[str] = mapped_column(String(16), default="")
+    game: Mapped[str] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(String(128))
+    player_id: Mapped[str] = mapped_column(String(64))
+    zone_id: Mapped[str] = mapped_column(String(64), default="")
     price: Mapped[int] = mapped_column(BigInteger)
     # processing | done | refunded
     status: Mapped[str] = mapped_column(String(16), default="processing", index=True)

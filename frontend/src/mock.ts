@@ -37,7 +37,7 @@ const state: Json = {
     phone: null, ml_id: "84512937", bio: null, is_admin: true, sales: 2, positive_percent: 97, active_listings: 1,
     referral_bonus: 1234, referral_min_topup: 10_000, ref_link: "https://t.me/VaynexoBot?startapp=ref_1001", ref_invited: 3, ref_paid: 1, ref_earned: 1234,
     commission_percent: 5, kyc_status: "none", kyc_note: null, pin_set: false, bio_set: false, notify_chat: true, notify_tour: true,
-    purchases_count: 7, rent_count: 1, kyc_required: { marketplace: true, rental: true }, points: 1_240,
+    purchases_count: 7, rent_count: 1, kyc_required: { marketplace: true, rental: true }, features: { market: false, rent: false, boost: false, tg: false, arena: false, partner: false, ai: false, top: false }, points: 1_240,
     vip_credit_days: 0, tournament_passes: 1, boost_coupon_percent: 0, badge: null, wallet_id: "VX 4821 7730",
   },
   settings: {
@@ -236,6 +236,12 @@ on("POST", "/admin/topups/:id/reject", (m, b) => { const t = state.topups.find((
 const tgBank = { api_ready: true, logged_in: true, account: "@vaynexo_kassa", connected: true, error: null, bots: ["HUMOcardbot", "CardXabarBot"], seen: { HUMOcardbot: { at: now(), amount: 50000 } }, login_step: null };
 on("GET", "/admin/tg-bank", () => tgBank);
 on("PUT", "/admin/tg-bank/bots", (_m, b) => { tgBank.bots = (b.bots as string[]).map((x) => x.replace(/^@/, "")); return tgBank; });
+on("GET", "/admin/donate/providers", () => ({ providers: [{ id: 1, name: "Yupay", kind: "yupay", kind_label: "Yupay Merchant API", base_url: "", host: "api.yupay.uz", key_set: true, is_active: true, config: {}, last_ok_at: now(), last_error: null, synced_at: now(), balance_usd: "42.10", webhook_url: "https://vaynexo.example/api/yupay/webhook/1" }], legacy_env: false, usd_rate: 12_800, markup: 10 }));
+on("GET", "/admin/donate/games", () => GAMES.map((g, i) => ({ slug: g.slug, name: g.name, logo: null, category: "", is_active: true, featured_slot: g.slot, popular: !g.slot, sort: i, packages: PKGS.filter((p) => p.game === g.slug).length, provider_id: null })));
+on("PUT", "/admin/donate/games/:slug", () => ({ ok: true }));
+on("POST", "/admin/donate/providers/:id/test", () => ({ ok: true, ms: 180, balance_usd: "42.10", title: "VAYNEXO" }));
+on("POST", "/admin/donate/providers/:id/sync", () => ({ games: 12, packages: 140, new_games: [] }));
+on("POST", "/admin/donate/reprice", () => ({ changed: 0 }));
 on("GET", "/admin/donate/provider", () => ({ mode: "manual", live: false, yupay: false, url_set: false, host: null, key_set: false, webhook_url: "https://vaynexo.example/api/yupay/webhook", low_balance_usd: 20 }));
 on("POST", "/admin/donate/provider/test", () => ({ ok: false, error: "Provayder ulanmagan (demo)" }));
 on("GET", "/admin/donate/yupay/skus", () => []);
@@ -262,6 +268,20 @@ on("POST", "/wallet/withdraw", (_m, b) => {
 on("GET", "/wallet/withdrawals", () => state.withdrawals.filter((w: Json) => w.user_id === ME).map((w: Json) => ({ ...w, card: "•••• " + w.card.slice(-4) })));
 
 // donat
+const ML_FIELDS = [{ key: "player_id", label: "User ID", placeholder: "12345678", pattern: "^\\d{5,20}$" }, { key: "server_id", label: "Zone ID", placeholder: "1234", pattern: "^\\d{1,10}$" }];
+const GAMES: Json[] = [
+  { slug: "ML", name: "Mobile Legends", logo: null, hero: null, category: "", fields: ML_FIELDS, available: true, slot: 1 },
+  { slug: "pubg-mobile", name: "PUBG Mobile", logo: null, hero: null, category: "", fields: [], available: true, slot: 2 },
+  { slug: "steam", name: "Steam", logo: null, hero: null, category: "", fields: [{ key: "login", label: "Steam login", placeholder: "login", pattern: "" }], available: false, slot: 3 },
+  ...["Free Fire", "Standoff 2", "Delta Force", "Genshin Impact", "Roblox", "Honor of Kings", "Blood Strike", "Arena Breakout"].map((n) => ({ slug: n.toLowerCase().replace(/ /g, "-"), name: n, logo: null, hero: null, category: "", fields: [], available: n === "Free Fire", slot: null })),
+];
+PKGS.push(
+  { id: 9001, game: "pubg-mobile", name: "60 UC", diamonds: 0, bonus: 0, price: 12_900, is_hot: false, is_active: true, sku: "u60", sort: 0 },
+  { id: 9002, game: "pubg-mobile", name: "325 UC", diamonds: 0, bonus: 0, price: 64_900, is_hot: true, is_active: true, sku: "u325", sort: 1 },
+  { id: 9003, game: "free-fire", name: "110 Diamonds", diamonds: 0, bonus: 0, price: 12_900, is_hot: false, is_active: true, sku: "f110", sort: 0 },
+);
+on("GET", "/donate/games", () => ({ featured: GAMES.filter((g) => g.slot), popular: GAMES.filter((g) => !g.slot), all: GAMES }));
+on("GET", "/donate/games/:slug", (m) => GAMES.find((g) => g.slug === decodeURIComponent(m[1])) ?? (() => { throw new MockError("not_found", "O'yin topilmadi", 404); })());
 on("GET", "/donate/packages", (_m, _b, q) => PKGS.filter((p) => p.game === (q.get("game") || "ML") && p.is_active));
 on("POST", "/donate/check-player", (_m, b) => ({ found: /^\d{5,}$/.test(b.player_id), nickname: `Player_${String(b.player_id).slice(-4)}` }));
 on("POST", "/donate/orders", (_m, b) => {

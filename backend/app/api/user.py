@@ -46,6 +46,7 @@ async def me(user: CurrentUser, session: SessionDep):
         "ref_link": f"https://t.me/{settings.bot_username}?startapp=ref_{user.id}" if settings.bot_username else None,
         "commission_percent": await app_settings.get_value(session, "garant_fee_percent"),
         "wallet_id": wallet_svc.format_wallet_id(wid),
+        "features": await app_settings.features(session),
         "kyc_required": {"marketplace": await app_settings.get_value(session, "kyc_marketplace") == "on",
                          "rental": await app_settings.get_value(session, "kyc_rental") == "on"},
         "purchases_count": await session.scalar(

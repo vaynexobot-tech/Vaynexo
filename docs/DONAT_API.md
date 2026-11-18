@@ -1,38 +1,31 @@
-# Donat API — Yupay Merchant API
+# Donat API — admin paneldan (bir nechta API)
 
-Hujjat: https://reseller.yupay.uz/uz/docs · API: `https://api.yupay.uz/merchant/v1`
-Hozir donat QO'LDA (`DONATE_PROVIDER=manual`). Yupay ulangach avtomatik bo'ladi.
+Hujjat (Yupay): https://reseller.yupay.uz/uz/docs · API: `https://api.yupay.uz/merchant/v1`
 
 ## ⚠️ Muhim
-- **Sinov muhiti yo'q.** Har bir `POST /orders` haqiqiy xarid qiladi va depozitdan USD yechadi. Birinchi sinov — eng arzon nominal.
-- Pul Yupay depozitidan **USD**da yechiladi, foydalanuvchi esa **so'mda** to'laydi. Paket narxi (so'm) Yupay USD narxidan yuqori bo'lsin (kursni hisobga oling).
-- Depozitni o'zingiz to'ldirasiz. $20 dan kamaysa guruhga ogohlantirish keladi (`DONATE_LOW_BALANCE_USD`).
+- Yupay'da **sinov muhiti yo'q**: har bir buyurtma haqiqiy pul yechadi. Birinchi sinov — eng arzon nominal.
+- API narxi **USD**da, foydalanuvchi **so'm**da to'laydi. So'm narx = tannarx × dollar kursi × (1 + ustama%), 100 so'mga yuqoriga yaxlitlanadi.
+- Kalitni chatga yubormang. Kalit admin panelga kiritiladi, serverda **shifrlanadi**, qayta ko'rsatilmaydi.
 
-## 1. Yupay kabinetida
-1. **Sozlamalar → Kalit yaratish** → `ypk_…` (bir marta ko'rsatiladi). Kalitni chatga yubormang.
-2. **IP ro'yxatini bo'sh qoldiring** (Render bepul tarifida chiquvchi IP o'zgarib turadi). Bo'sh bo'lmasa, `403 ip_not_allowed` chiqadi.
-3. (Ixtiyoriy, tezroq natija uchun) **Vebhuk** manzili: `https://vaynexo-q2ec.onrender.com/api/yupay/webhook`. Imzo kalit bilan tekshiriladi. Vebhuksiz ham ishlaydi: holat har 30 soniyada so'raladi.
+## Ulash
+1. Yupay kabinet → **Sozlamalar → Kalit yaratish** (`ypk_…`). Kalitning **IP ro'yxatini bo'sh** qoldiring.
+2. Mini App → **Admin → 💎 Donat → API → «+ API qo'shish»**: nom, kalit → Saqlash.
+3. **Tekshirish** — depozit summasi chiqsa, ulandi.
+4. **Katalogni yangilash** — o'yinlar, paketlar va narxlar API'dan olinadi (keyin har 30 daqiqada o'zi).
+5. **Donat → O'yinlar**: yangi topilgan o'yinlar yashirin. «Ko'rinadi» ni yoqing, **Asosiy** (1–3 — katta kartalar) yoki **Mashhur** (4×2 to'r) belgilang.
+6. **Narx hisoblash**: dollar kursi va ustamani kiriting → «Saqlash va narxlarni yangilash».
 
-## 2. Render → vaynexo → Environment
-| Nomi | Qiymati |
-|---|---|
-| `DONATE_PROVIDER` | `yupay` |
-| `DONATE_PROVIDER_KEY` | `ypk_…` kalit |
-| `DONATE_BRAND_ML` | ixtiyoriy: Yupay brend slug (bo'sh bo'lsa avtomatik: `mobile-legends`) |
-| `DONATE_BRAND_MC` | ixtiyoriy (avtomatik: `magic-chess…`) |
-| `DONATE_LOW_BALANCE_USD` | ixtiyoriy, standart 20 |
+Bir nechta API qo'shsa bo'ladi (har bir o'yin o'z API'si orqali yetkaziladi). «Boshqa API» turi — oddiy HTTP API: paketlar qo'lda kiritiladi (Donat paketlari).
 
-## 3. Tekshirish
-Mini App → Admin → **💎 Donat** → «🔌 Donat API» → **Ulanishni tekshirish**: depozit summasi chiqsa, ulandi.
-Xatolar: 401 — kalit noto'g'ri; 403 — IP yoki hisob muzlatilgan.
+## Qanday ishlaydi
+- ID tekshiruvi: Yupay `POST /validate/player` (nik ko'rsatiladi). Tekshirib bo'lmasa — buyurtmaga ruxsat beriladi.
+- Buyurtma: `merchant_order_id = VX-D{id}` (idempotent). Holat: `delivered` → tayyor; `paid/fulfilling/fulfillment_delayed` → kutiladi; `failed` + to'liq qaytarilgan → foydalanuvchiga pul qaytadi; qisman → adminga «tekshiruv».
+- Yupay rad etsa (depozit yetmadi, narx o'zgardi, nominal tugadi) → pul foydalanuvchiga qaytadi, adminga sabab yoziladi.
+- Depozit `DONATE_LOW_BALANCE_USD` (standart $20) dan kamaysa guruhga ogohlantirish keladi.
+- Vebhuk (ixtiyoriy, tezroq natija): API kartasidagi «Vebhuk manzili»ni Yupay kabinetiga yozing.
 
-## 4. Paketlarni bog'lash
-Admin → **Donat paketlari** → paketni oching → **«Yupay katalogidan tanlash»** → nominalni tanlang (SKU UUID o'zi yoziladi).
-SKU qo'lda yozilsa, katalogdagi `sku_id` bilan bir xil bo'lishi kerak. Bog'lanmagan paket buyurtmasi rad etilib, pul qaytariladi.
+## Bo'limlar
+Standart holatda ilovada **faqat donat** (+ hamyon, tarix, sozlamalar). Boshqa bo'limlar (Account savdo, ijara, boost, TG, arena, hamkor, AI, top) Admin → Sozlamalar → «Bo'limlar» dan yoqiladi.
 
-## 5. Qanday ishlaydi
-- ID tekshiruvi: `POST /validate/player` (nik ko'rsatiladi). Tekshirib bo'lmasa — ruxsat beriladi, nik ko'rsatilmaydi.
-- Buyurtma: `merchant_order_id = VX-D{id}` (idempotent: takroriy so'rov ikki marta yechmaydi).
-- `delivered` → muvaffaqiyat; `paid/fulfilling/fulfillment_delayed` → kutiladi (qaytarish yo'q); `failed` + to'liq qaytarilgan → foydalanuvchiga pul qaytadi;
-  `failed` + qisman → adminga «tekshiruv».
-- Yupay ning o'zi rad etsa (depozit yetmadi, narx o'zgardi, nominal tugadi) → pul foydalanuvchiga qaytadi va adminga sabab bilan xabar keladi.
+## Eski usul (Render o'zgaruvchilari)
+`DONATE_PROVIDER=yupay` + `DONATE_PROVIDER_KEY` hali ishlaydi (bog'lanmagan paketlar uchun), lekin admin paneldagi usul qulayroq.

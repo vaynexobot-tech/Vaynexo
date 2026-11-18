@@ -9,7 +9,15 @@ import asyncio
 from sqlalchemy import func, select
 
 from app.db import SessionLocal
-from app.models import DonatePackage
+from app.models import DonateGame, DonatePackage
+
+# (slug, nomi, asosiy karta raqami, mashhur) — Yupay do'kon sahifalaridagi nomlar; sinxronlashdan keyin rasm va paketlar keladi.
+GAMES = [
+    ("ML", "Mobile Legends", 1, False), ("pubg-mobile", "PUBG Mobile", 2, False), ("steam", "Steam", 3, False),
+    ("free-fire", "Free Fire", None, True), ("standoff-2", "Standoff 2", None, True), ("delta-force", "Delta Force", None, True),
+    ("genshin-impact", "Genshin Impact", None, True), ("roblox", "Roblox", None, True), ("honor-of-kings", "Honor of Kings", None, True),
+    ("blood-strike", "Blood Strike", None, True), ("arena-breakout", "Arena Breakout", None, True),
+]
 
 ML = [
     ("11 almaz", 11, 0, 2_500), ("22 almaz", 22, 0, 4_900), ("56 almaz", 56, 0, 12_000), ("86 almaz", 78, 8, 18_500),
@@ -20,7 +28,23 @@ ML = [
 MC = [("56 almaz", 56, 0, 12_500), ("172 almaz", 156, 16, 38_000), ("344 almaz", 312, 32, 74_000), ("706 almaz", 625, 81, 147_000)]
 
 
+async def seed_games() -> None:
+    """O'yinlar ro'yxati: faqat yo'q bo'lganlari qo'shiladi (admin o'zgartirganlari buzilmaydi). MC yashirin."""
+    async with SessionLocal() as session, session.begin():
+        have = set(await session.scalars(select(DonateGame.slug)))
+        for i, (slug, name, slot, popular) in enumerate(GAMES):
+            if slug not in have:
+                fields = ([{"key": "player_id", "label": "User ID", "placeholder": "12345678", "pattern": r"^\d{5,20}$"},
+                           {"key": "server_id", "label": "Zone ID", "placeholder": "1234", "pattern": r"^\d{1,10}$"}] if slug == "ML" else [])
+                session.add(DonateGame(slug=slug, name=name, featured_slot=slot, popular=popular, sort=i, fields=fields, is_active=True))
+        if "MC" not in have:
+            session.add(DonateGame(slug="MC", name="Magic Chess", is_active=False, sort=99, fields=[
+                {"key": "player_id", "label": "User ID", "placeholder": "12345678", "pattern": r"^\d{5,20}$"},
+                {"key": "server_id", "label": "Zone ID", "placeholder": "1234", "pattern": r"^\d{1,10}$"}]))
+
+
 async def main() -> None:
+    await seed_games()
     async with SessionLocal() as session, session.begin():
         if await session.scalar(select(func.count()).select_from(DonatePackage)):
             print("Paketlar allaqachon bor — o'tkazib yuborildi.")

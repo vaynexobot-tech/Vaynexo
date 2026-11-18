@@ -387,3 +387,16 @@ textarea.input { height: auto; min-height: 90px; padding: 12px 14px; resize: ver
 .bar-hit { flex: 1; height: 100%; display: flex; align-items: flex-end; cursor: pointer; min-width: 3px; }
 .bar-hit i { display: block; width: 100%; background: var(--y); opacity: .55; border-radius: 4px 4px 0 0; }
 .bar-hit.on i { opacity: 1; }
+
+/* Bosh sahifa: asosiy o'yinlar (3 ustun) va mashhur o'yinlar (4 ustun × 2 qator) */
+.feat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.feat { padding: 8px; display: flex; flex-direction: column; align-items: stretch; text-align: center; }
+.feat-img { position: relative; display: flex; justify-content: center; }
+.feat-img > img, .feat-img > div:first-child { width: 100% !important; height: 96px !important; }
+.feat.soon { opacity: .7; }
+.game-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 8px; }
+.mini-game { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: 0; padding: 0; color: var(--txt); font: inherit; cursor: pointer; min-width: 0; }
+.mini-game > img, .mini-game > div:first-child { width: 100% !important; max-width: 72px; height: auto !important; aspect-ratio: 1; }
+.mini-game .mg-name { font-size: 11px; font-weight: 600; max-width: 100%; text-align: center; }
+.mini-game.soon > img, .mini-game.soon > div:first-child { opacity: .55; }
+.mini-game .mg-soon { position: absolute; top: 2px; right: 2px; font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 8px; background: rgba(255,255,255,.16); color: #fff; }

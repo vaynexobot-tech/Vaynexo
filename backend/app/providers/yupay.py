@@ -145,7 +145,7 @@ class YupayProvider:
     # ------------------------------------------------------------------ DonateProvider
     async def check_player(self, game: str, player_id: str, zone_id: str) -> str | None:
         """None — ID mavjud emas. «» — tekshirib bo'lmadi (yo'l qo'yiladi). Aks holda — nik."""
-        brand = await self.brand_slug(game)
+        brand = await self.brand_slug(game) if game in GAME_KEYWORD else game  # game: ML/MC yoki to'g'ridan-to'g'ri brend slug
         if not brand:
             return ""
         body = {"brand": brand, "player_id": player_id}

@@ -86,6 +86,7 @@ const HIST_LINK: Record<string, (id: number) => string> = {
 
 export function History() {
   const nav = useNavigate();
+  const feat = useApp().me?.features ?? {};
   const [type, setType] = useState("all");
   const st = useLoad(() => api.get<{ items: HistoryItem[]; spent: number; count: number }>(`/history?type=${type}`), [type]);
   return (
@@ -99,8 +100,9 @@ export function History() {
           </div>
         )}
         <Chips wrap value={type} onChange={setType} options={[
-          { v: "all", label: t("Hammasi") }, { v: "donate", label: t("Donat") }, { v: "account", label: t("Akkaunt") }, { v: "rent", label: t("Ijara") },
-          { v: "boost", label: "Boost" }, { v: "telegram", label: "Telegram" }, { v: "wallet", label: t("Hamyon") },
+          { v: "all", label: t("Hammasi") }, { v: "donate", label: t("Donat") },
+          ...(feat.market ? [{ v: "account", label: t("Akkaunt") }] : []), ...(feat.rent ? [{ v: "rent", label: t("Ijara") }] : []),
+          ...(feat.boost ? [{ v: "boost", label: "Boost" }] : []), ...(feat.tg ? [{ v: "telegram", label: "Telegram" }] : []), { v: "wallet", label: t("Hamyon") },
         ]} />
         <Loadable state={st}>
           {(d) => d.items.length === 0 ? <Empty icon="🧾" text={t("Hali xaridlar yo'q")} /> : (
@@ -126,15 +128,19 @@ export function History() {
             </>
           )}
         </Loadable>
-        <div className="mut xs mono b" style={{ marginTop: 8 }}>{t("BUYURTMALARIM")}</div>
-        <div className="quick5">
-          {[
-            ["bag", t("Bitimlar"), "/deals"], ["chat", t("Chatlar"), "/chats"], ["rocket", "Boost", "/boosts"],
-            ["send", "Telegram", "/tg/orders"], ["clock", t("Ijaralar"), "/rentals"],
-          ].map(([ic, label, to]) => (
-            <button key={to} onClick={() => nav(to)}><span className="rowico y"><Icon name={ic} /></span><span className="xs b">{label}</span></button>
-          ))}
-        </div>
+        {(feat.market || feat.boost || feat.tg || feat.rent) && (
+          <>
+            <div className="mut xs mono b" style={{ marginTop: 8 }}>{t("BUYURTMALARIM")}</div>
+            <div className="quick5">
+              {([
+                ["market", "bag", t("Bitimlar"), "/deals"], ["market", "chat", t("Chatlar"), "/chats"], ["boost", "rocket", "Boost", "/boosts"],
+                ["tg", "send", "Telegram", "/tg/orders"], ["rent", "clock", t("Ijaralar"), "/rentals"],
+              ] as [string, string, string, string][]).filter(([f]) => feat[f]).map(([, ic, label, to]) => (
+                <button key={to} onClick={() => nav(to)}><span className="rowico y"><Icon name={ic} /></span><span className="xs b">{label}</span></button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </>
   );

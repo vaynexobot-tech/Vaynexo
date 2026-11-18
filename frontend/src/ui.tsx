@@ -196,17 +196,20 @@ export function Header({ title, sub, right, back = true, icon }: { title: string
 }
 
 const TRADE = ["/market", "/rent", "/boost", "/tg"];
+const TRADE_ITEMS = [
+  { to: "/market", icon: "grid", label: "Account savdo", f: "market" },
+  { to: "/rent", icon: "bag", label: "Account ijara", f: "rent" },
+  { to: "/boost", icon: "bolt", label: "Boost xizmati", f: "boost" },
+  { to: "/tg", icon: "send", label: "TG xizmatlar", f: "tg" },
+];
 
 export function BottomNav() {
   const { pathname } = useLocation();
+  const { me } = useApp();
+  const on = (f: string) => !!me?.features?.[f];
   const trade = TRADE.some((p) => pathname === p || pathname.startsWith(p + "/"));
-  if (trade) {
-    const items = [
-      { to: "/market", icon: "grid", label: t("Account savdo") },
-      { to: "/rent", icon: "bag", label: t("Account ijara") },
-      { to: "/boost", icon: "bolt", label: t("Boost xizmati") },
-      { to: "/tg", icon: "send", label: t("TG xizmatlar") },
-    ];
+  const tradeItems = TRADE_ITEMS.filter((i) => on(i.f));
+  if (trade && tradeItems.length) {
     return (
       <nav className="nav">
         <div className="nav-in">
@@ -215,10 +218,10 @@ export function BottomNav() {
             {t("Bosh sahifa")}
           </NavLink>
           <div className="pill trade">
-            {items.map((i) => (
+            {tradeItems.map((i) => (
               <NavLink key={i.to} to={i.to} end className={({ isActive }) => "ni" + (isActive ? " on" : "")} onClick={() => haptic()}>
                 <Icon name={i.icon} />
-                {i.label}
+                {t(i.label)}
               </NavLink>
             ))}
           </div>
@@ -228,10 +231,13 @@ export function BottomNav() {
   }
   const items = [
     { to: "/", icon: "home", label: t("Bosh sahifa") },
-    { to: "/partner", icon: "play", label: t("Hamkor") },
-    { to: "/arena", icon: "arena", label: t("Arena") },
+    { to: "/wallet", icon: "wallet", label: t("Hamyon") },
+    ...(on("partner") ? [{ to: "/partner", icon: "play", label: t("Hamkor") }] : []),
+    ...(on("arena") ? [{ to: "/arena", icon: "arena", label: t("Arena") }] : []),
+    { to: "/history", icon: "clock", label: t("Tarix") },
     { to: "/settings", icon: "settings", label: t("Sozlamalar") },
   ];
+  const first = tradeItems[0];
   return (
     <nav className="nav">
       <div className="nav-in">
@@ -243,10 +249,12 @@ export function BottomNav() {
             </NavLink>
           ))}
         </div>
-        <NavLink to="/market" className="sv" onClick={() => haptic()}>
-          <Icon name="bag" />
-          {t("Savdo")}
-        </NavLink>
+        {first && (
+          <NavLink to={first.to} className="sv" onClick={() => haptic()}>
+            <Icon name="bag" />
+            {t("Savdo")}
+          </NavLink>
+        )}
       </div>
     </nav>
   );
@@ -291,6 +299,21 @@ export function Loadable<T>({ state, children }: { state: { data: T | null; erro
       </Empty>
     );
   return <Spinner />;
+}
+
+/** Bo'lim yoqilganmi (admin Sozlamalar → «Bo'limlar»). Admin o'zi hamma bo'limni to'g'ridan-to'g'ri ocha oladi. */
+export function useFeature(name: string): boolean {
+  const { me } = useApp();
+  return !!me?.features?.[name];
+}
+
+/** O'yin belgisi: logo bo'lsa rasm, bo'lmasa bosh harflar. */
+export function GameTile({ name, logo, slug, size = 64, radius = 16 }: { name: string; logo?: string | null; slug?: string; size?: number; radius?: number }) {
+  const img = logo || (slug ? GAME_IMG[slug] : undefined);
+  const hue = [...name].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+  if (img) return <img src={img} alt={name} loading="lazy" style={{ width: size, height: size, borderRadius: radius, objectFit: "cover", display: "block" }} />;
+  const ini = name.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  return <div aria-label={name} style={{ width: size, height: size, borderRadius: radius, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: size / 3, color: "#fff", background: `linear-gradient(135deg, hsl(${hue} 55% 38%), hsl(${(hue + 40) % 360} 60% 24%))` }}>{ini}</div>;
 }
 
 export function GameLogo({ game, size = 44 }: { game: string; size?: number }) {

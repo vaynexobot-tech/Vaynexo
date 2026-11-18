@@ -20,7 +20,7 @@ import TgServices, { TgOrderPage, TgOrders } from "./pages/TgServices";
 import Wallet from "./pages/Wallet";
 import "./styles.css";
 import { initTelegram, startParam, tg } from "./tg";
-import { AppCtx, Empty, errorText, Spinner, useToastHost } from "./ui";
+import { AppCtx, Empty, errorText, Spinner, useApp, useToastHost } from "./ui";
 
 initTelegram();
 if (DEMO) window.prompt = () => "Demo izoh"; // artifact ichida prompt() ishlamaydi
@@ -33,10 +33,16 @@ function DeepLink() {
     if (!p) return;
     const [kind, id] = p.split("_");
     const map: Record<string, string> = { listing: `/listing/${id}`, deal: `/deal/${id}`, chat: `/chat/${id}`, boost: `/boost/${id}`, tour: `/arena/${id}`, arena: `/arena/${id}`, rental: `/rental/${id}` };
-    if (map[kind] && /^\d+$/.test(id)) nav(map[kind], { replace: false });
+    if (map[kind] && /^\d+$/.test(id)) nav(map[kind], { replace: false }); // yopiq bo'lim bo'lsa Gate bosh sahifaga qaytaradi
     else if (["admin", "wallet", "booster", "rent", "partner", "arena"].includes(kind) && !id) nav("/" + kind); // kanal tugmalari
   }, [nav]);
   return null;
+}
+
+/** Admin Sozlamalarida o'chirilgan bo'lim sahifasi ochilmaydi (admin o'zi kira oladi). */
+function Gate({ f, children }: { f: string; children: JSX.Element }) {
+  const { me } = useApp();
+  return me?.is_admin || me?.features?.[f] ? children : <Navigate to="/" replace />;
 }
 
 function App() {
@@ -101,33 +107,33 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/wallet" element={<Wallet />} />
-          <Route path="/partner" element={<Partner />} />
+          <Route path="/partner" element={<Gate f="partner"><Partner /></Gate>} />
           <Route path="/donate/:game" element={<Donate />} />
-          <Route path="/market" element={<Market />} />
-          <Route path="/listing/:id" element={<ListingDetail />} />
-          <Route path="/pay/listing/:id" element={<PayListing />} />
-          <Route path="/sell" element={<Sell />} />
-          <Route path="/sell/:id" element={<Sell />} />
-          <Route path="/my-listings" element={<MyListings />} />
-          <Route path="/chats" element={<Chats />} />
-          <Route path="/chat/:id" element={<ChatPage />} />
-          <Route path="/deals" element={<Deals />} />
-          <Route path="/deal/:id" element={<DealPage />} />
-          <Route path="/rent" element={<Rent />} />
-          <Route path="/rent/new" element={<RentSell />} />
-          <Route path="/rent/edit/:id" element={<RentSell />} />
-          <Route path="/rent/:id" element={<RentDetail />} />
-          <Route path="/rentals" element={<MyRentals />} />
-          <Route path="/rental/:id" element={<RentalPage />} />
-          <Route path="/tg" element={<TgServices />} />
-          <Route path="/tg/orders" element={<TgOrders />} />
-          <Route path="/tg/order/:id" element={<TgOrderPage />} />
-          <Route path="/boost" element={<Boost />} />
-          <Route path="/boosts" element={<BoostOrders />} />
-          <Route path="/boost/:id" element={<BoostOrderPage />} />
-          <Route path="/arena" element={<Arena />} />
-          <Route path="/arena/:id" element={<TournamentPage />} />
-          <Route path="/top" element={<Top />} />
+          <Route path="/market" element={<Gate f="market"><Market /></Gate>} />
+          <Route path="/listing/:id" element={<Gate f="market"><ListingDetail /></Gate>} />
+          <Route path="/pay/listing/:id" element={<Gate f="market"><PayListing /></Gate>} />
+          <Route path="/sell" element={<Gate f="market"><Sell /></Gate>} />
+          <Route path="/sell/:id" element={<Gate f="market"><Sell /></Gate>} />
+          <Route path="/my-listings" element={<Gate f="market"><MyListings /></Gate>} />
+          <Route path="/chats" element={<Gate f="market"><Chats /></Gate>} />
+          <Route path="/chat/:id" element={<Gate f="market"><ChatPage /></Gate>} />
+          <Route path="/deals" element={<Gate f="market"><Deals /></Gate>} />
+          <Route path="/deal/:id" element={<Gate f="market"><DealPage /></Gate>} />
+          <Route path="/rent" element={<Gate f="rent"><Rent /></Gate>} />
+          <Route path="/rent/new" element={<Gate f="rent"><RentSell /></Gate>} />
+          <Route path="/rent/edit/:id" element={<Gate f="rent"><RentSell /></Gate>} />
+          <Route path="/rent/:id" element={<Gate f="rent"><RentDetail /></Gate>} />
+          <Route path="/rentals" element={<Gate f="rent"><MyRentals /></Gate>} />
+          <Route path="/rental/:id" element={<Gate f="rent"><RentalPage /></Gate>} />
+          <Route path="/tg" element={<Gate f="tg"><TgServices /></Gate>} />
+          <Route path="/tg/orders" element={<Gate f="tg"><TgOrders /></Gate>} />
+          <Route path="/tg/order/:id" element={<Gate f="tg"><TgOrderPage /></Gate>} />
+          <Route path="/boost" element={<Gate f="boost"><Boost /></Gate>} />
+          <Route path="/boosts" element={<Gate f="boost"><BoostOrders /></Gate>} />
+          <Route path="/boost/:id" element={<Gate f="boost"><BoostOrderPage /></Gate>} />
+          <Route path="/arena" element={<Gate f="arena"><Arena /></Gate>} />
+          <Route path="/arena/:id" element={<Gate f="arena"><TournamentPage /></Gate>} />
+          <Route path="/top" element={<Gate f="top"><Top /></Gate>} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/profile" element={<ProfileEdit />} />
           <Route path="/referral" element={<Referral />} />

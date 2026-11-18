@@ -44,7 +44,8 @@ def user_private(u: User) -> dict:
 
 def package(p: DonatePackage) -> dict:
     return {"id": p.id, "game": p.game, "name": p.name, "diamonds": p.diamonds, "bonus": p.bonus,
-            "price": p.price, "is_hot": p.is_hot, "is_active": p.is_active, "sku": p.provider_sku, "sort": p.sort}
+            "price": p.price, "is_hot": p.is_hot, "is_active": p.is_active, "sku": p.provider_sku, "sort": p.sort,
+            "source": p.source, "cost_usd": p.cost_usd, "provider_id": p.provider_id}
 
 
 def donate_order(o: DonateOrder) -> dict:

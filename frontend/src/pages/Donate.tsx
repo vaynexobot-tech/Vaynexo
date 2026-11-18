@@ -1,11 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api, type DonateOrder, type Pkg } from "../api";
+import { api, type DonateGameCard, type DonateGameField, type DonateOrder, type Pkg } from "../api";
 import { t } from "../i18n";
-import { BottomBar, Field, GameLogo, Header, Loadable, money, som, Status, useAction, useApp, useLoad } from "../ui";
+import { BottomBar, Empty, Field, GameTile, Header, Loadable, money, som, Spinner, Status, useAction, useApp, useLoad } from "../ui";
+
+const DEFAULT_FIELDS: DonateGameField[] = [{ key: "player_id", label: "ID", placeholder: "12345678", pattern: "" }];
 
 export default function Donate() {
-  const game = useParams().game === "MC" ? "MC" : "ML";
+  const slug = useParams().game ?? "ML";
+  const info = useLoad(() => api.get<DonateGameCard>(`/donate/games/${encodeURIComponent(slug)}`), [slug]);
+  if (info.error) return <><Header title={t("O'yin")} /><Empty icon="🎮" text={t("O'yin topilmadi")} /></>;
+  if (!info.data) return <><Header title={t("Donat")} /><Spinner /></>;
+  return <DonateFlow key={slug} game={info.data} />;
+}
+
+function DonateFlow({ game: g }: { game: DonateGameCard }) {
+  const game = g.slug;
+  const fields = g.fields.length ? g.fields : DEFAULT_FIELDS;
   const nav = useNavigate();
   const { me, refreshMe } = useApp();
   const [step, setStep] = useState(1);
@@ -14,10 +25,15 @@ export default function Donate() {
   const [nick, setNick] = useState<string | null>(null);
   const [pick, setPick] = useState<Pkg | null>(null);
   const [order, setOrder] = useState<DonateOrder | null>(null);
-  const pkgs = useLoad(() => api.get<Pkg[]>(`/donate/packages?game=${game}`), [game]);
+  const pkgs = useLoad(() => api.get<Pkg[]>(`/donate/packages?game=${encodeURIComponent(game)}`), [game]);
   const { busy, run } = useAction();
-  const needZone = game === "ML";
-  const idOk = /^\d{5,20}$/.test(uid) && (!needZone || /^\d{1,10}$/.test(zid));
+  const needZone = fields.length > 1;
+  const okPattern = (f: DonateGameField, v: string) => {
+    if (!v.trim()) return false;
+    if (!f.pattern) return /^[A-Za-z0-9_.@:+-]{1,64}$/.test(v.trim());
+    try { return new RegExp(f.pattern).test(v.trim()); } catch { return true; }
+  };
+  const idOk = okPattern(fields[0], uid) && (!needZone || okPattern(fields[1], zid));
 
   // Buyurtma natijasini kuzatish
   useEffect(() => {
@@ -57,12 +73,12 @@ export default function Donate() {
 
   return (
     <>
-      <Header title={game === "ML" ? "Mobile Legends" : "Magic Chess"} sub={t("Almaz donat")} />
+      <Header title={g.name} sub={t("Donat")} />
       <div className="page">
         <div className="card row" style={{ background: "linear-gradient(135deg,#0f2a3a,#1a1b2e)" }}>
-          <GameLogo game={game} />
+          <GameTile name={g.name} logo={g.logo || g.hero} slug={g.slug} size={44} radius={12} />
           <div>
-            <div className="b">{t("Almaz to'ldirish")}</div>
+            <div className="b">{t("Hisobni to'ldirish")}</div>
             <div className="mut xs">⚡ {t("5–30 daqiqada")} · 🔒 {t("Kafolatlangan")}</div>
           </div>
         </div>
@@ -80,19 +96,19 @@ export default function Donate() {
           <>
             <div>
               <div className="sec-title">{t("O'yinchi ID'sini kiriting")}</div>
-              <div className="mut sm">{t("Almaz shu akkauntga tushadi")}</div>
+              <div className="mut sm">{t("Donat shu akkauntga tushadi")}</div>
             </div>
             <div className="row" style={{ alignItems: "flex-end" }}>
-              <div className="grow"><Field label="User ID"><input className="input mono" inputMode="numeric" placeholder="12345678" value={uid} onChange={(e) => { setUid(e.target.value.replace(/\D/g, "").slice(0, 20)); setNick(null); }} /></Field></div>
-              {needZone && <div style={{ width: 120 }}><Field label="Zone ID"><input className="input mono" inputMode="numeric" placeholder="1234" value={zid} onChange={(e) => { setZid(e.target.value.replace(/\D/g, "").slice(0, 10)); setNick(null); }} /></Field></div>}
+              <div className="grow"><Field label={fields[0].label || "ID"}><input className="input mono" inputMode={fields[0].pattern?.includes("\\d") ? "numeric" : "text"} autoCapitalize="off" placeholder={fields[0].placeholder || ""} value={uid} onChange={(e) => { setUid(e.target.value.replace(/\s/g, "").slice(0, 64)); setNick(null); }} /></Field></div>
+              {needZone && <div style={{ width: 120 }}><Field label={fields[1].label || "Server"}><input className="input mono" inputMode={fields[1].pattern?.includes("\\d") ? "numeric" : "text"} placeholder={fields[1].placeholder || ""} value={zid} onChange={(e) => { setZid(e.target.value.replace(/\s/g, "").slice(0, 64)); setNick(null); }} /></Field></div>}
             </div>
             {nick === "" && (
               <div className="card tight col">
-                <div className="r sm">{t("O'yinchi topilmadi. ID va Zone ID ni tekshiring.")}</div>
+                <div className="r sm">{t("O'yinchi topilmadi. ID ni tekshiring.")}</div>
                 <button className="btn small ghost" onClick={() => setStep(2)}>{t("ID to'g'ri, davom etish")}</button>
               </div>
             )}
-            <div className="card tight mut sm">ℹ️ {t("O'yinda chap yuqoridagi profil rasmingizni bosing — ID va Zone ID qavs ichida yozilgan: 12345678 (1234)")}</div>
+            {game === "ML" && <div className="card tight mut sm">ℹ️ {t("O'yinda chap yuqoridagi profil rasmingizni bosing — ID va Zone ID qavs ichida yozilgan: 12345678 (1234)")}</div>}
           </>
         )}
 
@@ -106,7 +122,7 @@ export default function Donate() {
                   {list.map((p) => (
                     <button key={p.id} className={"pkg" + (pick?.id === p.id ? " on" : "")} onClick={() => setPick(p)}>
                       {p.is_hot && <span className="badge y hot" style={{ background: "var(--y)", color: "#111" }}>HOT</span>}
-                      <div className="bb" style={{ fontSize: 15 }}>💎 {p.name.replace(/ almaz$/, "")}</div>
+                      <div className="bb" style={{ fontSize: p.name.length > 14 ? 12 : 15, lineHeight: 1.2 }}>{/almaz$/.test(p.name) ? `💎 ${p.name.replace(/ almaz$/, "")}` : p.name}</div>
                       {p.bonus > 0 && <div className="g xs">{p.diamonds}+{p.bonus} bonus</div>}
                       {p.diamonds === 0 && <div className="mut xs">&nbsp;</div>}
                       <div className="y b mono sm" style={{ marginTop: 6 }}>{money(p.price)}</div>
@@ -121,8 +137,8 @@ export default function Donate() {
         {step === 3 && pick && (
           <div className="card col">
             <div className="b">{t("Buyurtma")}</div>
-            <div className="kv"><span>{t("O'yin")}</span><span>{game === "ML" ? "Mobile Legends" : "Magic Chess"}</span></div>
-            <div className="kv"><span>{t("Paket")}</span><span>💎 {pick.name}</span></div>
+            <div className="kv"><span>{t("O'yin")}</span><span>{g.name}</span></div>
+            <div className="kv"><span>{t("Paket")}</span><span>{pick.name}</span></div>
             <div className="kv"><span>ID</span><span className="mono">{uid}{zid ? ` (${zid})` : ""}</span></div>
             {nick && nick !== "✓" && <div className="kv"><span>{t("Nik")}</span><span>{nick}</span></div>}
             <div className="divider" />
@@ -142,7 +158,7 @@ export default function Donate() {
           <div className="card col center" style={{ alignItems: "center", padding: 24 }}>
             <div style={{ fontSize: 48 }}>{order.status === "done" ? "💎" : order.status === "refunded" ? "↩️" : "⏳"}</div>
             <div className="bb" style={{ fontSize: 18 }}>
-              {order.status === "done" ? t("Almaz yetkazildi!") : order.status === "refunded" ? t("Pul hamyonga qaytarildi") : t("Buyurtma bajarilmoqda...")}
+              {order.status === "done" ? t("Yetkazildi!") : order.status === "refunded" ? t("Pul hamyonga qaytarildi") : t("Buyurtma bajarilmoqda...")}
             </div>
             <Status s={order.status} />
             <div className="mut sm">{order.title} · ID {order.player_id}{order.zone_id ? ` (${order.zone_id})` : ""}</div>

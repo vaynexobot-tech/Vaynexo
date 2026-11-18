@@ -11,8 +11,14 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-18.yupay"
-NOTES = """💎 Yupay Merchant API ulandi (hujjat asosida): ID tekshiruvi, avtomatik buyurtma, holat kuzatuvi, vebhuk, depozit ogohlantirishi
+RELEASE = "2026-11-18.donat-katalog"
+NOTES = """🎮 Bosh sahifa yangilandi: 3 ta asosiy o'yin + mashhur o'yinlar (4×2). Faqat donat qoldi; boshqa bo'limlar yashirin
+   (Admin → Sozlamalar → «Bo'limlar» dan qayta yoqiladi). Magic Chess yashirildi.
+🔌 Bir nechta donat API: Admin → Donat → API → «+ API qo'shish» (kalit shifrlanadi). Katalog va narxlar API'dan avtomatik (har 30 daqiqa)
+   O'yinlar: Admin → Donat → O'yinlar (ko'rinish, asosiy/mashhur). Narx: dollar kursi va ustama «API» tabida
+   ⚠️ Yupay'da sinov yo'q — birinchi buyurtmani eng arzon nominalda sinang
+
+💎 Yupay Merchant API ulandi (hujjat asosida): ID tekshiruvi, avtomatik buyurtma, holat kuzatuvi, vebhuk, depozit ogohlantirishi
    Render: DONATE_PROVIDER=yupay, DONATE_PROVIDER_KEY=ypk_…   ·   Admin → Donat → «Donat API»
    Paketlarga SKU: Admin → Donat paketlari → «Yupay katalogidan tanlash»
    ⚠️ Yupay'da sinov yo'q: har buyurtma haqiqiy pul yechadi — avval eng arzon nominalda sinang

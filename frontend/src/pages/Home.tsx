@@ -1,17 +1,22 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, type Tournament } from "../api";
+import { api, type DonateGameCard, type DonateGames } from "../api";
 import { t } from "../i18n";
 import { tgPhoto } from "../tg";
-import { BalancePill, BottomNav, GAME_IMG, Icon, money, som, useApp, useLoad } from "../ui";
+import { BalancePill, BottomNav, GameTile, Icon, Loadable, som, useApp, useLoad } from "../ui";
 
 export default function Home() {
   const nav = useNavigate();
-  const { me } = useApp();
+  const { me, toast } = useApp();
   const [q, setQ] = useState("");
-  const home = useLoad(() => api.get<{ balance: number; tickets: number; tournament: Tournament | null }>("/home"));
-  const tour = home.data?.tournament;
+  const games = useLoad(() => api.get<DonateGames>("/donate/games"));
   const photo = tgPhoto();
+
+  const open = (g: DonateGameCard) => (g.available ? nav(`/donate/${g.slug}`) : toast(t("{n} tez kunda ochiladi", { n: g.name }), "info"));
+  const found = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return s ? (games.data?.all ?? []).filter((g) => g.name.toLowerCase().includes(s)) : [];
+  }, [q, games.data]);
 
   return (
     <>
@@ -23,7 +28,7 @@ export default function Home() {
               <span className="hf bb" style={{ fontSize: 18, letterSpacing: ".03em" }}>VAYNEXO</span>
               <span className="badge y mono" style={{ height: 18, fontSize: 9 }}>MINI</span>
             </div>
-            <div className="mut xs">{t("Raqamli o'yin bozori")}</div>
+            <div className="mut xs">{t("O'yinlar uchun donat")}</div>
           </div>
         </div>
         <div className="row">
@@ -35,55 +40,50 @@ export default function Home() {
       </div>
 
       <div className="page">
-        {tour ? (
-          <div className="hero">
-            <div className="row between">
-              <span className="badge g">● {t("KONKURS")} · {tour.game === "MC" ? "Magic Chess" : "Mobile Legends"}</span>
-              <span className="mono y bb">{money(tour.prize_fund)} UZS</span>
-            </div>
-            <div className="hf bb" style={{ fontSize: 20, margin: "12px 0 4px" }}>{tour.title}</div>
-            <div className="mut sm">{t("Sovrinli turnir — ro'yxatdan o'ting va ishtirok eting")}</div>
-            <div className="divider" style={{ margin: "12px 0" }} />
-            <div className="row between">
-              <span className="mut sm">{tour.players_count} / {tour.max_players} {t("ishtirokchi")}</span>
-              <button className="btn small" onClick={() => nav(`/arena/${tour.id}`)}>{tour.joined ? t("Batafsil") : t("Qatnashish")}</button>
-            </div>
-          </div>
-        ) : (
-          <div className="hero">
-            <span className="badge g">● VAYNEXO</span>
-            <div className="hf bb" style={{ fontSize: 20, margin: "12px 0 4px" }}>{t("Donat, akkaunt va xizmatlar — bir joyda")}</div>
-            <div className="mut sm">{t("Har bir xarid garant bilan himoyalangan")}</div>
-          </div>
-        )}
-
-        <form className="row" onSubmit={(e) => { e.preventDefault(); nav(`/market?q=${encodeURIComponent(q)}`); }}>
-          <div className="row grow input" style={{ height: 52, borderRadius: 26, padding: "0 6px 0 16px" }}>
-            <span className="mut"><Icon name="search" /></span>
-            <input className="grow" style={{ background: "none", border: 0, outline: "none", height: "100%" }} placeholder={t("Akkaunt, obuna yoki xizmat qidirish...")} value={q} onChange={(e) => setQ(e.target.value)} />
-            <button type="button" className="iconbtn" style={{ borderRadius: 20 }} onClick={() => nav("/market?filter=1")} aria-label={t("Filtr")}><Icon name="filter" /></button>
-          </div>
-        </form>
-
-        <div className="row between" style={{ alignItems: "flex-end" }}>
-          <div>
-            <div className="sec-title">{t("Bo'limlar")}</div>
-            <div className="mut sm">{t("Donat uchun o'yinni tanlang")}</div>
-          </div>
-          <button className="linkbtn y b sm" onClick={() => nav("/market")}>{t("Barchasi")}</button>
+        <div className="hero">
+          <span className="badge g">● VAYNEXO</span>
+          <div className="hf bb" style={{ fontSize: 20, margin: "12px 0 4px" }}>{t("Donat — tez va ishonchli")}</div>
+          <div className="mut sm">{t("O'yinni tanlang, ID kiriting — qolganini biz bajaramiz")}</div>
         </div>
-        <div className="grid2">
-          {(["ML", "MC"] as const).map((g) => (
-            <div key={g} className="card click" style={{ padding: 10 }} onClick={() => nav(`/donate/${g}`)}>
-              <div className="game-tile" style={{ width: "100%", height: 120, borderRadius: 14, padding: 0 }}>
-                <img src={GAME_IMG[g]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 25%" }} />
-                <span className="badge y" style={{ position: "absolute", top: 8, right: 8, background: "var(--y)", color: "#111" }}>DONAT</span>
-              </div>
-              <div className="b" style={{ marginTop: 10 }}>{g === "ML" ? "Mobile Legends" : "Magic Chess"}</div>
-              <div className="row between"><span className="g xs b">{t("Almaz")}</span><span className="y"><Icon name="right" size={16} /></span></div>
-            </div>
-          ))}
+
+        <div className="row grow input" style={{ height: 52, borderRadius: 26, padding: "0 6px 0 16px" }}>
+          <span className="mut"><Icon name="search" /></span>
+          <input className="grow" style={{ background: "none", border: 0, outline: "none", height: "100%" }} placeholder={t("O'yin qidirish...")} value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
+
+        <Loadable state={games}>
+          {(d) => q.trim() ? (
+            found.length === 0 ? <div className="mut center sm">{t("Topilmadi")}</div> : (
+              <div className="game-grid">{found.map((g) => <MiniGame key={g.slug} g={g} onOpen={open} />)}</div>
+            )
+          ) : (
+            <>
+              {d.featured.length > 0 && (
+                <>
+                  <div className="sec-title">{t("Asosiy o'yinlar")}</div>
+                  <div className="feat-grid">
+                    {d.featured.map((g) => (
+                      <div key={g.slug} className={"card click feat" + (g.available ? "" : " soon")} onClick={() => open(g)}>
+                        <div className="feat-img">
+                          <GameTile name={g.name} logo={g.hero || g.logo} slug={g.slug} size={96} radius={14} />
+                          <span className="badge y" style={{ position: "absolute", top: 6, right: 6, background: g.available ? "var(--y)" : "rgba(255,255,255,.18)", color: g.available ? "#111" : "#fff", fontSize: 9 }}>{g.available ? "DONAT" : t("Tez kunda")}</span>
+                        </div>
+                        <div className="b ell" style={{ marginTop: 8, fontSize: 13 }}>{g.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {d.popular.length > 0 && (
+                <>
+                  <div className="sec-title">{t("Mashhur o'yinlar")}</div>
+                  <div className="game-grid">{d.popular.map((g) => <MiniGame key={g.slug} g={g} onOpen={open} />)}</div>
+                </>
+              )}
+            </>
+          )}
+        </Loadable>
 
         <div className="card row between">
           <div className="row">
@@ -95,42 +95,18 @@ export default function Home() {
           </div>
           <button className="btn small ghost" onClick={() => nav("/wallet")}>+ {t("To'ldirish")}</button>
         </div>
-
-        <div className="card click row between" onClick={() => nav("/top")}>
-          <div className="row">
-            <div className="iconbtn" style={{ width: 44, height: 44 }}><Icon name="trophy" /></div>
-            <div>
-              <div className="b">{t("Top xaridorlar")}</div>
-              <div className="mut xs">{t("Botda eng ko'p xarid qilganlar reytingi")}</div>
-            </div>
-          </div>
-          <span className="mono y b">Top 100 ›</span>
-        </div>
-
-        <div className="card click row between" onClick={() => nav("/sell")}>
-          <div className="row">
-            <div className="hd-ico" style={{ width: 44, height: 44 }}><Icon name="doc" /></div>
-            <div>
-              <div className="b">{t("E'lon berish")}</div>
-              <div className="mut xs">{t("Account sotish uchun e'lon joylang")}</div>
-            </div>
-          </div>
-          <span className="y"><Icon name="right" /></span>
-        </div>
-
-        <div className="card row between" style={{ opacity: 0.7 }}>
-          <div className="row">
-            <div className="iconbtn y" style={{ width: 44, height: 44, background: "rgba(255,214,10,.08)" }}><Icon name="ai" /></div>
-            <div>
-              <div className="b">{t("AI yordamchi")}</div>
-              <div className="mut xs">{t("Akkaunt topish va savollarga javob")}</div>
-            </div>
-          </div>
-          <span className="pill-b y">{t("Tez kunda")}</span>
-        </div>
       </div>
       <BottomNav />
     </>
   );
 }
 
+function MiniGame({ g, onOpen }: { g: DonateGameCard; onOpen: (g: DonateGameCard) => void }) {
+  return (
+    <button className={"mini-game" + (g.available ? "" : " soon")} onClick={() => onOpen(g)}>
+      <GameTile name={g.name} logo={g.logo || g.hero} slug={g.slug} size={64} radius={16} />
+      <span className="mg-name ell">{g.name}</span>
+      {!g.available && <span className="mg-soon">{t("Tez kunda")}</span>}
+    </button>
+  );
+}

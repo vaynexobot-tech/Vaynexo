@@ -75,7 +75,7 @@ async def test_sync_creates_games_and_packages(api, monkeypatch):
         assert "pubg" not in games and games["pubg-mobile"].featured_slot == 2 and games["pubg-mobile"].provider_id == row.id
         assert games["ML"].logo_url == "https://cdn/ml.png" and games["ML"].brand_slug == "mobile-legends"
         assert [f["key"] for f in games["ML"].fields] == ["player_id", "server_id"]
-        assert games["mobile-legends-ru"].is_active is True  # yangi topilgan o'yin avtomatik (qidiruvda) ko'rinadi
+        assert games["mobile-legends-ru"].is_active is False  # yangi topilgan o'yin yashirin (admin yoqadi)
         pk = {p.provider_sku: p for p in await s.scalars(select(DonatePackage).where(DonatePackage.source == "api"))}
         assert set(pk) == {"sku-86", "sku-172", "sku-out", "u60", "s1", "r1"}  # unit SKU kirmaydi
         assert pk["sku-172"].price == 33_800 and pk["sku-172"].cost_usd == "2.40"

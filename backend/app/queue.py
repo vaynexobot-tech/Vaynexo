@@ -109,7 +109,7 @@ async def lite_cron_loop() -> None:
         jobs = [worker.cron_expire_topups, worker.cron_listing_channel]
         if tick % 10 == 0:
             jobs.append(worker.cron_daily_report)
-        if tick % 30 == 0:
+        if tick % 30 == 0 or tick == 2:  # ishga tushgach 2 daqiqada katalog yangilanadi
             jobs.append(worker.cron_provider_balance)
             jobs.append(worker.cron_donate_sync)
         if tick % 5 == 0:

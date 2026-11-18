@@ -37,13 +37,16 @@ def norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", (s or "").lower())
 
 
+ML_BRANDS = ("mobile-legends", "mobile-legends-bang-bang", "mobile-legends-global", "mlbb")
+MC_BRANDS = ("magic-chess", "magic-chess-gogo", "magic-chess-go-go", "magic-chess-gogo-global")
+
+
 def game_slug(brand_slug: str) -> str:
-    """Yupay brendi → bizdagi o'yin kodi. Eski kodlar (ML, MC) saqlanadi; RU variantlar alohida."""
-    parts = brand_slug.split("-")
-    ru = "ru" in parts[2:] or brand_slug.endswith("-ru") or "russia" in brand_slug
-    if brand_slug.startswith("mobile-legends") and not ru and len(parts) <= 3:
+    """Yupay brendi → bizdagi o'yin kodi. Faqat asosiy (global, to'g'ridan-to'g'ri) brendlar ML/MC ga bog'lanadi;
+    mintaqa (RU, TR, ID ...) va vaucher variantlari alohida o'yin bo'lib qoladi."""
+    if brand_slug in ML_BRANDS:
         return "ML"
-    if brand_slug.startswith("magic-chess") and not ru:
+    if brand_slug in MC_BRANDS:
         return "MC"
     return brand_slug
 
@@ -152,6 +155,25 @@ def _fields(product: dict) -> list[dict]:
     return out
 
 
+def _log_samples(brands: list[dict]) -> None:
+    """Diagnostika: asosiy o'yinlar brendlari tuzilmasi logga (kalitlar/sirlar yo'q — faqat katalog)."""
+    import json
+
+    want = ("mobile-legends", "magic-chess", "steam", "pubg-mobile", "roblox")
+    kinds_seen: set[str] = set()
+    for b in brands:
+        bs = str(b.get("slug") or "")
+        prods = b.get("products") or []
+        sk = [x for p in prods for x in (p.get("skus") or [])]
+        kinds = sorted({str(x.get("kind")) for x in sk})
+        new_kind = next((k for k in kinds if k not in kinds_seen), None)
+        if bs.startswith(want) or new_kind:
+            kinds_seen.update(kinds)
+            sample = {"slug": bs, "name": b.get("name"), "kinds": kinds, "n_skus": len(sk),
+                      "products": [{k: v for k, v in p.items() if k != "skus"} | {"skus": (p.get("skus") or [])[:2]} for p in prods[:3]]}
+            log.info("KATALOG_NAMUNA %s", json.dumps(sample, ensure_ascii=False)[:3000])
+
+
 async def sync_provider(session: AsyncSession, row: DonateProvider) -> dict:
     """Katalogni olib, o'yinlar va paketlarni yangilaydi. Faqat qat'iy nominalli (fixed) SKU'lar."""
     prov = provider_instance(row)
@@ -163,6 +185,7 @@ async def sync_provider(session: AsyncSession, row: DonateProvider) -> dict:
     seen: set[str] = set()
     new_games: list[str] = []
     n_pk = 0
+    _log_samples(brands)
     for b in brands:
         bslug = str(b.get("slug") or "")
         if not bslug:
@@ -180,7 +203,7 @@ async def sync_provider(session: AsyncSession, row: DonateProvider) -> dict:
                 games.pop(ph.slug, None)
                 g = DonateGame(slug=slug, **keep)
             else:
-                g = DonateGame(slug=slug, name=b.get("name") or bslug, is_active=True, sort=500)  # qidiruvda ko'rinadi
+                g = DonateGame(slug=slug, name=b.get("name") or bslug, is_active=False, sort=500)  # admin yoqadi
                 new_games.append(g.name)
             session.add(g)
             games[slug] = g

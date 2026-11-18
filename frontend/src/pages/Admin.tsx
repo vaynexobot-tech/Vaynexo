@@ -873,11 +873,13 @@ function SkuPicker({ game, onPick, onClose }: { game: string; onPick: (s: YSku) 
 
 function Packages() {
   const st = useLoad(() => api.get<Pkg[]>("/admin/packages"));
+  const games = useLoad(() => api.get<AGame[]>("/admin/donate/games"));
+  const gname = (slug: string) => games.data?.find((g) => g.slug === slug)?.name ?? slug;
   const [edit, setEdit] = useState<Partial<Pkg> | null>(null);
   const [pick, setPick] = useState(false);
   const { busy, run } = useAction();
   const save = () => run(async () => {
-    const body = { game: edit!.game ?? "ML", name: edit!.name, diamonds: edit!.diamonds ?? 0, bonus: edit!.bonus ?? 0, price: edit!.price, provider_sku: edit!.sku, is_active: edit!.is_active ?? true, is_hot: edit!.is_hot ?? false, sort: edit!.sort ?? 0 };
+    const body = { game: edit!.game ?? "ML", name: edit!.name, diamonds: edit!.diamonds ?? 0, bonus: edit!.bonus ?? 0, price: edit!.price, provider_sku: edit!.sku || `${edit!.game ?? "ML"}_${(edit!.name ?? "").replace(/\s+/g, "_")}`.slice(0, 64), is_active: edit!.is_active ?? true, is_hot: edit!.is_hot ?? false, sort: edit!.sort ?? 0 };
     if (edit!.id) await api.put(`/admin/packages/${edit!.id}`, body);
     else await api.post("/admin/packages", body);
     setEdit(null); st.reload();
@@ -888,7 +890,7 @@ function Packages() {
       <Loadable state={st}>
         {(list) => list.map((p) => (
           <div key={p.id} className="card tight click row between" onClick={() => setEdit(p)} style={{ opacity: p.is_active ? 1 : 0.5 }}>
-            <span><b>{p.game}</b> · {p.name} {p.is_hot && "🔥"}<br /><span className="mut xs mono">{p.sku}</span></span>
+            <span><b>{gname(p.game)}</b> · {p.name} {p.is_hot && "🔥"}<br /><span className="mut xs mono">{p.sku}</span></span>
             <span className="y mono b">{money(p.price)}</span>
           </div>
         ))}
@@ -898,21 +900,25 @@ function Packages() {
         {edit && (
           <>
             <div className="sec-title">{edit.id ? "Paketni tahrirlash" : "Yangi paket"}</div>
-            <Seg value={edit.game ?? "ML"} onChange={(g) => setEdit({ ...edit, game: g })} options={[{ v: "ML", label: "ML" }, { v: "MC", label: "MC" }]} />
-            <Field label="Nomi"><input className="input" value={edit.name ?? ""} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="172 almaz" /></Field>
+            <Field label="O'yin">
+              <select className="input" value={edit.game ?? "ML"} onChange={(e) => setEdit({ ...edit, game: e.target.value })}>
+                {(games.data ?? [{ slug: "ML", name: "Mobile Legends" } as AGame]).map((g) => <option key={g.slug} value={g.slug}>{g.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Nomi"><input className="input" value={edit.name ?? ""} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="172 almaz / 60 UC / 100 Robux" /></Field>
             <div className="row">
-              <Field label="Almaz"><input className="input mono" inputMode="numeric" value={edit.diamonds ?? ""} onChange={(e) => setEdit({ ...edit, diamonds: Number(e.target.value) || 0 })} /></Field>
+              <Field label="Miqdor"><input className="input mono" inputMode="numeric" value={edit.diamonds ?? ""} onChange={(e) => setEdit({ ...edit, diamonds: Number(e.target.value) || 0 })} /></Field>
               <Field label="Bonus"><input className="input mono" inputMode="numeric" value={edit.bonus ?? ""} onChange={(e) => setEdit({ ...edit, bonus: Number(e.target.value) || 0 })} /></Field>
               <Field label="Tartib"><input className="input mono" inputMode="numeric" value={edit.sort ?? ""} onChange={(e) => setEdit({ ...edit, sort: Number(e.target.value) || 0 })} /></Field>
             </div>
             <Field label="Narx (so'm)"><MoneyInput value={edit.price ?? ""} onChange={(v) => setEdit({ ...edit, price: v === "" ? undefined : v })} /></Field>
-            <Field label="Provayder SKU (mahsulot kodi)">
+            <Field label="Provayder SKU (qo'lda rejimda shart emas)">
               <input className="input mono" value={edit.sku ?? ""} onChange={(e) => setEdit({ ...edit, sku: e.target.value })} />
               <button className="btn small ghost" style={{ marginTop: 6 }} onClick={() => setPick(true)}>Yupay katalogidan tanlash</button>
             </Field>
             <div className="row between"><span>Faol</span><Toggle on={edit.is_active ?? true} onChange={(v) => setEdit({ ...edit, is_active: v })} /></div>
             <div className="row between"><span>HOT belgisi</span><Toggle on={edit.is_hot ?? false} onChange={(v) => setEdit({ ...edit, is_hot: v })} /></div>
-            <button className="btn full" disabled={busy || !edit.name || !edit.price || !edit.sku} onClick={save}>Saqlash</button>
+            <button className="btn full" disabled={busy || !edit.name || !edit.price} onClick={save}>Saqlash</button>
           </>
         )}
       </Sheet>

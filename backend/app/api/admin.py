@@ -575,12 +575,13 @@ async def tg_bank_bots(body: TgBotsIn, admin: AdminUser):
 async def donate_provider_info(admin: AdminUser):
     from urllib.parse import urlparse
 
-    mode = settings.donate_provider
+    raw = settings.donate_provider
+    mode = raw if raw in ("manual", "yupay", "http", "mock") else "noto'g'ri"  # qiymatni hech qachon ko'rsatmaymiz (kalit adashib yozilgan bo'lishi mumkin)
     url = settings.donate_provider_url
     live = mode in ("yupay", "http") and bool(settings.donate_provider_key) and (mode == "yupay" or bool(url))
     base = settings.webapp_url.rstrip("/")
     return {
-        "mode": mode, "live": live, "yupay": mode == "yupay",
+        "mode": mode, "live": live, "yupay": mode == "yupay", "mode_invalid": raw not in ("manual", "yupay", "http", "mock"),
         "url_set": bool(url) or mode == "yupay", "host": (urlparse(url).netloc if url else "api.yupay.uz") if live else None,
         "key_set": bool(settings.donate_provider_key),
         "webhook_url": f"{base}/api/yupay/webhook", "low_balance_usd": settings.donate_low_balance_usd,

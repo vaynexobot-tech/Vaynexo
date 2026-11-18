@@ -180,3 +180,11 @@ async def test_admin_yupay_endpoints(api, monkeypatch):
         from app.providers.mock import MockProvider
 
         providers.set_provider(MockProvider())
+
+
+async def test_mode_never_echoes_value(api, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "donate_provider", "ypk_SECRETKEY123")
+    r = (await api(1).get("/admin/donate/provider")).json()
+    assert "SECRETKEY" not in json.dumps(r) and r["mode"] == "noto'g'ri" and r["mode_invalid"] and not r["live"]

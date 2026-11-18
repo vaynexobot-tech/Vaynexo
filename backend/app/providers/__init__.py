@@ -6,6 +6,10 @@ _provider: DonateProvider | None = None
 
 def get_provider() -> DonateProvider:
     global _provider
+    if settings.donate_provider.startswith("ypk_"):  # kalit adashib DONATE_PROVIDER ga yozilgan — ishlatmaymiz
+        import logging
+
+        logging.getLogger(__name__).error("DONATE_PROVIDER ga kalit yozilgan: u DONATE_PROVIDER_KEY ga, DONATE_PROVIDER ga esa 'yupay' yozilishi kerak")
     if _provider is None:
         if settings.donate_provider == "yupay" and settings.donate_provider_key:
             from app.providers.yupay import YupayProvider

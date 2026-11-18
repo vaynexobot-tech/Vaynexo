@@ -308,7 +308,7 @@ function Disputes() {
   );
 }
 
-interface ProvInfo { mode: string; live: boolean; yupay: boolean; url_set: boolean; host: string | null; key_set: boolean; webhook_url: string; low_balance_usd: number }
+interface ProvInfo { mode: string; mode_invalid?: boolean; live: boolean; yupay: boolean; url_set: boolean; host: string | null; key_set: boolean; webhook_url: string; low_balance_usd: number }
 interface PingRes { ok: boolean; status?: number; ms?: number; error?: string; sample?: string; balance_usd?: string; title?: string; account?: string }
 
 function DonateApi() {
@@ -325,6 +325,7 @@ function DonateApi() {
             <span className={"pill-b " + (d.live ? "g" : "y")}>{d.live ? "Avtomatik" : "Qo'lda rejim"}</span>
           </div>
           <div className="mut xs">{d.live ? `Provayder: ${d.host}` : "API ulanmagan: buyurtmalar guruhga tushadi, almazni o'zingiz tashlaysiz."}</div>
+          {d.mode_invalid && <div className="r xs">⚠️ Render'dagi DONATE_PROVIDER qiymati noto'g'ri (kalit adashib shu yerga yozilgan bo'lishi mumkin). To'g'risi: DONATE_PROVIDER = yupay, kalit esa DONATE_PROVIDER_KEY ga.</div>}
           <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
             <span className={"badge " + (d.mode === "yupay" || d.mode === "http" ? "g" : "m")}>DONATE_PROVIDER: {d.mode}</span>
             <span className={"badge " + (d.key_set ? "g" : "m")}>Kalit {d.key_set ? "✓" : "—"}</span>

@@ -1,7 +1,7 @@
 import { StrictMode, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
-import { api, DEMO, pinToken, type Me } from "./api";
+import { api, ApiError, DEMO, pinToken, type Me } from "./api";
 import { setLang, t } from "./i18n";
 import Admin from "./pages/Admin";
 import Partner from "./pages/Partner";
@@ -42,6 +42,7 @@ function DeepLink() {
 function App() {
   const [me, setMeState] = useState<Me | null>(null);
   const [fatal, setFatal] = useState<string | null>(null);
+  const [comingSoon, setComingSoon] = useState(false);
   const { show, node } = useToastHost();
 
   const setMe = useCallback((m: Me) => {
@@ -63,9 +64,17 @@ function App() {
   }, [me?.pin_set]);
 
   useEffect(() => {
-    refreshMe().catch((e) => setFatal(errorText(e)));
+    refreshMe().catch((e) => (e instanceof ApiError && e.code === "coming_soon" ? setComingSoon(true) : setFatal(errorText(e))));
   }, [refreshMe]);
 
+  if (comingSoon)
+    return (
+      <div className="app">
+        <Empty icon="🚀" text={t("Tez kunda ochilamiz!")}>
+          <div className="mut sm" style={{ textAlign: "center", maxWidth: 280 }}>{t("Yana biroz sabr qiling — VAYNEXO tez orada hammaga ochiladi.")}</div>
+        </Empty>
+      </div>
+    );
   if (fatal)
     return (
       <div className="app">

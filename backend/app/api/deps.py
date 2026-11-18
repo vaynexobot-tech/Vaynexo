@@ -89,6 +89,10 @@ async def current_user(
         raise AppError("unauthorized", "Ilovani Telegram orqali oching", 401)
 
     uid = int(tg["id"])
+    from app.services import launch
+
+    if not await launch.allowed(uid):
+        raise AppError("coming_soon", launch.COMING_SOON, 403)
     if request.method != "GET":
         await rate_limit(f"u:{uid}", limit=30, window=10)
 

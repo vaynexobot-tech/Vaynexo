@@ -879,4 +879,6 @@ export const ru: Record<string, string> = {
   "Faollashtirish": "Активировать",
   "Bonus faqat VAYNEXO xizmatlari uchun ishlatiladi, yechib olinmaydi.": "Бонус можно тратить только на услуги VAYNEXO, вывести нельзя.",
   "Promo-kod bonusi": "Бонус по промокоду",
+  "Tez kunda ochilamiz!": "Скоро открываемся!",
+  "Yana biroz sabr qiling — VAYNEXO tez orada hammaga ochiladi.": "Ещё немного терпения — VAYNEXO скоро откроется для всех.",
 };

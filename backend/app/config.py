@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     media_dir: str = "media"
     media_url: str = "/media"
     encryption_key: str = ""  # Fernet kaliti: akkaunt parollari shifrlanadi
+    public_open: bool = False  # False — ilova faqat adminlar uchun, qolganlarga «Tez kunda» (admin botda /ochish bilan ochadi)
     dev_mode: bool = False  # True bo'lsa X-Dev-User sarlavhasi bilan brauzerda sinash mumkin
     cors_origins: Annotated[list[str], NoDecode] = ["*"]
 

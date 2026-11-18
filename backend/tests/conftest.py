@@ -5,6 +5,7 @@ os.environ.update(
     REDIS_URL=os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15"),
     DB_NULL_POOL="true",
     DEV_MODE="true",
+    PUBLIC_OPEN="true",
     BOT_TOKEN="123456:TEST",
     ADMIN_IDS="1",
     P2P_SECRET="test-secret",

@@ -58,3 +58,19 @@ def test_deep_link_path():
     assert deep_link_path("admin")[0] == "/admin"
     assert deep_link_path("my-listings")[0] == "/my-listings"
     assert deep_link_path("ref_5") is None and deep_link_path("x/../y") is None and deep_link_path(None) is None
+
+
+async def test_closed_launch_mode(api):
+    from app.services import launch
+
+    assert (await api(95).get("/me")).status_code == 200  # testda ochiq
+    await launch.set_open(False)
+    try:
+        r = await api(95).get("/me")
+        assert r.status_code == 403 and r.json()["error"] == "coming_soon"
+        assert "Tez kunda" in r.json()["message"]
+        assert (await api(1).get("/me")).status_code == 200  # admin kira oladi
+        assert await launch.allowed(1) and not await launch.allowed(95)
+    finally:
+        await launch.set_open(True)
+    assert (await api(95).get("/me")).status_code == 200

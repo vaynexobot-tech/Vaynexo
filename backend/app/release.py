@@ -11,8 +11,11 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-12.elon-kanal"
-NOTES = """📢 Akkaunt e'lonlari kanalga avtomatik: botni kanalga admin qiling va kanalda yozing /elon_kanal
+RELEASE = "2026-11-18.yopiq-rejim"
+NOTES = """🔒 Ilova hozir YOPIQ: faqat adminlar kira oladi, boshqalarga /start da «Tez kunda ochilamiz!» chiqadi
+   Hamma uchun ochish: botda /ochish   ·   yana yopish: /yopish
+
+📢 Akkaunt e'lonlari kanalga avtomatik: botni kanalga admin qiling va kanalda yozing /elon_kanal
    Tasdiqlangan e'lon → kanalda post («🛒 Sotib olish»), to'lansa «BAND», sotilsa «SOTILDI»
 
 🛠 Admin panelga yangi bo'limlar (Admin → Boshqaruv):

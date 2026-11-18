@@ -72,6 +72,12 @@ def deep_link_path(arg: str | None) -> tuple[str, str] | None:
 
 @router.message(CommandStart(), F.chat.type == "private")
 async def start(message: Message, command: CommandObject):
+    from app.services import launch
+
+    if not await launch.allowed(message.from_user.id):
+        await ensure_user(message.from_user, None)  # ro'yxatga olamiz, ochilganda xabar berish mumkin
+        await message.answer(launch.COMING_SOON)
+        return
     ref = None
     if command.args and command.args.startswith("ref_") and command.args[4:].isdigit():
         ref = int(command.args[4:])
@@ -88,8 +94,33 @@ async def start(message: Message, command: CommandObject):
     )
 
 
+@router.message(Command("ochish"))
+async def open_all(message: Message):
+    """Admin: ilovani hamma uchun ochadi."""
+    if is_admin(message.from_user.id):
+        from app.services import launch
+
+        await launch.set_open(True)
+        await message.answer("✅ Ilova hamma uchun ochildi. Yopish: /yopish")
+
+
+@router.message(Command("yopish"))
+async def close_all(message: Message):
+    """Admin: ilovani yopadi (faqat adminlar kira oladi, qolganlarga «Tez kunda»)."""
+    if is_admin(message.from_user.id):
+        from app.services import launch
+
+        await launch.set_open(False)
+        await message.answer("🔒 Ilova yopildi: faqat adminlar kira oladi, qolganlarga «Tez kunda» chiqadi. Ochish: /ochish")
+
+
 @router.message(Command("help"), F.chat.type == "private")
 async def help_cmd(message: Message):
+    from app.services import launch
+
+    if not await launch.allowed(message.from_user.id):
+        await message.answer(launch.COMING_SOON)
+        return
     await message.answer("Savollar bo'yicha: @vaynexo_support\nIlovani ochish:", reply_markup=open_app_kb())
 
 
@@ -403,7 +434,12 @@ async def chat_id(message: Message):
 async def admin_bank_forward(message: Message):
     """Admin bank bildirishnomasini (Humo/Uzcard bot, SMS) botga forward qiladi — kirim avtomatik topiladi."""
     if not is_admin(message.from_user.id):
-        await message.answer("Ilovani ochish uchun tugmani bosing 👇", reply_markup=open_app_kb())
+        from app.services import launch
+
+        if await launch.allowed(message.from_user.id):
+            await message.answer("Ilovani ochish uchun tugmani bosing 👇", reply_markup=open_app_kb())
+        else:
+            await message.answer(launch.COMING_SOON)
         return
     text = message.text or message.caption or ""
     amount = p2p.parse_bank_message(text)

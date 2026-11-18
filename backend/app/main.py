@@ -107,7 +107,15 @@ async def tg_webhook(request: Request, x_telegram_bot_api_secret_token: str | No
     from app.bot.instance import get_bot
 
     update = Update.model_validate(await request.json(), context={"bot": get_bot()})
-    await dp.feed_update(get_bot(), update)
+    try:
+        await dp.feed_update(get_bot(), update)
+    except Exception as e:  # noqa: BLE001 — 500 qaytarsak Telegram shu yangilanishni qayta-qayta yuboradi
+        from aiogram.exceptions import TelegramForbiddenError
+
+        if isinstance(e, TelegramForbiddenError):
+            log.info("Bot foydalanuvchi tomonidan bloklangan (update %s)", update.update_id)
+        else:
+            log.exception("Bot yangilanishini qayta ishlashda xato (update %s)", update.update_id)
     return {"ok": True}
 
 

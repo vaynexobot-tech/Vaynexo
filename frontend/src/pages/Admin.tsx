@@ -308,6 +308,57 @@ function Disputes() {
   );
 }
 
+interface ProvInfo { mode: string; live: boolean; url_set: boolean; host: string | null; key_set: boolean; auth_header: string; paths: Record<string, string> }
+interface PingRes { ok: boolean; status?: number; ms?: number; error?: string; sample?: string }
+
+function DonateApi() {
+  const st = useLoad(() => api.get<ProvInfo>("/admin/donate/provider"));
+  const [open, setOpen] = useState(false);
+  const [res, setRes] = useState<PingRes | null>(null);
+  const { busy, run } = useAction();
+  return (
+    <Loadable state={st}>
+      {(d) => (
+        <div className="card col" style={{ borderColor: d.live ? "rgba(29,233,182,.45)" : "rgba(255,214,10,.45)" }}>
+          <div className="row between">
+            <span className="b">🔌 Donat API</span>
+            <span className={"pill-b " + (d.live ? "g" : "y")}>{d.live ? "Avtomatik" : "Qo'lda rejim"}</span>
+          </div>
+          <div className="mut xs">{d.live ? `Provayder: ${d.host}` : "API ulanmagan: buyurtmalar guruhga tushadi, almazni o'zingiz tashlaysiz."}</div>
+          <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+            <span className={"badge " + (d.mode === "http" ? "g" : "m")}>DONATE_PROVIDER: {d.mode}</span>
+            <span className={"badge " + (d.url_set ? "g" : "m")}>URL {d.url_set ? "✓" : "—"}</span>
+            <span className={"badge " + (d.key_set ? "g" : "m")}>Kalit {d.key_set ? "✓" : "—"}</span>
+          </div>
+          <div className="row">
+            <button className="btn small grow" disabled={busy || !d.live} onClick={() => run(async () => setRes(await api.post<PingRes>("/admin/donate/provider/test")))}>Ulanishni tekshirish</button>
+            <button className="btn small ghost" onClick={() => setOpen(!open)}>{open ? "Yopish" : "Qanday ulash"}</button>
+          </div>
+          {res && (
+            <div className={"card tight " + (res.ok ? "g" : "r")} style={{ borderColor: res.ok ? "rgba(29,233,182,.45)" : "rgba(255,90,110,.45)" }}>
+              <div className="b sm">{res.ok ? `✅ Ulandi${res.ms ? ` · ${res.ms} ms` : ""}` : `❌ ${res.error ?? "Xato"}`}</div>
+              {res.sample && <div className="mut xs mono pre" style={{ wordBreak: "break-all" }}>{res.sample}</div>}
+            </div>
+          )}
+          {open && (
+            <div className="col sm">
+              <div><b>1.</b> Provayder kabinetidan <b>API hujjati</b>, <b>bazaviy URL</b> va <b>kalit</b>ni oling.</div>
+              <div><b>2.</b> <a href="https://dashboard.render.com/" target="_blank" rel="noreferrer">Render</a> → <b>vaynexo</b> → <b>Environment</b> ga qo'shing:</div>
+              <Copy label="Rejim" value="DONATE_PROVIDER=http" />
+              <Copy label="Manzil" value="DONATE_PROVIDER_URL=https://" />
+              <Copy label="Kalit (faqat shu yerga yozing)" value="DONATE_PROVIDER_KEY=" />
+              <div className="mut xs">Sarlavha nomi boshqacha bo'lsa: DONATE_AUTH_HEADER (masalan X-API-Key) va DONATE_AUTH_PREFIX (bo'sh). Yo'llar: DONATE_CHECK_PATH, DONATE_CREATE_PATH, DONATE_STATUS_PATH, DONATE_BALANCE_PATH.</div>
+              <div><b>3.</b> Saqlagach qayta ishga tushadi, bu yerda «Ulanishni tekshirish» ni bosing.</div>
+              <div><b>4.</b> «Donat paketlari»da har paket SKU'si provayder mahsulot kodiga teng bo'lsin.</div>
+              <div className="mut xs">Hujjat maydon nomlari boshqacha bo'lsa, hujjatni Claude'ga bering — moslab beradi. To'liq yo'riqnoma: docs/DONAT_API.md</div>
+            </div>
+          )}
+        </div>
+      )}
+    </Loadable>
+  );
+}
+
 function DonateReview() {
   const [status, setStatus] = useState("review");
   const st = useLoad(() => api.get<DonateOrder[]>(`/admin/donate?status=${status}`), [status]);
@@ -319,6 +370,7 @@ function DonateReview() {
   });
   return (
     <>
+      <DonateApi />
       <Seg value={status} onChange={setStatus} options={[{ v: "review", label: "Tekshiruv" }, { v: "processing", label: "Jarayonda" }, { v: "refunded", label: "Qaytarilgan" }, { v: "done", label: "Bajarilgan" }]} />
       <Loadable state={st}>
         {(list) => list.length === 0 ? <Empty text="Bo'sh" /> : list.map((o) => (

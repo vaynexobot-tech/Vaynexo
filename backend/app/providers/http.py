@@ -24,9 +24,34 @@ _MAP = {"success": "success", "done": "success", "completed": "success", "pendin
 
 class HttpProvider:
     def __init__(self, base_url: str, api_key: str, timeout: float = 20.0):
+        from app.config import settings as c
+
+        self.paths = {"check": c.donate_check_path, "create": c.donate_create_path,
+                      "status": c.donate_status_path, "balance": c.donate_balance_path}
         self.client = httpx.AsyncClient(
-            base_url=base_url.rstrip("/"), timeout=timeout, headers={"Authorization": f"Bearer {api_key}"}
+            base_url=base_url.rstrip("/"), timeout=timeout,
+            headers={c.donate_auth_header: f"{c.donate_auth_prefix}{api_key}"},
         )
+
+    async def ping(self) -> dict:
+        """Ulanishni tekshirish: balans yo'li bo'lsa shuni, bo'lmasa o'yinchi tekshiruvini chaqiradi."""
+        import time
+
+        t0 = time.monotonic()
+        try:
+            if self.paths["balance"]:
+                r = await self.client.get(self.paths["balance"])
+            else:
+                r = await self.client.post(self.paths["check"], json={"game": "ML", "user_id": "12345678", "zone_id": "1234"})
+        except httpx.HTTPError as e:
+            return {"ok": False, "error": f"Ulanib bo'lmadi: {e.__class__.__name__}"}
+        ms = int((time.monotonic() - t0) * 1000)
+        if r.status_code in (401, 403):
+            return {"ok": False, "status": r.status_code, "ms": ms, "error": "Kalit qabul qilinmadi (401/403): kalit yoki sarlavha noto'g'ri"}
+        if r.status_code == 404:
+            return {"ok": False, "status": 404, "ms": ms, "error": "Manzil topilmadi (404): URL yoki yo'l noto'g'ri"}
+        # balans javobi — kalitlar nomlarini yashirmaymiz, faqat qisqa qismini ko'rsatamiz
+        return {"ok": r.status_code < 500, "status": r.status_code, "ms": ms, "sample": r.text[:200]}
 
     @staticmethod
     def _result(data: dict) -> ProviderResult:
@@ -35,7 +60,7 @@ class HttpProvider:
 
     async def check_player(self, game: str, player_id: str, zone_id: str) -> str | None:
         try:
-            r = await self.client.post("/player/check", json={"game": game, "user_id": player_id, "zone_id": zone_id})
+            r = await self.client.post(self.paths["check"], json={"game": game, "user_id": player_id, "zone_id": zone_id})
             data = r.json()
         except (httpx.HTTPError, ValueError):
             log.warning("check_player xatosi", exc_info=True)
@@ -45,7 +70,7 @@ class HttpProvider:
     async def create(self, order_ref: str, sku: str, game: str, player_id: str, zone_id: str) -> ProviderResult:
         payload = {"ref": order_ref, "product": sku, "game": game, "user_id": player_id, "zone_id": zone_id}
         try:
-            r = await self.client.post("/orders", json=payload)
+            r = await self.client.post(self.paths["create"], json=payload)
         except httpx.HTTPError as e:
             return ProviderResult("unknown", message=f"network: {e.__class__.__name__}")
         if r.status_code >= 500:
@@ -60,7 +85,7 @@ class HttpProvider:
 
     async def status(self, order_ref: str) -> ProviderResult:
         try:
-            r = await self.client.get(f"/orders/{order_ref}")
+            r = await self.client.get(self.paths["status"].format(ref=order_ref))
             if r.status_code == 404:
                 return ProviderResult("failed", message="not found")
             if r.status_code >= 400:

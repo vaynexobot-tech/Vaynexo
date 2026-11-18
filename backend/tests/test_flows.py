@@ -389,3 +389,12 @@ async def test_manual_donate_goes_to_admin(api, ctx):
     finally:
         set_provider(MockProvider())
     assert settings.donate_provider == "manual"
+
+
+async def test_donate_provider_admin_info(api):
+    r = (await api(1).get("/admin/donate/provider")).json()
+    assert r["mode"] in ("manual", "http", "mock") and r["key_set"] is False and r["live"] is False
+    assert "donate_provider_key" not in str(r).lower()
+    assert (await api(5).get("/admin/donate/provider")).status_code == 403
+    t = (await api(1).post("/admin/donate/provider/test")).json()
+    assert t["ok"] is False and "ulanmagan" in t["error"]

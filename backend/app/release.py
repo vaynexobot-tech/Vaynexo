@@ -11,8 +11,11 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-18.yopiq-rejim"
-NOTES = """🔒 Ilova hozir YOPIQ: faqat adminlar kira oladi, boshqalarga /start da «Tez kunda ochilamiz!» chiqadi
+RELEASE = "2026-11-18.donat-api-tayyor"
+NOTES = """🔌 Donat API ulashga tayyor: Admin → Donat → «Donat API» kartasi (holat, ulanishni tekshirish, yo'riqnoma)
+   Render'da DONATE_PROVIDER=http, DONATE_PROVIDER_URL, DONATE_PROVIDER_KEY (+ sarlavha va yo'llar sozlamalari). docs/DONAT_API.md
+
+🔒 Ilova hozir YOPIQ: faqat adminlar kira oladi, boshqalarga /start da «Tez kunda ochilamiz!» chiqadi
    Hamma uchun ochish: botda /ochish   ·   yana yopish: /yopish
 
 📢 Akkaunt e'lonlari kanalga avtomatik: botni kanalga admin qiling va kanalda yozing /elon_kanal

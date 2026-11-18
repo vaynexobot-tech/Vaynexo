@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     donate_provider: str = "manual"  # manual | http | mock (faqat DEV_MODE)
     donate_provider_url: str = ""
     donate_provider_key: str = ""
+    # Provayder hujjatiga moslash (kod o'zgartirmasdan, faqat Render'dagi o'zgaruvchilar bilan):
+    donate_auth_header: str = "Authorization"
+    donate_auth_prefix: str = "Bearer "  # X-API-Key kabi sarlavhada bo'sh qoldiriladi
+    donate_check_path: str = "/player/check"
+    donate_create_path: str = "/orders"
+    donate_status_path: str = "/orders/{ref}"  # {ref} — bizning buyurtma raqamimiz
+    donate_balance_path: str = ""  # bo'sh bo'lmasa, «Ulanishni tekshirish» shuni so'raydi
 
     @field_validator("admin_ids", "cors_origins", mode="before")
     @classmethod

@@ -570,6 +570,32 @@ async def tg_bank_bots(body: TgBotsIn, admin: AdminUser):
     return await tg_bank.status()
 
 
+# ------------------------------------------------------------------ donat API ulanishi
+@router.get("/donate/provider")
+async def donate_provider_info(admin: AdminUser):
+    from urllib.parse import urlparse
+
+    mode = settings.donate_provider
+    url = settings.donate_provider_url
+    return {
+        "mode": mode, "live": mode == "http" and bool(url) and bool(settings.donate_provider_key),
+        "url_set": bool(url), "host": urlparse(url).netloc if url else None, "key_set": bool(settings.donate_provider_key),
+        "auth_header": settings.donate_auth_header, "paths": {"check": settings.donate_check_path, "create": settings.donate_create_path,
+                                                              "status": settings.donate_status_path, "balance": settings.donate_balance_path},
+        "render_url": "https://dashboard.render.com/",
+    }
+
+
+@router.post("/donate/provider/test")
+async def donate_provider_test(admin: AdminUser):
+    from app.providers import get_provider
+
+    p = get_provider()
+    if not hasattr(p, "ping"):
+        return {"ok": False, "error": "Provayder ulanmagan: Render'da DONATE_PROVIDER=http qo'yilmagan"}
+    return await p.ping()
+
+
 # ------------------------------------------------------------------ foydalanuvchi kartochkasi
 @router.get("/users/{user_id}/card")
 async def user_card(user_id: int, admin: AdminUser, session: SessionDep):

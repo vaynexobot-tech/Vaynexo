@@ -56,9 +56,12 @@ class Settings(BaseSettings):
     stars_rate: int = 220  # 1 Star narxi (so'm)
 
     # --- Donat provayder ---
-    donate_provider: str = "manual"  # manual | http | mock (faqat DEV_MODE)
+    donate_provider: str = "manual"  # manual | yupay | http | mock (faqat DEV_MODE)
     donate_provider_url: str = ""
     donate_provider_key: str = ""
+    donate_brand_ml: str = ""  # Yupay brend slug (bo'sh bo'lsa katalogdan avtomatik topiladi)
+    donate_brand_mc: str = ""
+    donate_low_balance_usd: float = 20.0  # Yupay depoziti shundan kamaysa adminga ogohlantirish
     # Provayder hujjatiga moslash (kod o'zgartirmasdan, faqat Render'dagi o'zgaruvchilar bilan):
     donate_auth_header: str = "Authorization"
     donate_auth_prefix: str = "Bearer "  # X-API-Key kabi sarlavhada bo'sh qoldiriladi

@@ -7,7 +7,11 @@ _provider: DonateProvider | None = None
 def get_provider() -> DonateProvider:
     global _provider
     if _provider is None:
-        if settings.donate_provider == "http":
+        if settings.donate_provider == "yupay" and settings.donate_provider_key:
+            from app.providers.yupay import YupayProvider
+
+            _provider = YupayProvider(settings.donate_provider_key, settings.donate_provider_url)
+        elif settings.donate_provider == "http":
             from app.providers.http import HttpProvider
 
             _provider = HttpProvider(settings.donate_provider_url, settings.donate_provider_key)

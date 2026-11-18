@@ -11,8 +11,13 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-18.donat-api-tayyor"
-NOTES = """🔌 Donat API ulashga tayyor: Admin → Donat → «Donat API» kartasi (holat, ulanishni tekshirish, yo'riqnoma)
+RELEASE = "2026-11-18.yupay"
+NOTES = """💎 Yupay Merchant API ulandi (hujjat asosida): ID tekshiruvi, avtomatik buyurtma, holat kuzatuvi, vebhuk, depozit ogohlantirishi
+   Render: DONATE_PROVIDER=yupay, DONATE_PROVIDER_KEY=ypk_…   ·   Admin → Donat → «Donat API»
+   Paketlarga SKU: Admin → Donat paketlari → «Yupay katalogidan tanlash»
+   ⚠️ Yupay'da sinov yo'q: har buyurtma haqiqiy pul yechadi — avval eng arzon nominalda sinang
+
+🔌 Donat API ulashga tayyor: Admin → Donat → «Donat API» kartasi (holat, ulanishni tekshirish, yo'riqnoma)
    Render'da DONATE_PROVIDER=http, DONATE_PROVIDER_URL, DONATE_PROVIDER_KEY (+ sarlavha va yo'llar sozlamalari). docs/DONAT_API.md
 
 🔒 Ilova hozir YOPIQ: faqat adminlar kira oladi, boshqalarga /start da «Tez kunda ochilamiz!» chiqadi

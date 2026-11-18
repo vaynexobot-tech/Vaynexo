@@ -308,8 +308,8 @@ function Disputes() {
   );
 }
 
-interface ProvInfo { mode: string; live: boolean; url_set: boolean; host: string | null; key_set: boolean; auth_header: string; paths: Record<string, string> }
-interface PingRes { ok: boolean; status?: number; ms?: number; error?: string; sample?: string }
+interface ProvInfo { mode: string; live: boolean; yupay: boolean; url_set: boolean; host: string | null; key_set: boolean; webhook_url: string; low_balance_usd: number }
+interface PingRes { ok: boolean; status?: number; ms?: number; error?: string; sample?: string; balance_usd?: string; title?: string; account?: string }
 
 function DonateApi() {
   const st = useLoad(() => api.get<ProvInfo>("/admin/donate/provider"));
@@ -321,13 +321,12 @@ function DonateApi() {
       {(d) => (
         <div className="card col" style={{ borderColor: d.live ? "rgba(29,233,182,.45)" : "rgba(255,214,10,.45)" }}>
           <div className="row between">
-            <span className="b">🔌 Donat API</span>
+            <span className="b">🔌 Donat API {d.yupay ? "· Yupay" : ""}</span>
             <span className={"pill-b " + (d.live ? "g" : "y")}>{d.live ? "Avtomatik" : "Qo'lda rejim"}</span>
           </div>
           <div className="mut xs">{d.live ? `Provayder: ${d.host}` : "API ulanmagan: buyurtmalar guruhga tushadi, almazni o'zingiz tashlaysiz."}</div>
           <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-            <span className={"badge " + (d.mode === "http" ? "g" : "m")}>DONATE_PROVIDER: {d.mode}</span>
-            <span className={"badge " + (d.url_set ? "g" : "m")}>URL {d.url_set ? "✓" : "—"}</span>
+            <span className={"badge " + (d.mode === "yupay" || d.mode === "http" ? "g" : "m")}>DONATE_PROVIDER: {d.mode}</span>
             <span className={"badge " + (d.key_set ? "g" : "m")}>Kalit {d.key_set ? "✓" : "—"}</span>
           </div>
           <div className="row">
@@ -335,22 +334,23 @@ function DonateApi() {
             <button className="btn small ghost" onClick={() => setOpen(!open)}>{open ? "Yopish" : "Qanday ulash"}</button>
           </div>
           {res && (
-            <div className={"card tight " + (res.ok ? "g" : "r")} style={{ borderColor: res.ok ? "rgba(29,233,182,.45)" : "rgba(255,90,110,.45)" }}>
+            <div className="card tight" style={{ borderColor: res.ok ? "rgba(29,233,182,.45)" : "rgba(255,90,110,.45)" }}>
               <div className="b sm">{res.ok ? `✅ Ulandi${res.ms ? ` · ${res.ms} ms` : ""}` : `❌ ${res.error ?? "Xato"}`}</div>
+              {res.ok && res.balance_usd != null && <div className="sm">Depozit: <b className="y mono">${res.balance_usd}</b>{res.title ? ` · ${res.title}` : ""}{res.account && res.account !== "active" ? ` · ${res.account}` : ""}</div>}
               {res.sample && <div className="mut xs mono pre" style={{ wordBreak: "break-all" }}>{res.sample}</div>}
             </div>
           )}
           {open && (
             <div className="col sm">
-              <div><b>1.</b> Provayder kabinetidan <b>API hujjati</b>, <b>bazaviy URL</b> va <b>kalit</b>ni oling.</div>
-              <div><b>2.</b> <a href="https://dashboard.render.com/" target="_blank" rel="noreferrer">Render</a> → <b>vaynexo</b> → <b>Environment</b> ga qo'shing:</div>
-              <Copy label="Rejim" value="DONATE_PROVIDER=http" />
-              <Copy label="Manzil" value="DONATE_PROVIDER_URL=https://" />
-              <Copy label="Kalit (faqat shu yerga yozing)" value="DONATE_PROVIDER_KEY=" />
-              <div className="mut xs">Sarlavha nomi boshqacha bo'lsa: DONATE_AUTH_HEADER (masalan X-API-Key) va DONATE_AUTH_PREFIX (bo'sh). Yo'llar: DONATE_CHECK_PATH, DONATE_CREATE_PATH, DONATE_STATUS_PATH, DONATE_BALANCE_PATH.</div>
-              <div><b>3.</b> Saqlagach qayta ishga tushadi, bu yerda «Ulanishni tekshirish» ni bosing.</div>
-              <div><b>4.</b> «Donat paketlari»da har paket SKU'si provayder mahsulot kodiga teng bo'lsin.</div>
-              <div className="mut xs">Hujjat maydon nomlari boshqacha bo'lsa, hujjatni Claude'ga bering — moslab beradi. To'liq yo'riqnoma: docs/DONAT_API.md</div>
+              <div><b>1.</b> Yupay kabinet → <b>Sozlamalar</b> → «Kalit yaratish» (<span className="mono">ypk_…</span>, bir marta ko'rsatiladi). Kalitning IP ro'yxatini <b>bo'sh</b> qoldiring.</div>
+              <div><b>2.</b> <a href="https://dashboard.render.com/" target="_blank" rel="noreferrer">Render</a> → <b>vaynexo</b> → <b>Environment</b>:</div>
+              <Copy label="Rejim" value="DONATE_PROVIDER=yupay" />
+              <Copy label="Kalit (faqat Render'ga yozing)" value="DONATE_PROVIDER_KEY=" />
+              <div><b>3.</b> Qayta ishga tushgach «Ulanishni tekshirish» — depozit summasi chiqsa, ulandi.</div>
+              <div><b>4.</b> Yupay kabinet → <b>Vebhuk</b> manzili (tezroq natija uchun, ixtiyoriy):</div>
+              <Copy value={d.webhook_url} />
+              <div><b>5.</b> <b>Donat paketlari</b> da har bir paketga Yupay SKU'sini «Yupay katalogidan tanlash» bilan biriktiring.</div>
+              <div className="r xs">⚠️ Yupay'da sinov muhiti yo'q: har bir buyurtma haqiqiy pul yechadi. Birinchi sinovni eng arzon nominalda qiling. Depozit ${d.low_balance_usd} dan kamaysa, guruhga ogohlantirish keladi.</div>
             </div>
           )}
         </div>
@@ -738,9 +738,30 @@ function Promos() {
   );
 }
 
+interface YSku { sku_id: string; name: string; product: string; brand: string; kind: string | null; price_usd: string | null; stock: number | null }
+
+function SkuPicker({ game, onPick, onClose }: { game: string; onPick: (s: YSku) => void; onClose: () => void }) {
+  const st = useLoad(() => api.get<YSku[]>(`/admin/donate/yupay/skus?game=${game}`), [game]);
+  return (
+    <Sheet open onClose={onClose}>
+      <div className="sec-title">Yupay katalogi · {game}</div>
+      <div className="mut xs">Narx — Yupay sizdan oladigan USD narxi. O'z narxingiz shundan yuqori bo'lsin.</div>
+      <Loadable state={st}>
+        {(list) => list.length === 0 ? <Empty icon="📦" text="Bu o'yin uchun nominal topilmadi" /> : list.map((x) => (
+          <button key={x.sku_id} className="card tight row between click" style={{ textAlign: "left" }} onClick={() => onPick(x)}>
+            <span><b>{x.name}</b><br /><span className="mut xs">{x.brand}{x.kind && x.kind !== "fixed" ? ` · ${x.kind}` : ""}</span></span>
+            <span className="y mono b">${x.price_usd}</span>
+          </button>
+        ))}
+      </Loadable>
+    </Sheet>
+  );
+}
+
 function Packages() {
   const st = useLoad(() => api.get<Pkg[]>("/admin/packages"));
   const [edit, setEdit] = useState<Partial<Pkg> | null>(null);
+  const [pick, setPick] = useState(false);
   const { busy, run } = useAction();
   const save = () => run(async () => {
     const body = { game: edit!.game ?? "ML", name: edit!.name, diamonds: edit!.diamonds ?? 0, bonus: edit!.bonus ?? 0, price: edit!.price, provider_sku: edit!.sku, is_active: edit!.is_active ?? true, is_hot: edit!.is_hot ?? false, sort: edit!.sort ?? 0 };
@@ -759,6 +780,7 @@ function Packages() {
           </div>
         ))}
       </Loadable>
+      {pick && edit && <SkuPicker game={edit.game ?? "ML"} onClose={() => setPick(false)} onPick={(x) => { setEdit({ ...edit, sku: x.sku_id }); setPick(false); }} />}
       <Sheet open={!!edit} onClose={() => setEdit(null)}>
         {edit && (
           <>
@@ -771,7 +793,10 @@ function Packages() {
               <Field label="Tartib"><input className="input mono" inputMode="numeric" value={edit.sort ?? ""} onChange={(e) => setEdit({ ...edit, sort: Number(e.target.value) || 0 })} /></Field>
             </div>
             <Field label="Narx (so'm)"><MoneyInput value={edit.price ?? ""} onChange={(v) => setEdit({ ...edit, price: v === "" ? undefined : v })} /></Field>
-            <Field label="Provayder SKU (mahsulot kodi)"><input className="input mono" value={edit.sku ?? ""} onChange={(e) => setEdit({ ...edit, sku: e.target.value })} /></Field>
+            <Field label="Provayder SKU (mahsulot kodi)">
+              <input className="input mono" value={edit.sku ?? ""} onChange={(e) => setEdit({ ...edit, sku: e.target.value })} />
+              <button className="btn small ghost" style={{ marginTop: 6 }} onClick={() => setPick(true)}>Yupay katalogidan tanlash</button>
+            </Field>
             <div className="row between"><span>Faol</span><Toggle on={edit.is_active ?? true} onChange={(v) => setEdit({ ...edit, is_active: v })} /></div>
             <div className="row between"><span>HOT belgisi</span><Toggle on={edit.is_hot ?? false} onChange={(v) => setEdit({ ...edit, is_hot: v })} /></div>
             <button className="btn full" disabled={busy || !edit.name || !edit.price || !edit.sku} onClick={save}>Saqlash</button>

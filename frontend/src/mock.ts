@@ -236,6 +236,9 @@ on("POST", "/admin/topups/:id/reject", (m, b) => { const t = state.topups.find((
 const tgBank = { api_ready: true, logged_in: true, account: "@vaynexo_kassa", connected: true, error: null, bots: ["HUMOcardbot", "CardXabarBot"], seen: { HUMOcardbot: { at: now(), amount: 50000 } }, login_step: null };
 on("GET", "/admin/tg-bank", () => tgBank);
 on("PUT", "/admin/tg-bank/bots", (_m, b) => { tgBank.bots = (b.bots as string[]).map((x) => x.replace(/^@/, "")); return tgBank; });
+on("GET", "/admin/donate/provider", () => ({ mode: "manual", live: false, yupay: false, url_set: false, host: null, key_set: false, webhook_url: "https://vaynexo.example/api/yupay/webhook", low_balance_usd: 20 }));
+on("POST", "/admin/donate/provider/test", () => ({ ok: false, error: "Provayder ulanmagan (demo)" }));
+on("GET", "/admin/donate/yupay/skus", () => []);
 on("GET", "/admin/p2p/sms-setup", () => ({ url: "https://vaynexo.example/api/p2p/incoming", url_with_key: "https://vaynexo.example/api/p2p/incoming?key=DEMO-KEY", secret: "DEMO-KEY", header: "X-P2P-Secret", ready: true, body_template: '{"text": "%text%", "from": "%from%", "id": "%sentStamp%"}', last_sms_at: null, last_sms_amount: null, last_24h: {} }));
 const adminCards: Json[] = DEMO_CARDS.map((c) => ({ ...c, active: true, sort: 0 }));
 on("GET", "/admin/p2p-cards", () => adminCards);

@@ -577,12 +577,15 @@ async def donate_provider_info(admin: AdminUser):
 
     mode = settings.donate_provider
     url = settings.donate_provider_url
+    live = mode in ("yupay", "http") and bool(settings.donate_provider_key) and (mode == "yupay" or bool(url))
+    base = settings.webapp_url.rstrip("/")
     return {
-        "mode": mode, "live": mode == "http" and bool(url) and bool(settings.donate_provider_key),
-        "url_set": bool(url), "host": urlparse(url).netloc if url else None, "key_set": bool(settings.donate_provider_key),
+        "mode": mode, "live": live, "yupay": mode == "yupay",
+        "url_set": bool(url) or mode == "yupay", "host": (urlparse(url).netloc if url else "api.yupay.uz") if live else None,
+        "key_set": bool(settings.donate_provider_key),
+        "webhook_url": f"{base}/api/yupay/webhook", "low_balance_usd": settings.donate_low_balance_usd,
         "auth_header": settings.donate_auth_header, "paths": {"check": settings.donate_check_path, "create": settings.donate_create_path,
                                                               "status": settings.donate_status_path, "balance": settings.donate_balance_path},
-        "render_url": "https://dashboard.render.com/",
     }
 
 
@@ -592,8 +595,22 @@ async def donate_provider_test(admin: AdminUser):
 
     p = get_provider()
     if not hasattr(p, "ping"):
-        return {"ok": False, "error": "Provayder ulanmagan: Render'da DONATE_PROVIDER=http qo'yilmagan"}
+        return {"ok": False, "error": "Provayder ulanmagan: Render'da DONATE_PROVIDER=yupay va DONATE_PROVIDER_KEY qo'yilmagan"}
     return await p.ping()
+
+
+@router.get("/donate/yupay/skus")
+async def yupay_skus(admin: AdminUser, game: str = "ML"):
+    """Paket SKU'sini tanlash uchun Yupay katalogi (faqat tanlangan o'yin brendlari)."""
+    from app.providers import get_provider
+
+    p = get_provider()
+    if not hasattr(p, "skus_for"):
+        raise BadState("Yupay ulanmagan")
+    try:
+        return await p.skus_for(game)
+    except Exception as e:  # noqa: BLE001
+        raise AppError("yupay_catalog", f"Katalogni olib bo'lmadi: {e.__class__.__name__}", 502) from None
 
 
 # ------------------------------------------------------------------ foydalanuvchi kartochkasi

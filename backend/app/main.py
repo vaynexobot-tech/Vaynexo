@@ -87,7 +87,7 @@ async def validation_error(request: Request, exc: RequestValidationError):
     return JSONResponse({"error": "validation", "message": f"Ma'lumot noto'g'ri: {field}"}, status_code=422)
 
 
-for r in (user.router, wallet.router, wallet.p2p_router, donate.router, market.router, media.router, services.router, rent.router, admin.router, account.router, ai.router, arena.router):
+for r in (user.router, wallet.router, wallet.p2p_router, donate.router, donate.webhook_router, market.router, media.router, services.router, rent.router, admin.router, account.router, ai.router, arena.router):
     app.include_router(r, prefix="/api")
 
 

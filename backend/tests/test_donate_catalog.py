@@ -39,7 +39,9 @@ def test_price_formula():
 def test_parse_and_clean_names():
     assert dc.parse_amount("172 (156+16) Diamonds") == (156, 16)
     assert dc.parse_amount("60 UC") == (60, 0) and dc.parse_amount("1,000 Robux") == (1000, 0)
-    assert dc.parse_amount("Weekly Pass") == (0, 0)
+    assert dc.parse_amount("Weekly Pass") == (0, 0) and dc.parse_amount("Prime (1 Month)") == (0, 0)
+    assert dc.parse_amount("50 + 5 Diamonds") == (50, 5) and dc.parse_amount("86 Diamonds (78 + 8)") == (78, 8)
+    assert dc.parse_amount("$10") == (10, 0) and dc.parse_amount("Level Up Package 6") == (0, 0)
     assert dc.clean_name("Mobile Legends 86 Diamonds", "Mobile Legends") == "86 Diamonds"
     assert dc.clean_name("Weekly Pass", "Mobile Legends") == "Weekly Pass"
 

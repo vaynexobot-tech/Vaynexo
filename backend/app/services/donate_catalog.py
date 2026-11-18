@@ -119,20 +119,29 @@ async def reprice(session: AsyncSession) -> int:
     return n
 
 
-_NUM = re.compile(r"(\d[\d\s,.]*)")
 _BONUS = re.compile(r"\(\s*(\d+)\s*\+\s*(\d+)\s*\)")
 
 
+_PLUS = re.compile(r"^\$?\s*(\d[\d,]*)\s*\+\s*(\d[\d,]*)")
+_LEAD = re.compile(r"^\$?\s*(\d[\d,]*)")
+
+
 def parse_amount(name: str) -> tuple[int, int]:
-    """«172 (156+16) Diamonds» -> (156, 16); «60 UC» -> (60, 0); son yo'q bo'lsa (0, 0)."""
-    m = _BONUS.search(name)
+    """Nom boshidagi miqdor: «172 (156+16) Diamonds» -> (156, 16); «50 + 5 Diamonds» -> (50, 5); «60 UC» -> (60, 0).
+    Son nom boshida bo'lmasa (Prime (1 Month), Level Up Package 6) — maxsus paket: (0, 0)."""
+    n = name.strip()
+    num = lambda x: int(x.replace(",", ""))  # noqa: E731
+    m = _PLUS.match(n)
     if m:
-        return int(m.group(1)), int(m.group(2))
-    m = _NUM.search(name)
+        return num(m.group(1)), num(m.group(2))
+    m = _LEAD.match(n)
     if not m:
         return 0, 0
-    digits = re.sub(r"[^\d]", "", m.group(1))
-    return (int(digits), 0) if digits and len(digits) <= 9 else (0, 0)
+    b = _BONUS.search(n)
+    if b:
+        return int(b.group(1)), int(b.group(2))
+    v = num(m.group(1))
+    return (v, 0) if v < 10**9 else (0, 0)
 
 
 def clean_name(name: str, game_name: str) -> str:

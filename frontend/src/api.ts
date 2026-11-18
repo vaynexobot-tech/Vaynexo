@@ -153,7 +153,7 @@ export interface Me {
 }
 export type Lang = "uz" | "ru" | "en";
 export interface PayCard { id: number; last4: string; brand: string; holder: string; expiry: string; is_default: boolean }
-export interface Pkg { id: number; game: string; name: string; diamonds: number; bonus: number; price: number; is_hot: boolean; is_active?: boolean; sku?: string; sort?: number }
+export interface Pkg { id: number; game: string; name: string; diamonds: number; bonus: number; price: number; is_hot: boolean; is_active?: boolean; sku?: string; sort?: number; source?: string; cost_usd?: string | null }
 export interface DonateOrder { id: number; ref: string; game: string; title: string; player_id: string; zone_id: string; price: number; status: string; error: string | null; created_at: string; user_id?: number; attempts?: number; provider_ref?: string }
 export interface ListingCard {
   id: number; game: Game; title: string; rank: string; server: string; collection_level: string; skins: number; heroes: number;

@@ -156,11 +156,12 @@ async def admin_user(request: Request, user: CurrentUser) -> AsyncIterator[User]
         return
     # Fayl yuklash (multipart) tanasi allaqachon o'qilgan — jurnalga faqat yo'l yoziladi
     body = b"" if request.headers.get("content-type", "").startswith("multipart/") else await request.body()
+    uid = user.id  # endpoint sessiyani yopgach obyekt eskiradi — id oldindan olinadi
     yield user
     # Faqat muvaffaqiyatli o'zgarishlar yoziladi (endpoint xato bersa, bu yerga yetib kelmaydi)
     from app.services import audit
 
-    await audit.log_http(user.id, request.method, request.url.path, body)
+    await audit.log_http(uid, request.method, request.url.path, body)
 
 
 AdminUser = Annotated[User, Depends(admin_user)]

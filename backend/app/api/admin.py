@@ -869,6 +869,21 @@ async def donate_provider_create(body: ProviderIn, admin: AdminUser, session: Se
         p = DonateProvider(name=body.name.strip(), kind=body.kind, base_url=body.base_url.strip(), key_enc=encrypt(key),
                            is_active=body.is_active, config=body.config or {})
         session.add(p)
+    # Qo'shilishi bilan katalog avtomatik yuklanadi (xato bo'lsa provayder saqlanib qoladi, xatosi ko'rsatiladi)
+    pid, active = p.id, p.is_active
+    if active:
+        from app.services import donate_catalog
+
+        try:
+            async with session.begin():
+                await donate_catalog.sync_provider(session, await session.get(DonateProvider, pid))
+        except Exception as e:  # noqa: BLE001
+            err = f"{e.__class__.__name__}: {str(e)[:200]}"
+            async with session.begin():
+                (await session.get(DonateProvider, pid)).last_error = err
+        await invalidate_packages_cache()
+        async with session.begin():
+            return _provider_dict(await session.get(DonateProvider, pid, populate_existing=True))
     return _provider_dict(p)
 
 

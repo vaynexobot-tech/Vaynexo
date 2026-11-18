@@ -116,6 +116,31 @@ async def reprice(session: AsyncSession) -> int:
     return n
 
 
+_NUM = re.compile(r"(\d[\d\s,.]*)")
+_BONUS = re.compile(r"\(\s*(\d+)\s*\+\s*(\d+)\s*\)")
+
+
+def parse_amount(name: str) -> tuple[int, int]:
+    """«172 (156+16) Diamonds» -> (156, 16); «60 UC» -> (60, 0); son yo'q bo'lsa (0, 0)."""
+    m = _BONUS.search(name)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    m = _NUM.search(name)
+    if not m:
+        return 0, 0
+    digits = re.sub(r"[^\d]", "", m.group(1))
+    return (int(digits), 0) if digits and len(digits) <= 9 else (0, 0)
+
+
+def clean_name(name: str, game_name: str) -> str:
+    """Paket nomidan o'yin nomini olib tashlaydi: «Mobile Legends 86 Diamonds» -> «86 Diamonds»."""
+    n = name.strip()
+    for prefix in (game_name, game_name.replace(":", "")):
+        if prefix and n.lower().startswith(prefix.lower()) and len(n) > len(prefix) + 1:
+            n = n[len(prefix):].strip(" -:·|")
+    return n or name
+
+
 # ------------------------------------------------------------------ sinxronlash
 def _fields(product: dict) -> list[dict]:
     out = []
@@ -155,7 +180,7 @@ async def sync_provider(session: AsyncSession, row: DonateProvider) -> dict:
                 games.pop(ph.slug, None)
                 g = DonateGame(slug=slug, **keep)
             else:
-                g = DonateGame(slug=slug, name=b.get("name") or bslug, is_active=False, sort=500)
+                g = DonateGame(slug=slug, name=b.get("name") or bslug, is_active=True, sort=500)  # qidiruvda ko'rinadi
                 new_games.append(g.name)
             session.add(g)
             games[slug] = g
@@ -168,10 +193,7 @@ async def sync_provider(session: AsyncSession, row: DonateProvider) -> dict:
         products = b.get("products") or []
         if products and not g.fields:
             g.fields = _fields(products[0])
-        if first_link:  # qo'lda kiritilgan eski paketlar API paketlariga almashtiriladi
-            for p in (await session.scalars(select(DonatePackage).where(DonatePackage.game == slug, DonatePackage.source == "manual"))):
-                p.is_active = False
-        i = 0
+        game_pkgs: list[DonatePackage] = []
         for prod in products:
             for s in prod.get("skus") or []:
                 if s.get("kind") not in (None, "fixed") or not s.get("sku_id") or s.get("price_usd") in (None, ""):
@@ -181,17 +203,27 @@ async def sync_provider(session: AsyncSession, row: DonateProvider) -> dict:
                 price = price_uzs(s["price_usd"], rate, markup)
                 if price <= 0:
                     continue
-                name = str(s.get("name") or prod.get("name") or "")[:128]
+                name = clean_name(str(s.get("name") or prod.get("name") or ""), g.name)[:128]
                 p = pkgs.get(key)
                 if p is None:
                     p = DonatePackage(game=slug, name=name, price=price, provider_sku=str(s["sku_id"]), provider_id=row.id, source="api")
                     session.add(p)
                     pkgs[key] = p
                 p.game, p.name, p.price, p.cost_usd = slug, name, price, str(s["price_usd"])
+                p.diamonds, p.bonus = parse_amount(name)
                 p.is_active = s.get("stock") != 0 and not p.admin_off
-                p.sort = i
-                i += 1
+                game_pkgs.append(p)
                 n_pk += 1
+        # Tartib: oddiy nominallar (miqdori bor) narx bo'yicha, keyin maxsus paketlar (pass, obuna) narx bo'yicha
+        game_pkgs.sort(key=lambda x: (x.diamonds == 0, x.price))
+        for i, p in enumerate(game_pkgs):
+            p.sort = i * 10
+        if first_link and game_pkgs:
+            # Qo'lda kiritilganlar qoladi (qo'shimcha); faqat API'da xuddi shu miqdordagisi borlari o'chiriladi
+            api_amounts = {(p.diamonds + p.bonus) for p in game_pkgs if p.diamonds}
+            for p in (await session.scalars(select(DonatePackage).where(DonatePackage.game == slug, DonatePackage.source == "manual"))):
+                if p.diamonds and (p.diamonds + p.bonus) in api_amounts:
+                    p.is_active = False
     for key, p in pkgs.items():  # katalogdan yo'qolganlar
         if p.source == "api" and f"{row.id}:{p.provider_sku}" not in seen:
             p.is_active = False

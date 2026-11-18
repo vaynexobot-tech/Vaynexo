@@ -876,6 +876,8 @@ function Packages() {
   const games = useLoad(() => api.get<AGame[]>("/admin/donate/games"));
   const gname = (slug: string) => games.data?.find((g) => g.slug === slug)?.name ?? slug;
   const [edit, setEdit] = useState<Partial<Pkg> | null>(null);
+  const [src, setSrc] = useState<"all" | "api" | "manual">("all");
+  const { toast } = useApp();
   const [pick, setPick] = useState(false);
   const { busy, run } = useAction();
   const save = () => run(async () => {
@@ -884,16 +886,40 @@ function Packages() {
     else await api.post("/admin/packages", body);
     setEdit(null); st.reload();
   });
+  const syncAll = () => run(async () => {
+    const ps = (await api.get<{ providers: { id: number; is_active: boolean }[] }>("/admin/donate/providers")).providers.filter((x) => x.is_active);
+    if (!ps.length) { toast("Avval Donat → API bo'limida API ulang", "info"); return; }
+    let n = 0;
+    for (const x of ps) n += (await api.post<SyncRes>(`/admin/donate/providers/${x.id}/sync`)).packages;
+    toast(`Yangilandi: ${n} ta paket`, "ok");
+    st.reload();
+  });
   return (
     <>
-      <button className="btn full" onClick={() => setEdit({ game: "ML", is_active: true })}>+ Yangi paket</button>
+      <div className="mut xs">Asosiy: paketlar ulangan API saytidan <b>avtomatik</b> yuklanadi (har 30 daqiqada) va narx bo'yicha tartiblanadi. Qo'shimcha paketni qo'lda ham qo'shish mumkin.</div>
+      <div className="row">
+        <button className="btn small ghost grow" disabled={busy} onClick={syncAll}>🔄 Saytdan yangilash</button>
+        <button className="btn small grow" onClick={() => setEdit({ game: "ML", is_active: true })}>+ Qo'lda paket</button>
+      </div>
+      <Seg value={src} onChange={setSrc} options={[{ v: "all", label: "Hammasi" }, { v: "api", label: "API" }, { v: "manual", label: "Qo'lda" }]} />
       <Loadable state={st}>
-        {(list) => list.map((p) => (
-          <div key={p.id} className="card tight click row between" onClick={() => setEdit(p)} style={{ opacity: p.is_active ? 1 : 0.5 }}>
-            <span><b>{gname(p.game)}</b> · {p.name} {p.is_hot && "🔥"}<br /><span className="mut xs mono">{p.sku}</span></span>
-            <span className="y mono b">{money(p.price)}</span>
-          </div>
-        ))}
+        {(list) => {
+          const rows = list.filter((p) => src === "all" || (p.source ?? "manual") === src);
+          if (!rows.length) return <Empty icon="📦" text="Paketlar yo'q" />;
+          const groups = Array.from(new Set(rows.map((p) => p.game)));
+          return groups.map((g) => (
+            <div key={g} className="col" style={{ gap: 6 }}>
+              <div className="row" style={{ gap: 8, marginTop: 6 }}><GameTile name={gname(g)} slug={g} size={24} radius={6} /><b>{gname(g)}</b><span className="mut xs">{rows.filter((p) => p.game === g).length} ta</span></div>
+              {rows.filter((p) => p.game === g).map((p) => (
+                <div key={p.id} className="card tight click row between" onClick={() => setEdit(p)} style={{ opacity: p.is_active ? 1 : 0.5 }}>
+                  <span>{p.name} {p.is_hot && "🔥"} <span className={"pill-b " + (p.source === "api" ? "g" : "y")} style={{ fontSize: 10 }}>{p.source === "api" ? "API" : "Qo'lda"}</span>
+                    <br /><span className="mut xs mono">{p.cost_usd ? `$${p.cost_usd} · ` : ""}{p.sku}</span></span>
+                  <span className="y mono b">{money(p.price)}</span>
+                </div>
+              ))}
+            </div>
+          ));
+        }}
       </Loadable>
       {pick && edit && <SkuPicker game={edit.game ?? "ML"} onClose={() => setPick(false)} onPick={(x) => { setEdit({ ...edit, sku: x.sku_id }); setPick(false); }} />}
       <Sheet open={!!edit} onClose={() => setEdit(null)}>

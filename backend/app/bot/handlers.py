@@ -32,15 +32,8 @@ def open_app_kb(text: str = "🎮 VAYNEXO ni ochish", path: str = "") -> InlineK
 
 
 def menu_kb() -> InlineKeyboardMarkup:
-    """/start menyusi: asosiy bo'limlarga to'g'ridan-to'g'ri tugmalar."""
-    u = settings.webapp_url.rstrip("/")
-    b = lambda text, path: InlineKeyboardButton(text=text, web_app=WebAppInfo(url=u + path))  # noqa: E731
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [b("🎮 VAYNEXO ni ochish", "")],
-        [b("💎 Donat", "/donate/ML"), b("🛒 Savdo", "/market")],
-        [b("🏆 Arena", "/arena"), b("🎬 Hamkor", "/partner")],
-        [b("💳 Hamyon", "/wallet"), b("🚀 Boost", "/boost")],
-    ])
+    """/start menyusi: bitta tugma — ilovani ochish."""
+    return open_app_kb()
 
 
 async def set_commands(bot) -> None:
@@ -119,7 +112,7 @@ async def start(message: Message, command: CommandObject):
         "💎 Almaz donat — MLBB, PUBG, Steam va boshqalar\n🛒 Akkaunt savdo va ijara (garant bilan)\n"
         "🚀 Rank boost\n⭐️ Telegram Premium, Stars\n"
         "🏆 Arena: turnirlar, «Qahramonni top» viktorinasi, haftaning qahramoni\n🎬 Hamkor: video qiling — mukofot oling\n\n"
-        "Kerakli bo'limni tanlang 👇",
+        "Ochish uchun pastdagi tugmani bosing 👇",
         reply_markup=menu_kb(),
     )
 

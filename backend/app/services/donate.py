@@ -53,10 +53,13 @@ async def create_order(session: AsyncSession, user_id: int, package_id: int, pla
     if game is not None and not game.is_active:
         raise NotFound("O'yin")
     fields = (game.fields if game else None) or []
-    if pkg.game in ("ML", "MC") and not fields:
+    if pkg.delivery == "voucher" and not fields:
+        player_id, zone_id = "", ""
+    elif pkg.game in ("ML", "MC") and not fields:
         fields = [{"label": "User ID", "pattern": r"^\d{5,20}$"}, {"label": "Zone ID", "pattern": r"^\d{1,10}$"}]
     f1 = fields[0] if fields else {}
-    player_id = _clean_field(player_id, f1.get("pattern", ""), f1.get("label") or "ID")
+    if fields or pkg.delivery != "voucher":
+        player_id = _clean_field(player_id, f1.get("pattern", ""), f1.get("label") or "ID")
     if len(fields) > 1:
         zone_id = _clean_field(zone_id, fields[1].get("pattern", ""), fields[1].get("label") or "Server ID")
     else:
@@ -81,12 +84,41 @@ def order_ref(order: DonateOrder) -> str:
     return f"VX-D{order.id}"
 
 
-async def _finish_success(session: AsyncSession, order: DonateOrder, ref: str | None, out: Outbox) -> None:
+VOUCHER_LABELS = {"code": "Kod", "pin": "PIN", "serial": "Seriya", "link": "Havola"}
+
+
+def voucher_text(artifact: dict) -> str:
+    return "\n".join(f"{VOUCHER_LABELS.get(k, k)}: {v}" for k, v in artifact.items())
+
+
+def order_voucher(order: DonateOrder) -> dict | None:
+    if not order.voucher_enc:
+        return None
+    import json
+
+    from app.security import decrypt
+
+    try:
+        return json.loads(decrypt(order.voucher_enc) or "null")
+    except ValueError:
+        return None
+
+
+async def _finish_success(session: AsyncSession, order: DonateOrder, ref: str | None, out: Outbox, artifact: dict | None = None) -> None:
     order.status = "done"
     order.provider_ref = ref or order.provider_ref
     order.finished_at = _now()
     order.error = None
     await wallet.add_ticket(session, order.user_id)
+    if artifact:
+        import json
+
+        from app.security import encrypt
+
+        order.voucher_enc = encrypt(json.dumps(artifact, ensure_ascii=False))
+        out.user(order.user_id, f"🎁 {order.title} tayyor!\n\n{voucher_text(artifact)}\n\nBuyurtma: {order_ref(order)}\n"
+                 "Kodni hech kimga bermang. U «Xaridlar tarixi»da ham saqlanadi.", webapp_button("Xaridlar tarixi", "/history"))
+        return
     out.user(
         order.user_id,
         f"💎 {order.title} yetkazildi!\nID: {order.player_id}"
@@ -129,6 +161,7 @@ async def fulfil_step(sessions: async_sessionmaker, order_id: int, mode: str, ou
         attempts = order.attempts
         ref = order_ref(order)
         sku, game, pid, zid = order.package.provider_sku, order.game, order.player_id, order.zone_id
+        is_voucher = order.package.delivery == "voucher"
 
     if mode == "create" and attempts > 1:
         # Qayta urinishdan oldin: balki oldingi so'rov aslida yetib borgandir.
@@ -138,6 +171,13 @@ async def fulfil_step(sessions: async_sessionmaker, order_id: int, mode: str, ou
         result = await provider.create(ref, sku, game, pid, zid)
     else:
         result = await provider.status(ref)
+    if result.status == "success" and is_voucher and not result.artifact:
+        # kod faqat buyurtmani o'qiganda keladi — bir marta holatni so'raymiz
+        again = await provider.status(ref)
+        if again.status == "success" and again.artifact:
+            result = again
+        else:
+            result = type(result)("pending", ref=result.ref, message="vaucher kodi kutilmoqda")
 
     async with sessions() as session, session.begin():
         order = await session.scalar(select(DonateOrder).where(DonateOrder.id == order_id).with_for_update().execution_options(populate_existing=True))
@@ -146,7 +186,7 @@ async def fulfil_step(sessions: async_sessionmaker, order_id: int, mode: str, ou
         if result.ref:
             order.provider_ref = result.ref
         if result.status == "success":
-            await _finish_success(session, order, result.ref, out)
+            await _finish_success(session, order, result.ref, out, result.artifact)
             return None
         if result.status == "failed":
             await refund(session, order, result.message or "provayder rad etdi", out)

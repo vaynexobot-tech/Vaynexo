@@ -32,6 +32,7 @@ def game_dict(g: DonateGame, available: bool) -> dict:
                            {"key": "server_id", "label": "Zone ID", "placeholder": "1234", "pattern": r"^\d{1,10}$"}] if g.slug in ("ML", "MC") else [])
     logo = f"/api/donate/game-image/{g.slug}?v={g.image_ver}" if g.image_ver else g.logo_url
     return {"slug": g.slug, "name": g.name, "logo": logo, "hero": None if g.image_ver else g.hero_url, "category": g.category,
+            "voucher": not g.fields and g.slug not in ("ML", "MC"),
             "fields": fields, "available": available, "slot": g.featured_slot}
 
 
@@ -144,7 +145,9 @@ async def get_order(order_id: int, user: CurrentUser, session: SessionDep):
     o = await session.get(DonateOrder, order_id)
     if o is None or o.user_id != user.id:
         raise NotFound("Buyurtma")
-    return S.donate_order(o)
+    from app.services.donate import order_voucher
+
+    return {**S.donate_order(o), "voucher": order_voucher(o)}
 
 
 # ------------------------------------------------------------------ Yupay vebhuki

@@ -60,7 +60,7 @@ async def seed_games() -> None:
         if "MC" not in have:
             session.add(DonateGame(slug="MC", name="Magic Chess", is_active=False, sort=99, fields=_ML))
         for slug, g in have.items():
-            if not g.fields:
+            if not g.fields and g.provider_id is None:  # API'ga bog'langan (vaucher) o'yinlar maydonsiz qoladi
                 g.fields = GAME_FIELDS.get(slug, [_PID])
 
 

@@ -1108,4 +1108,11 @@ export const ru: Record<string, string> = {
   "{n} ta topildi": "Найдено: {n}",
   "«{n}» jamoasi sizni taklif qilmoqda": "Команда «{n}» приглашает вас",
   "Qidiruv": "Поиск",
+  "Kod": "Код",
+  "Yetkazish": "Доставка",
+  "Kod shu yerda va botda beriladi": "Код появится здесь и в боте",
+  "Seriya raqami": "Серийный номер",
+  "Havola": "Ссылка",
+  "PIN": "PIN",
+  "Kodni hech kimga bermang. U «Xaridlar tarixi»da ham saqlanadi.": "Никому не передавайте код. Он также сохранён в «Истории покупок».",
 };

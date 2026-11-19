@@ -1095,4 +1095,11 @@ export const en: Record<string, string> = {
   "{n} ta topildi": "{n} found",
   "«{n}» jamoasi sizni taklif qilmoqda": "Team «{n}» invites you",
   "Qidiruv": "Search",
+  "Kod": "Code",
+  "Yetkazish": "Delivery",
+  "Kod shu yerda va botda beriladi": "The code appears here and in the bot",
+  "Seriya raqami": "Serial number",
+  "Havola": "Link",
+  "PIN": "PIN",
+  "Kodni hech kimga bermang. U «Xaridlar tarixi»da ham saqlanadi.": "Don't share the code. It's also saved in «Purchase history».",
 };

@@ -9,7 +9,7 @@ import { Arena, TournamentPage, Top } from "./pages/Arena";
 import { Boost, BoostOrderPage, BoostOrders } from "./pages/Boost";
 import { ChatPage, Chats } from "./pages/Chat";
 import { DealPage, Deals } from "./pages/Deal";
-import Donate from "./pages/Donate";
+import Donate, { DonateOrderPage } from "./pages/Donate";
 import Home from "./pages/Home";
 import { HeroPage, Heroes } from "./pages/Heroes";
 import { ListingDetail, Market, PayListing } from "./pages/Market";
@@ -109,6 +109,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/partner" element={<Gate f="partner"><Partner /></Gate>} />
+          <Route path="/donate/order/:id" element={<DonateOrderPage />} />
           <Route path="/donate/:game" element={<Donate />} />
           <Route path="/market" element={<Gate f="market"><Market /></Gate>} />
           <Route path="/listing/:id" element={<Gate f="market"><ListingDetail /></Gate>} />

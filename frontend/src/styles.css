@@ -479,3 +479,5 @@ textarea.input { height: auto; min-height: 90px; padding: 12px 14px; resize: ver
 .lane-mini button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--card2); display: grid; place-items: center; opacity: .55; }
 .lane-mini button.on { opacity: 1; border-color: var(--y); background: rgba(255,214,10,.1); }
 .region-sel { height: 36px; padding: 0 8px; font-size: 12px; flex: 1; min-width: 0; }
+
+.voucher-code { font-family: ui-monospace, monospace; font-size: 18px; font-weight: 800; letter-spacing: .06em; color: var(--y); background: rgba(255,214,10,.08); border: 1px dashed rgba(255,214,10,.5); border-radius: 12px; padding: 10px 12px; text-align: left; word-break: break-all; }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type DonateGameCard, type DonateGameField, type DonateOrder, type Pkg } from "../api";
 import { t } from "../i18n";
+import { copyText } from "../tg";
 import { BottomBar, Empty, Field, GameTile, Header, Loadable, money, som, Spinner, Status, useAction, useApp, useLoad } from "../ui";
 
 const DEFAULT_FIELDS: DonateGameField[] = [{ key: "player_id", label: "ID", placeholder: "12345678", pattern: "" }];
@@ -19,7 +20,8 @@ function DonateFlow({ game: g }: { game: DonateGameCard }) {
   const fields = g.fields.length ? g.fields : DEFAULT_FIELDS;
   const nav = useNavigate();
   const { me, refreshMe } = useApp();
-  const [step, setStep] = useState(1);
+  const voucher = !!g.voucher;
+  const [step, setStep] = useState(voucher ? 2 : 1);
   const [uid, setUid] = useState(() => (game === "ML" ? me?.ml_id ?? "" : ""));
   const [zid, setZid] = useState("");
   const [nick, setNick] = useState<string | null>(null);
@@ -69,7 +71,7 @@ function DonateFlow({ game: g }: { game: DonateGameCard }) {
 
   const balance = me?.balance ?? 0;
   const enough = pick ? balance >= pick.price : false;
-  const steps = [t("ID"), t("Paket"), t("To'lov"), t("Tasdiq")];
+  const steps = [t("ID"), t("Paket"), t("To'lov"), voucher ? t("Kod") : t("Tasdiq")];
 
   return (
     <>
@@ -138,7 +140,7 @@ function DonateFlow({ game: g }: { game: DonateGameCard }) {
             <div className="b">{t("Buyurtma")}</div>
             <div className="kv"><span>{t("O'yin")}</span><span>{g.name}</span></div>
             <div className="kv"><span>{t("Paket")}</span><span>{pick.name}</span></div>
-            <div className="kv"><span>ID</span><span className="mono">{uid}{zid ? ` (${zid})` : ""}</span></div>
+            {voucher ? <div className="kv"><span>{t("Yetkazish")}</span><span>{t("Kod shu yerda va botda beriladi")}</span></div> : <div className="kv"><span>ID</span><span className="mono">{uid}{zid ? ` (${zid})` : ""}</span></div>}
             {nick && nick !== "✓" && <div className="kv"><span>{t("Nik")}</span><span>{nick}</span></div>}
             <div className="divider" />
             <div className="kv"><span>{t("To'lov usuli")}</span><span>{t("Hamyon balansi")}</span></div>
@@ -160,7 +162,8 @@ function DonateFlow({ game: g }: { game: DonateGameCard }) {
               {order.status === "done" ? t("Yetkazildi!") : order.status === "refunded" ? t("Pul hamyonga qaytarildi") : t("Buyurtma bajarilmoqda...")}
             </div>
             <Status s={order.status} />
-            <div className="mut sm">{order.title} · ID {order.player_id}{order.zone_id ? ` (${order.zone_id})` : ""}</div>
+            <div className="mut sm">{order.title}{order.player_id ? ` · ID ${order.player_id}` : ""}{order.zone_id ? ` (${order.zone_id})` : ""}</div>
+            {order.voucher && <VoucherBox v={order.voucher} />}
             <div className="mut xs mono">{order.ref}</div>
             {order.status === "refunded" && <div className="mut sm">{t("Provayder buyurtmani bajara olmadi. ID to'g'riligini tekshirib, qayta urinib ko'ring.")}</div>}
             {order.status === "review" && <div className="mut sm">{t("Buyurtma tekshirilmoqda. Natija Telegram orqali xabar qilinadi.")}</div>}
@@ -186,6 +189,50 @@ function DonateFlow({ game: g }: { game: DonateGameCard }) {
           </>
         )}
       </BottomBar>
+    </>
+  );
+}
+
+const VOUCHER_LABEL: Record<string, string> = { code: "Kod", pin: "PIN", serial: "Seriya raqami", link: "Havola" };
+
+/** Vaucher kodi: nusxalash tugmasi bilan. */
+export function VoucherBox({ v }: { v: Record<string, string> }) {
+  const { toast } = useApp();
+  return (
+    <div className="card col" style={{ width: "100%", textAlign: "left", borderColor: "rgba(29,233,182,.5)" }}>
+      {Object.entries(v).map(([k, val]) => (
+        <div key={k} className="col" style={{ gap: 4 }}>
+          <span className="mut xs">{t(VOUCHER_LABEL[k] ?? k)}</span>
+          {k === "link" ? <a className="y b ell" href={val} target="_blank" rel="noreferrer">{val}</a> : (
+            <button className="voucher-code" onClick={() => { copyText(val); toast(t("Nusxalandi"), "ok"); }}>{val} <span className="mut">⧉</span></button>
+          )}
+        </div>
+      ))}
+      <div className="mut xs">{t("Kodni hech kimga bermang. U «Xaridlar tarixi»da ham saqlanadi.")}</div>
+    </div>
+  );
+}
+
+/** Tarixdan ochiladigan donat buyurtmasi (vaucher kodi shu yerda). */
+export function DonateOrderPage() {
+  const id = useParams().id;
+  const st = useLoad(() => api.get<DonateOrder>(`/donate/orders/${id}`), [id]);
+  return (
+    <>
+      <Header title={t("Buyurtma")} sub={st.data?.ref} />
+      <div className="page">
+        <Loadable state={st}>
+          {(o) => (
+            <div className="card col center" style={{ alignItems: "center", padding: 24 }}>
+              <div className="bb" style={{ fontSize: 18 }}>{o.title}</div>
+              <Status s={o.status} />
+              {o.player_id && <div className="mut sm">ID {o.player_id}{o.zone_id ? ` (${o.zone_id})` : ""}</div>}
+              <div className="y mono b">{som(o.price)}</div>
+              {o.voucher && <VoucherBox v={o.voucher} />}
+            </div>
+          )}
+        </Loadable>
+      </div>
     </>
   );
 }

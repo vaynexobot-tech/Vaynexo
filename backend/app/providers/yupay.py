@@ -44,13 +44,26 @@ def _dec(v) -> Decimal | None:
         return None
 
 
+VOUCHER_KEYS = ("code", "pin", "serial", "link")
+
+
+def voucher_artifact(data: dict) -> dict | None:
+    """Buyurtmadan vaucher kodini ajratib olish (faqat buyurtmani o'qish beradi; vebhukda kod bo'lmaydi)."""
+    d = data.get("delivery") or {}
+    art = d.get("artifact") if isinstance(d, dict) else None
+    if not isinstance(art, dict):
+        return None
+    out = {k: str(art[k])[:500] for k in VOUCHER_KEYS if art.get(k) not in (None, "")}
+    return out or None
+
+
 def map_order(data: dict) -> ProviderResult:
     """Yupay buyurtma javobini bizning natijaga aylantirish."""
     status = str(data.get("status") or "").lower()
     ref = str(data.get("order_id") or "") or None
     reason = data.get("failure_reason")
     if status == "delivered":
-        return ProviderResult("success", ref=ref)
+        return ProviderResult("success", ref=ref, artifact=voucher_artifact(data))
     if status == "failed":
         price, back = _dec(data.get("price_usd")), _dec(data.get("refunded_usd"))
         if reason == "fulfillment_failed_refunded" or (price is not None and back is not None and price > 0 and back >= price):

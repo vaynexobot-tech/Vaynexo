@@ -14,6 +14,7 @@ class ProviderResult:
     status: Status
     ref: str | None = None
     message: str = ""
+    artifact: dict | None = None  # vaucher: {"code": ..., "pin": ..., "serial": ..., "link": ...}
 
 
 class DonateProvider(Protocol):

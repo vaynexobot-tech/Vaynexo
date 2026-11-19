@@ -213,6 +213,7 @@ class DonatePackage(Base):
     source: Mapped[str] = mapped_column(String(8), default="manual", server_default="manual")  # manual | api
     admin_off: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # admin yashirgan — sinxronlash qayta yoqmaydi
     cost_usd: Mapped[str | None] = mapped_column(String(24))  # API tannarxi (USD satr); so'm narx shundan hisoblanadi
+    delivery: Mapped[str] = mapped_column(String(8), default="topup", server_default="topup")  # topup (ID ga) | voucher (kod)
 
 
 class DonateOrder(TimestampMixin, Base):
@@ -230,6 +231,7 @@ class DonateOrder(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(16), default="processing", index=True)
     provider_ref: Mapped[str | None] = mapped_column(String(128))
     error: Mapped[str | None] = mapped_column(String(500))
+    voucher_enc: Mapped[str | None] = mapped_column(Text)  # vaucher kodi (shifrlangan), faqat egasiga ko'rsatiladi
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

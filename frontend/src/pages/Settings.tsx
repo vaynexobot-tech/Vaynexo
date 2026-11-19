@@ -81,7 +81,7 @@ export function ProfileEdit() {
 }
 
 const HIST_LINK: Record<string, (id: number) => string> = {
-  account: (id) => `/deal/${id}`, boost: (id) => `/boost/${id}`, rent: (id) => `/rental/${id}`, telegram: (id) => `/tg/order/${id}`,
+  donate: (id) => `/donate/order/${id}`, account: (id) => `/deal/${id}`, boost: (id) => `/boost/${id}`, rent: (id) => `/rental/${id}`, telegram: (id) => `/tg/order/${id}`,
 };
 
 export function History() {

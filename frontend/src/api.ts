@@ -128,7 +128,7 @@ export const api = {
 // ---------------------------------------------------------------- turlar
 export type Game = "ML" | "MC";
 export interface DonateGameField { key?: string; label: string; placeholder?: string; pattern?: string }
-export interface DonateGameCard { slug: string; name: string; logo: string | null; hero: string | null; category: string; fields: DonateGameField[]; available: boolean; slot: number | null }
+export interface DonateGameCard { slug: string; name: string; logo: string | null; hero: string | null; category: string; fields: DonateGameField[]; available: boolean; slot: number | null; voucher?: boolean }
 export interface DonateGames { featured: DonateGameCard[]; popular: DonateGameCard[]; all: DonateGameCard[] }
 export interface Me {
   id: number;
@@ -173,7 +173,7 @@ export interface Me {
 export type Lang = "uz" | "ru" | "en";
 export interface PayCard { id: number; last4: string; brand: string; holder: string; expiry: string; is_default: boolean }
 export interface Pkg { id: number; game: string; name: string; diamonds: number; bonus: number; price: number; is_hot: boolean; is_active?: boolean; sku?: string; sort?: number; source?: string; cost_usd?: string | null }
-export interface DonateOrder { id: number; ref: string; game: string; title: string; player_id: string; zone_id: string; price: number; status: string; error: string | null; created_at: string; user_id?: number; attempts?: number; provider_ref?: string }
+export interface DonateOrder { id: number; ref: string; game: string; title: string; player_id: string; zone_id: string; price: number; status: string; error: string | null; created_at: string; user_id?: number; attempts?: number; provider_ref?: string; voucher?: Record<string, string> | null }
 export interface ListingCard {
   id: number; game: Game; title: string; rank: string; server: string; collection_level: string; skins: number; heroes: number;
   price: number; cover: string | null; status: string; created_at: string; views?: number; chats?: number; reject_reason?: string | null;

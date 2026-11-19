@@ -264,12 +264,13 @@ async def sync_provider(session: AsyncSession, row: DonateProvider) -> dict:
         g.synced_at = datetime.now(timezone.utc)
         products = b.get("products") or []
         if products and not g.fields:
-            g.fields = _fields(products[0])
+            g.fields = _fields(next((p for p in products if p.get("required_fields")), products[0]))
         game_pkgs: list[DonatePackage] = []
+        all_voucher = bool(products) and all(not p.get("required_fields") for p in products)
+        if all_voucher:
+            g.fields = []  # faqat kod beriladigan o'yin — ID so'ralmaydi
         for prod in products:
-            # Vaucher/kartalar (o'yinchi ma'lumoti so'ralmaydi — kod beriladi) hozircha sotilmaydi
-            if not prod.get("required_fields"):
-                continue
+            delivery = "topup" if prod.get("required_fields") else "voucher"  # maydonsiz mahsulot — kod beriladi
             for s in prod.get("skus") or []:
                 for sku, name, cost in sku_variants(s, prod, g.name):
                     key = (row.id, sku)
@@ -282,7 +283,7 @@ async def sync_provider(session: AsyncSession, row: DonateProvider) -> dict:
                         p = DonatePackage(game=slug, name=name, price=price, provider_sku=sku, provider_id=row.id, source="api")
                         session.add(p)
                         pkgs[key] = p
-                    p.game, p.name, p.price, p.cost_usd = slug, name, price, cost
+                    p.game, p.name, p.price, p.cost_usd, p.delivery = slug, name, price, cost, delivery
                     p.diamonds, p.bonus = parse_amount(name)
                     p.is_active = s.get("stock") != 0 and not p.admin_off
                     game_pkgs.append(p)

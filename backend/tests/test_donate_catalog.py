@@ -75,7 +75,7 @@ async def test_sync_creates_games_and_packages(api, monkeypatch):
     row = await _provider(monkeypatch)
     async with SessionLocal() as s, s.begin():
         stats = await dc.sync_provider(s, await s.get(DonateProvider, row.id))
-    assert stats["packages"] == 9 and "Mobile Legends RU" in stats["new_games"]
+    assert stats["packages"] == 10 and "Mobile Legends RU" in stats["new_games"]
     async with SessionLocal() as s:
         games = {g.slug: g for g in await s.scalars(select(DonateGame))}
         assert "pubg" not in games and games["pubg-mobile"].featured_slot == 2 and games["pubg-mobile"].provider_id == row.id
@@ -84,7 +84,9 @@ async def test_sync_creates_games_and_packages(api, monkeypatch):
         assert games["mobile-legends-ru"].is_active is False  # yangi topilgan o'yin yashirin (admin yoqadi)
         pk = {p.provider_sku: p for p in await s.scalars(select(DonatePackage).where(DonatePackage.source == "api"))}
         # unit SKU min/max'siz kirmaydi; vaucher (ma'lumot so'ralmaydi) kirmaydi; Steam erkin summa -> $5/$10/$20
-        assert set(pk) == {"sku-86", "sku-172", "sku-out", "u60", "s1", "r1", "sa@amt:5", "sa@amt:10", "sa@amt:20"}
+        assert set(pk) == {"sku-86", "sku-172", "sku-out", "u60", "s1", "r1", "sa@amt:5", "sa@amt:10", "sa@amt:20", "v1"}
+        assert pk["v1"].delivery == "voucher" and pk["v1"].game == "mobile-legends-voucher" and pk["s1"].delivery == "topup"
+        assert games["mobile-legends-voucher"].fields == []  # faqat kod — ID so'ralmaydi
         assert pk["sa@amt:10"].name == "$10" and pk["sa@amt:10"].cost_usd == "10.00"
         assert pk["sku-172"].price == 33_800 and pk["sku-172"].cost_usd == "2.40"
         assert pk["sku-out"].is_active is False and pk["sku-86"].is_active is True
@@ -228,3 +230,58 @@ async def test_game_image_upload(api, client):
     assert games["featured"][0]["logo"] == url
     r = await client.post("/api/admin/donate/games/ML/image", files={"file": ("a.png", b"x", "image/png")}, headers={"X-Dev-User": "5"})
     assert r.status_code == 403
+
+
+async def test_voucher_order_delivers_code(api, ctx, monkeypatch):
+    from app.models import DonateOrder
+    from app.providers.base import ProviderResult
+    from app.services import donate as donate_svc
+    from tests.conftest import get_balance, set_balance
+
+    async with SessionLocal() as s, s.begin():
+        s.add(DonateGame(slug="roblox", name="Roblox", fields=[], is_active=True))
+        p = DonatePackage(game="roblox", name="100 Robux", price=30_000, provider_sku="rb100", delivery="voucher")
+        s.add(p)
+    await set_balance(80, 50_000)
+    g = (await api(80).get("/donate/games/roblox")).json()
+    assert g["voucher"] is True
+    r = await api(80).post("/donate/orders", {"package_id": p.id, "player_id": "", "zone_id": ""})
+    assert r.status_code == 200, r.text
+    oid = r.json()["id"]
+    assert await get_balance(80) == 20_000
+
+    class Prov:
+        calls = 0
+
+        async def create(self, *a):
+            return ProviderResult("success", ref="Y1")  # kod yo'q — holatdan olinadi
+
+        async def status(self, ref):
+            Prov.calls += 1
+            return ProviderResult("success", ref="Y1", artifact={"code": "RBX-1234-ABCD", "pin": "9876"})
+
+    async def fake(session, pkg):
+        return Prov()
+
+    monkeypatch.setattr(dc, "provider_for_package", fake)
+    from app.db import SessionLocal as SL
+    from app.services.notify import Outbox
+
+    out = Outbox()
+    assert await donate_svc.fulfil_step(SL, oid, "create", out) is None
+    await out.flush()
+    o = (await api(80).get(f"/donate/orders/{oid}")).json()
+    assert o["status"] == "done" and o["voucher"] == {"code": "RBX-1234-ABCD", "pin": "9876"}
+    assert any(uid == 80 and "RBX-1234-ABCD" in txt for uid, txt, _ in ctx["sent"])
+    async with SessionLocal() as s:
+        raw = (await s.get(DonateOrder, oid)).voucher_enc
+    assert "RBX" not in raw  # bazada shifrlangan
+    assert (await api(81).get(f"/donate/orders/{oid}")).status_code == 404  # boshqaga ko'rinmaydi
+
+
+def test_yupay_voucher_artifact():
+    from app.providers.yupay import map_order
+
+    r = map_order({"status": "delivered", "order_id": "O", "delivery": {"artifact_kind": "voucher_code", "artifact": {"code": "AAA", "reference": "x"}}})
+    assert r.status == "success" and r.artifact == {"code": "AAA"}
+    assert map_order({"status": "delivered", "delivery": {"artifact": {}}}).artifact is None

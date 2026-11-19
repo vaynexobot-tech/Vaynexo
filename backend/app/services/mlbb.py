@@ -56,7 +56,7 @@ def _img_dir() -> Path | None:
 # ---------------------------------------------------------------- MLBB kartasi
 def profile_dict(u: User) -> dict:
     return {"nick": u.ml_nick or "", "lane": u.ml_lane or "", "rank": u.ml_rank or "", "heroes": u.ml_heroes or [],
-            "ml_id": u.ml_id or "", "server": u.ml_server or "", "verified": bool(u.ml_verified)}
+            "ml_id": u.ml_id or "", "server": u.ml_server or "", "verified": bool(u.ml_verified), "region": u.ml_region or ""}
 
 
 def update_profile(u: User, data: dict) -> None:
@@ -69,6 +69,13 @@ def update_profile(u: User, data: dict) -> None:
     u.ml_nick = (data.get("nick") or "").strip()[:32] or None
     u.ml_lane, u.ml_rank = lane or None, rank or None
     u.ml_heroes = valid_heroes(data.get("heroes"))
+    if "region" in data:
+        from app.services.teams import REGIONS
+
+        reg = data.get("region") or ""
+        if reg and reg not in REGIONS:
+            raise AppError("bad_region", "Viloyat noto'g'ri")
+        u.ml_region = reg or None
 
 
 # ---------------------------------------------------------------- viktorina

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type Tournament } from "../api";
 import { t } from "../i18n";
 import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, Sheet, som, useAction, useApp, useLoad } from "../ui";
 import { Risers } from "./Heroes";
-import { HERO_BY_ID, HeroAva, HeroPicker, HeroSlots, LANES, LanePicker, laneKey, laneLabel, MlIcon, RankPicker, rankKey, rankLabel, roleLabel } from "../mlbb";
+import { Search } from "./Search";
+import { HERO_BY_ID, HeroAva, HeroPicker, HeroSlots, LanePicker, laneLabel, MlIcon, RankPicker, rankLabel, roleLabel } from "../mlbb";
 
 interface Summary {
   points: number; passes: number; vip_credit_days: number; boost_coupon_percent: number;
@@ -23,13 +24,13 @@ export function Arena() {
       <div className="page">
         <MlCard />
         <div className="tabs5">
-          {([["tours", "Turnirlar"], ["games", "O'yinlar"], ["team", "Jamoa"], ["rating", "Reyting"], ["missions", "Vazifalar"]] as const).map(([v, l]) => (
+          {([["tours", "Turnirlar"], ["games", "O'yinlar"], ["team", "Qidiruv"], ["rating", "Reyting"], ["missions", "Vazifalar"]] as const).map(([v, l]) => (
             <button key={v} className={tab === v ? "on" : ""} onClick={() => pick(v)}>{t(l)}</button>
           ))}
         </div>
         {tab === "tours" && <Tours sum={sum.data} reload={sum.reload} />}
         {tab === "games" && <Games onPoints={sum.reload} />}
-        {tab === "team" && <Team />}
+        {tab === "team" && <Search />}
         {tab === "rating" && <Rating rules={sum.data?.points_rules} />}
         {tab === "missions" && <Missions onChange={sum.reload} />}
       </div>
@@ -100,11 +101,17 @@ function TourCard({ x, onClick }: { x: Tournament; onClick: () => void }) {
 }
 
 // ---------------------------------------------------------------- MLBB kartasi
-interface MlProfile { nick: string; lane: string; rank: string; heroes: number[]; ml_id: string; server: string; verified: boolean }
+const REGIONS = ["Toshkent sh.", "Toshkent vil.", "Andijon", "Buxoro", "Farg'ona", "Jizzax", "Xorazm", "Namangan", "Navoiy", "Qashqadaryo", "Qoraqalpog'iston", "Samarqand", "Sirdaryo", "Surxondaryo"];
+interface MlProfile { nick: string; lane: string; rank: string; heroes: number[]; ml_id: string; server: string; verified: boolean; region: string }
 
 function MlCard() {
   const st = useLoad(() => api.get<MlProfile>("/arena/profile"));
   const [edit, setEdit] = useState(false);
+  useEffect(() => {
+    const on = () => setEdit(true);
+    window.addEventListener("vx:edit-mlcard", on);
+    return () => window.removeEventListener("vx:edit-mlcard", on);
+  }, []);
   const p = st.data;
   const empty = !p || (!p.rank && !p.lane && !(p.heroes ?? []).length);
   return (
@@ -152,7 +159,7 @@ function LinkBox({ p, onLinked }: { p: MlProfile; onLinked: (p: MlProfile) => vo
 }
 
 function MlCardSheet({ p, onClose, onSaved, onLinked }: { p: MlProfile; onClose: () => void; onSaved: (p: MlProfile) => void; onLinked: (p: MlProfile) => void }) {
-  const [f, setF] = useState({ nick: p.nick, lane: p.lane, rank: p.rank, heroes: p.heroes ?? [] });
+  const [f, setF] = useState({ nick: p.nick, lane: p.lane, rank: p.rank, heroes: p.heroes ?? [], region: p.region ?? "" });
   const { busy, run } = useAction();
   const { toast } = useApp();
   return (
@@ -163,6 +170,12 @@ function MlCardSheet({ p, onClose, onSaved, onLinked }: { p: MlProfile; onClose:
         <Field label={t("O'yindagi nik")}><input className="input" maxLength={32} value={f.nick} onChange={(e) => setF({ ...f, nick: e.target.value })} /></Field>
         <Field label={t("Rank")}><RankPicker value={f.rank} onChange={(v) => setF({ ...f, rank: v })} /></Field>
         <Field label={t("Asosiy liniya")}><LanePicker value={f.lane} onChange={(v) => setF({ ...f, lane: v })} /></Field>
+        <Field label={t("Viloyat")}>
+          <select className="input" value={f.region} onChange={(e) => setF({ ...f, region: e.target.value })}>
+            <option value="">📍 {t("Viloyatni tanlang")}</option>
+            {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </Field>
         <Field label={t("Sevimli qahramonlar (3 tagacha)")}><HeroSlots value={f.heroes} onChange={(v) => setF({ ...f, heroes: v })} /></Field>
         <div className="mut xs">{t("Karta reytingda, jamoa e'lonlarida va turnirlarda ko'rinadi.")}</div>
         <button className="btn full" disabled={busy} onClick={() => run(async () => {
@@ -300,89 +313,6 @@ function HeroVoteCard({ onPoints }: { onPoints: () => void }) {
         </div>
       )}
     </Loadable>
-  );
-}
-
-// ---------------------------------------------------------------- Jamoa topish
-interface Post { id: number; kind: "player" | "team"; name: string; lane: string; rank: string; online: string; note: string; mine: boolean; heroes: number[]; author_rank: string }
-
-function Team() {
-  const { toast } = useApp();
-  const [lane, setLane] = useState("");
-  const apiLane = LANES.find((l) => l.v === lane)?.label ?? "";
-  const st = useLoad(() => api.get<Post[]>(`/arena/team-posts?lane=${apiLane}`), [apiLane]);
-  const [open, setOpen] = useState(false);
-  const { run } = useAction();
-  return (
-    <>
-      <div className="card row" style={{ borderColor: "rgba(255,214,10,.4)" }}>
-        <div className="grow"><div className="b">{t("Jamoa yoki o'yinchi qidiryapsizmi?")}</div><div className="mut xs">{t("Rolingiz, rankingiz va onlayn vaqtingizni yozing")}</div></div>
-        <button className="btn small" onClick={() => setOpen(true)}>{t("E'lon berish")}</button>
-      </div>
-      <LanePicker value={lane} onChange={setLane} />
-      <Loadable state={st}>
-        {(list) => list.length === 0 ? <Empty icon="🤝" text={t("Hozircha e'lonlar yo'q")} /> : list.map((p) => {
-          const rk = rankKey(p.rank) || p.author_rank;
-          return (
-            <div key={p.id} className="card col tight" style={{ gap: 8 }}>
-              <div className="row">
-                {rk ? <MlIcon kind="rank" k={rk} size={42} /> : <span className="avatar-l" style={{ background: "#ffd60a" }}>{p.name[0]?.toUpperCase()}</span>}
-                <div className="grow" style={{ minWidth: 0 }}>
-                  <div className="row" style={{ gap: 6 }}>
-                    <span className="b ell">{p.name}</span>
-                    {p.lane && <MlIcon kind="lane" k={laneKey(p.lane)} size={18} />}
-                    <span className={"pill-b " + (p.kind === "team" ? "b" : "y")} style={{ fontSize: 10, padding: "1px 7px" }}>{p.kind === "team" ? t("jamoa") : t("o'yinchi")}</span>
-                  </div>
-                  <div className="mut xs ell">{[rk ? rankLabel(rk) : p.rank, p.lane && laneLabel(p.lane), p.online].filter(Boolean).join(" · ")}</div>
-                </div>
-                {p.mine ? (
-                  <button className="btn small ghost" onClick={() => run(async () => { await api.post(`/arena/team-posts/${p.id}/close`); st.reload(); })}>{t("Yopish")}</button>
-                ) : (
-                  <button className="btn small ghost" onClick={() => run(async () => { await api.post(`/arena/team-posts/${p.id}/contact`); toast(t("Xabaringiz botda yuborildi"), "ok"); })}>{t("Yozish")}</button>
-                )}
-              </div>
-              {(p.heroes.length > 0 || p.note) && (
-                <div className="row" style={{ gap: 6 }}>
-                  {p.heroes.map((id) => <HeroAva key={id} id={id} size={30} radius={8} />)}
-                  {p.note && <span className="xs ell grow" style={{ color: "#d6dbe8" }}>{p.note}</span>}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </Loadable>
-      {open && <PostSheet onClose={() => setOpen(false)} onDone={() => { setOpen(false); st.reload(); }} />}
-    </>
-  );
-}
-
-function PostSheet({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
-  const prof = useLoad(() => api.get<MlProfile>("/arena/profile"));
-  const [f, setF] = useState({ kind: "player", name: "", lane: "", rank: "", online: "", note: "", heroes: [] as number[] });
-  const [filled, setFilled] = useState(false);
-  if (prof.data && !filled) {
-    setFilled(true);
-    setF((x) => ({ ...x, name: prof.data!.nick || x.name, lane: prof.data!.lane, rank: prof.data!.rank, heroes: prof.data!.heroes ?? [] }));
-  }
-  const { busy, run } = useAction();
-  return (
-    <Sheet open onClose={onClose}>
-      <div className="sec-title" style={{ marginTop: 0 }}>{t("Jamoa topish e'loni")}</div>
-      <div className="col">
-        <Seg value={f.kind} onChange={(v) => setF({ ...f, kind: v })} options={[{ v: "player", label: t("Men o'yinchiman") }, { v: "team", label: t("Bizga o'yinchi kerak") }]} />
-        <Field label={f.kind === "team" ? t("Jamoa nomi") : t("Nik")}><input className="input" maxLength={64} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-        <Field label={f.kind === "team" ? t("Qaysi liniya kerak") : t("Liniya")}><LanePicker value={f.lane} onChange={(v) => setF({ ...f, lane: v })} /></Field>
-        <Field label={t("Rank")}><RankPicker value={f.rank} onChange={(v) => setF({ ...f, rank: v })} only={["epic", "legend", "mythic", "honor", "glory", "immortal"]} /></Field>
-        <Field label={t("Qahramonlar (3 tagacha)")}><HeroSlots value={f.heroes} onChange={(v) => setF({ ...f, heroes: v })} /></Field>
-        <Field label={t("Onlayn vaqt")}><input className="input" maxLength={32} placeholder="20:00–24:00" value={f.online} onChange={(e) => setF({ ...f, online: e.target.value })} /></Field>
-        <Field label={t("Izoh")}><input className="input" maxLength={300} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></Field>
-        <div className="mut xs">{t("E'lon 7 kun turadi. «Yozish» bosilganda bot sizga xabar yuboradi.")}</div>
-        <button className="btn full" disabled={f.name.trim().length < 2 || busy} onClick={() => run(async () => {
-          await api.post("/arena/team-posts", { ...f, lane: LANES.find((l) => l.v === f.lane)?.label ?? "", rank: f.rank ? rankLabel(f.rank) : "" });
-          onDone();
-        })}>{t("Joylash")}</button>
-      </div>
-    </Sheet>
   );
 }
 

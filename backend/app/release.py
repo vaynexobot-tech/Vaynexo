@@ -11,8 +11,11 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-18.live-stats"
-NOTES = """📊 Tirik MLBB statistikasi (Rone Arena): Qahramonlar → «Tier» (S–D, rank va kun bo'yicha, jadval), qahramon sahifasida g'alaba/tanlov/ban %,
+RELEASE = "2026-11-19.qidiruv"
+NOTES = """🔎 Arena → Qidiruv: 5v5 jamoaviy bahs, 1v1 duel, rankedga sherik, jamoa (o'yinchi kerak / jamoa kerak / jamoalar)
+   Haqiqiy jamoalar: sardor, 7 tagacha a'zo, o'rtacha rank, qo'shilish so'rovi va taklif; viloyat va «Menga mos rank» filtri
+   🔔 Sherik signali (mos sherik chiqsa bot xabar beradi), 🤝 Hurmat (birga o'ynaganlarni baholash, so'kinadiganlar belgilanadi)
+📊 Tirik MLBB statistikasi (Rone Arena): Qahramonlar → «Tier» (S–D, rank va kun bo'yicha, jadval), qahramon sahifasida g'alaba/tanlov/ban %,
    kuchli raqiblar va yaxshi juftlar; Arena → «Bu hafta kuchayganlar». O'chirish: Sozlamalar → «Tirik MLBB statistikasi»
    ⚠️ Rone Arena tijoriy foydalanish uchun egasi bilan kelishishni so'raydi: arena.rone.dev
 📖 Qahramonlar ensiklopediyasi (Arena → O'yinlar yoki /qahramonlar): 124 qahramon, skillar, tavsiya buyumlar,

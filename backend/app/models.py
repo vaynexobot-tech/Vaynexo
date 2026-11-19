@@ -47,6 +47,7 @@ class User(TimestampMixin, Base):
     ml_heroes: Mapped[list | None] = mapped_column(JSONB)
     ml_server: Mapped[str | None] = mapped_column(String(16))
     ml_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # ID o'yinda tekshirilgan
+    ml_region: Mapped[str | None] = mapped_column(String(32))  # viloyat
     bio: Mapped[str | None] = mapped_column(String(300))
     balance: Mapped[int] = mapped_column(BigInteger, default=0)
     tickets: Mapped[int] = mapped_column(Integer, default=0)  # konkurs biletlari
@@ -536,8 +537,10 @@ class TeamPost(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
-    kind: Mapped[str] = mapped_column(String(8))  # player | team
+    kind: Mapped[str] = mapped_column(String(8))  # player (jamoa kerak) | team (o'yinchi kerak) | duo (sherik) | duel (1v1) | scrim (5v5)
     name: Mapped[str] = mapped_column(String(64))
+    region: Mapped[str] = mapped_column(String(32), default="", server_default="")
+    team_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("teams.id"), index=True)
     lane: Mapped[str] = mapped_column(String(16), default="")
     rank: Mapped[str] = mapped_column(String(32), default="")
     online: Mapped[str] = mapped_column(String(32), default="")
@@ -545,6 +548,74 @@ class TeamPost(TimestampMixin, Base):
     heroes: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]")
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     status: Mapped[str] = mapped_column(String(16), default="active")
+
+
+class Team(TimestampMixin, Base):
+    """O'yinchilar jamoasi: sardor + a'zolar (5 asosiy + 2 zaxira)."""
+
+    __tablename__ = "teams"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    name: Mapped[str] = mapped_column(String(32), unique=True)
+    tag: Mapped[str] = mapped_column(String(6), default="")
+    captain_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    region: Mapped[str] = mapped_column(String(32), default="")
+    about: Mapped[str] = mapped_column(String(200), default="")
+    is_open: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    status: Mapped[str] = mapped_column(String(16), default="active", server_default="active", index=True)
+
+
+class TeamMember(TimestampMixin, Base):
+    __tablename__ = "team_members"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    team_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("teams.id"), index=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), unique=True)  # bir kishi — bitta jamoa
+    role: Mapped[str] = mapped_column(String(8), default="member")  # captain | member
+
+
+class TeamRequest(TimestampMixin, Base):
+    """Jamoaga qo'shilish so'rovi (join) yoki sardorning taklifi (invite)."""
+
+    __tablename__ = "team_requests"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    team_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("teams.id"), index=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(8))  # join | invite
+    status: Mapped[str] = mapped_column(String(12), default="pending", index=True)
+
+
+class PlayerContact(TimestampMixin, Base):
+    """Bir-biri bilan bog'langan o'yinchilar (hurmat bahosi faqat shular orasida)."""
+
+    __tablename__ = "player_contacts"
+    __table_args__ = (UniqueConstraint("a_id", "b_id", name="uq_player_contact"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    a_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    b_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+
+
+class PlayerRating(TimestampMixin, Base):
+    """Hurmat: birga o'ynagan odamga 👍 yoki 👎 (so'kinish, tashlab ketish)."""
+
+    __tablename__ = "player_ratings"
+    __table_args__ = (UniqueConstraint("rater_id", "target_id", name="uq_player_rating"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    rater_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
+    target_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    good: Mapped[bool] = mapped_column(Boolean)
+
+
+class PartnerSignal(TimestampMixin, Base):
+    """Sherik signali: rankingizga mos sherik e'loni chiqsa bot xabar beradi."""
+
+    __tablename__ = "partner_signals"
+
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class QuizAnswer(TimestampMixin, Base):

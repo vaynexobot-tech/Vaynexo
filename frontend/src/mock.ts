@@ -769,6 +769,28 @@ on("POST", "/arena/quiz/:n", (m, b) => {
 const votes: Json = { week: "demo", total: 41, my: null, points: 5, last_winner: 106, top: [{ hero: 109, votes: 14, pct: 34 }, { hero: 106, votes: 11, pct: 27 }, { hero: 4, votes: 9, pct: 22 }, { hero: 9, votes: 7, pct: 17 }] };
 on("GET", "/arena/hero-vote", () => votes);
 on("POST", "/arena/hero-vote", (_m, b) => { votes.my = b.hero_id; votes.total += 1; state.me.points += 5; return { ...votes, earned: 5 }; });
+const REGIONS = ["Toshkent sh.", "Toshkent vil.", "Andijon", "Buxoro", "Farg'ona", "Jizzax", "Xorazm", "Namangan", "Navoiy", "Qashqadaryo", "Qoraqalpog'iston", "Samarqand", "Sirdaryo", "Surxondaryo"];
+const demoTeams: Json[] = [
+  { id: 1, name: "Xorazm guch", tag: "XRZ", region: "Xorazm", about: "", is_open: true, captain: "dilshod_jg", captain_id: 4001, members: 6, max: 7, free: 1, avg_rank: "glory" },
+  { id: 2, name: "ORCA eSports", tag: "ORC", region: "Toshkent sh.", about: "", is_open: true, captain: "Hirota", captain_id: 4002, members: 6, max: 7, free: 1, avg_rank: "mythic" },
+];
+const mkAuthor = (n: string, rank: string, lane: string) => ({ user_id: 4100, nick: n, rank, lane, heroes: [109, 4], region: "Samarqand", verified: true });
+const searchPosts: Json[] = [
+  { id: 1, kind: "duo", name: "aziz_gold", lane: "Gold", rank: "mythic", online: "21:00–01:00", note: "Mythic push, mikrofon bor", heroes: [109, 4], region: "Samarqand", mine: false, author: mkAuthor("aziz_gold", "mythic", "gold"), respect: { good: 9, bad: 1, pct: 90, toxic: false } },
+  { id: 2, kind: "team", name: "Xorazm guch", lane: "Roam", rank: "glory", online: "20:00–24:00", note: "Roam kerak", heroes: [], region: "Xorazm", mine: false, author: mkAuthor("dilshod_jg", "glory", "jungle"), respect: null, team: demoTeams[0] },
+  { id: 3, kind: "scrim", name: "ORCA eSports", lane: "", rank: "mythic", online: "Shanba 20:00", note: "BO3", heroes: [], region: "Toshkent sh.", mine: false, author: mkAuthor("Hirota", "mythic", "exp"), respect: null, team: demoTeams[1] },
+];
+on("GET", "/arena/search/meta", () => ({ regions: REGIONS, signal: false, my_rank: mlProfile.rank, my_region: "", team_max: 7 }));
+on("GET", "/arena/posts", (_m, _b, q) => searchPosts.filter((p) => p.kind === q.get("kind")));
+on("POST", "/arena/posts", (_m, b) => { const p = { id: nid(), ...b, name: "Siz", rank: mlProfile.rank, heroes: b.heroes ?? [], mine: true, author: null, respect: null }; searchPosts.unshift(p); return p; });
+on("POST", "/arena/posts/:id/respond", () => ({ ok: true, text: "Xabar yuborildi" }));
+on("POST", "/arena/posts/:id/close", (m) => { const i = searchPosts.findIndex((p) => p.id === +m[1]); searchPosts.splice(i, 1); return { ok: true }; });
+on("GET", "/arena/teams", () => demoTeams);
+on("GET", "/arena/teams/my", () => ({ team: null, requests: [], invites: [] }));
+on("GET", "/arena/teams/:id", (m) => ({ ...demoTeams.find((t) => t.id === +m[1]), roster: [{ ...mkAuthor("dilshod_jg", "glory", "jungle"), role: "captain", respect: null }], is_member: false, is_captain: false, my_request: null }));
+on("POST", "/arena/teams/:id/join", () => ({ ok: true }));
+on("GET", "/arena/contacts", () => []);
+on("POST", "/arena/signal", (_m, b) => ({ signal: b.enabled }));
 const partnerVideos: Json[] = [
   { id: 1, platform: "tiktok", url: "https://tiktok.com/@aziz_edits/video/7431", status: "approved", views: 12_400, likes: 900, tier: 2, reward: "Turnirlarga bepul kirish · 1 oy", note: null, created_at: ago(20000) },
   { id: 2, platform: "instagram", url: "https://instagram.com/reel/C9xQ", status: "pending", views: 0, likes: 0, tier: 0, reward: "", note: null, created_at: ago(3000) },

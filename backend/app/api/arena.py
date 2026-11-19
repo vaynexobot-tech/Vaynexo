@@ -148,6 +148,7 @@ async def contact(pid: int, user: CurrentUser, session: SessionDep):
 # ---------------------------------------------------------------- MLBB kartasi, viktorina, haftaning qahramoni
 class ProfileIn(BaseModel):
     nick: str = Field("", max_length=32)
+    region: str = Field("", max_length=32)
     lane: str = Field("", max_length=16)
     rank: str = Field("", max_length=16)
     heroes: list[int] = Field(default_factory=list, max_length=10)

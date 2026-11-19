@@ -4,6 +4,7 @@ import { api, isWebAdmin, type Boost, type Deal, type DonateOrder, type ListingF
 import { t } from "../i18n";
 import { confirmDialog, openTg } from "../tg";
 import { HERO_BY_ID, HeroAva } from "../mlbb";
+import { BracketView, type BracketT } from "./Bracket";
 import { Chips, Copy, dateTime, Empty, Field, GameTile, Header, Loadable, money, MoneyInput, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
 
 type Tab = "stats" | "arena" | "analytics" | "audit" | "broadcast" | "promo" | "settings" | "rent" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments" | "kyc" | "partner" | "matches";
@@ -1018,7 +1019,7 @@ function Packages() {
   );
 }
 
-interface TourForm { id?: number; title: string; game: "ML" | "MC"; prize_fund: number | ""; entry_fee: number | ""; max_players: number; starts_at: string; rules: string; status: string }
+interface TourForm { id?: number; title: string; game: "ML" | "MC"; prize_fund: number | ""; entry_fee: number | ""; max_players: number; starts_at: string; rules: string; status: string; format?: string }
 
 function Tournaments() {
   const { toast } = useApp();
@@ -1027,7 +1028,9 @@ function Tournaments() {
   const [entries, setEntries] = useState<{ user_id: number; nick: string; game_id: string; server: string; tg_username: string }[] | null>(null);
   const [entriesFor, setEntriesFor] = useState<number | null>(null);
   const { busy, run } = useAction();
-  const blank: TourForm = { title: "", game: "ML", prize_fund: "", entry_fee: 0, max_players: 32, starts_at: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 16), rules: "", status: "open" };
+  const blank: TourForm = { title: "", game: "ML", prize_fund: "", entry_fee: 0, max_players: 32, starts_at: new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 16), rules: "", status: "open", format: "solo" };
+  const [bk, setBk] = useState<{ id: number; title: string; b: BracketT } | null>(null);
+  const openBk = (id: number, title: string) => run(async () => setBk({ id, title, b: await api.get<BracketT>(`/tournaments/${id}/bracket`) }));
   return (
     <>
       <button className="btn full" onClick={() => setF(blank)}>+ Turnir yaratish</button>
@@ -1035,20 +1038,45 @@ function Tournaments() {
         {(list) => list.map((x) => (
           <div key={x.id} className="card col">
             <div className="row between"><span className="b">{x.title}</span><Status s={x.status} /></div>
-            <div className="mut xs">{x.players_count}/{x.max_players} · {som(Number(x.prize_fund))} · {dateTime(x.starts_at)}</div>
+            <div className="mut xs">{x.format === "team" ? "👥 Jamoaviy · " : ""}{x.players_count}/{x.max_players} · {som(Number(x.prize_fund))} · {dateTime(x.starts_at)}</div>
             <div className="row">
               <button className="btn small ghost grow" onClick={() => setF({ ...x, starts_at: new Date(x.starts_at).toISOString().slice(0, 16) })}>Tahrirlash</button>
               <button className="btn small ghost grow" onClick={() => run(async () => { setEntriesFor(x.id); setEntries(await api.get(`/admin/tournaments/${x.id}/entries`)); })}>Ishtirokchilar</button>
+              <button className="btn small ghost grow" onClick={() => openBk(x.id, x.title)}>Setka</button>
             </div>
           </div>
         ))}
       </Loadable>
+      <Sheet open={!!bk} onClose={() => setBk(null)}>
+        {bk && (
+          <>
+            <div className="sec-title" style={{ marginTop: 0 }}>Setka · {bk.title}</div>
+            {bk.b.rounds.length === 0 ? (
+              <>
+                <div className="mut sm">Setka hali yaratilmagan. Ro'yxatdan o'tganlar aralashtirilib juftlanadi; juft bo'lmasa ba'zilari avtomatik keyingi bosqichga o'tadi. Turnir «Davom etmoqda» holatiga o'tadi.</div>
+                <button className="btn full" disabled={busy} onClick={() => run(async () => { setBk({ ...bk, b: await api.post<BracketT>(`/admin/tournaments/${bk.id}/bracket`) }); toast("Setka yaratildi, ishtirokchilarga xabar yuborildi", "ok"); st.reload(); })}>Setka yaratish</button>
+              </>
+            ) : (
+              <>
+                <div className="mut xs">G'olib tomonidagi ✓ ni bosing — u keyingi bosqichga o'tadi. Final g'olibiga ball avtomatik beriladi.</div>
+                <BracketView b={bk.b} onPick={(mid, eid) => run(async () => {
+                  if (!(await confirmDialog("G'olibni tasdiqlaysizmi?"))) return;
+                  setBk({ ...bk, b: await api.post<BracketT>(`/admin/tournaments/matches/${mid}/winner`, { entry_id: eid }) });
+                  st.reload();
+                })} />
+              </>
+            )}
+          </>
+        )}
+      </Sheet>
       <Sheet open={!!f} onClose={() => setF(null)}>
         {f && (
           <>
             <div className="sec-title">{f.id ? "Turnirni tahrirlash" : "Yangi turnir"}</div>
             <Field label="Nomi"><input className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
             <Seg value={f.game} onChange={(g) => setF({ ...f, game: g })} options={[{ v: "ML", label: "Mobile Legends" }, { v: "MC", label: "Magic Chess" }]} />
+            <Field label="Format"><Seg value={f.format ?? "solo"} onChange={(v) => setF({ ...f, format: v })} options={[{ v: "solo", label: "Yakka" }, { v: "team", label: "👥 Jamoaviy (5v5)" }]} /></Field>
+            {f.format === "team" && <div className="mut xs">Jamoani sardor ro'yxatdan o'tkazadi (kamida 5 a'zo). «Ishtirokchilar soni» — jamoalar soni. Kirish to'lovi sardordan olinadi.</div>}
             <Field label="Sovrin fondi"><MoneyInput value={f.prize_fund} onChange={(v) => setF({ ...f, prize_fund: v })} /></Field>
             <Field label="Kirish to'lovi (0 = bepul)"><MoneyInput value={f.entry_fee} onChange={(v) => setF({ ...f, entry_fee: v })} /></Field>
             <Field label="Ishtirokchilar soni"><Chips value={f.max_players} onChange={(v) => setF({ ...f, max_players: v })} options={[16, 32, 64, 128, 256].map((v) => ({ v, label: String(v) }))} /></Field>

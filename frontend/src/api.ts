@@ -200,7 +200,7 @@ export interface Withdrawal { id: number; user_id: number; amount: number; card:
 export interface TgOrder { id: number; ref: string; kind: string; title: string; target_username: string; details: Record<string, unknown>; price: number; status: string; admin_note: string | null; user_id: number; created_at: string }
 export interface Boost { id: number; ref: string; game: Game; current_rank: string; target_rank: string; stars: number; lane: string; note: string; login_method: string; price: number; status: string; booster_name: string | null; user_id: number; created_at: string; finished_at: string | null;
   progress_stars?: number; winrate?: number | null; accepted_at?: string | null; started_at?: string | null; booster_code?: string | null }
-export interface Tournament { id: number; title: string; game: Game; prize_fund: number; entry_fee: number; max_players: number; players_count: number; starts_at: string; rules: string; status: string; joined: boolean }
+export interface Tournament { id: number; title: string; game: Game; prize_fund: number; entry_fee: number; max_players: number; players_count: number; starts_at: string; rules: string; status: string; joined: boolean; format?: string }
 export interface Catalog {
   premium: { months: number; price: number }[];
   stars: { presets: number[]; rate: number; min: number; max: number };

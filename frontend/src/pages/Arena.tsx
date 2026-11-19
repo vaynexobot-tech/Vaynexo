@@ -5,6 +5,7 @@ import { t } from "../i18n";
 import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, Sheet, som, useAction, useApp, useLoad } from "../ui";
 import { Risers } from "./Heroes";
 import { Search } from "./Search";
+import { BracketView, type BracketT } from "./Bracket";
 import { HERO_BY_ID, HeroAva, HeroPicker, HeroSlots, LanePicker, laneLabel, MlIcon, RankPicker, rankLabel, roleLabel } from "../mlbb";
 
 interface Summary {
@@ -80,7 +81,7 @@ function TourCard({ x, onClick }: { x: Tournament; onClick: () => void }) {
         <GameLogo game={x.game} size={46} />
         <div className="grow" style={{ minWidth: 0 }}>
           <div className="b ell">{x.title}</div>
-          <div className="mut xs">{x.game === "ML" ? "Mobile Legends" : "Magic Chess"} · {dateTime(x.starts_at)}</div>
+          <div className="mut xs">{x.format === "team" ? `👥 ${t("Jamoaviy")} · ` : ""}{x.game === "ML" ? "Mobile Legends" : "Magic Chess"} · {dateTime(x.starts_at)}</div>
         </div>
         <span className={"pill-b " + badge[1]}>● {t(badge[0])}</span>
       </div>
@@ -419,6 +420,8 @@ export function TournamentPage() {
   const nav = useNavigate();
   const { me, refreshMe, toast } = useApp();
   const st = useLoad(() => api.get<Tournament>(`/tournaments/${id}`), [id]);
+  const bk = useLoad(() => api.get<BracketT>(`/tournaments/${id}/bracket`), [id]);
+  const myTeam = useLoad(() => api.get<{ team: { name: string; tag: string; members: number; is_captain?: boolean } | null }>("/arena/teams/my"));
   const [nick, setNick] = useState("");
   const [gameId, setGameId] = useState(me?.ml_id ?? "");
   const [server, setServer] = useState("");
@@ -433,6 +436,9 @@ export function TournamentPage() {
       <Loadable state={st}>
         {(x) => {
           const canJoin = x.status === "open" && !x.joined && x.players_count < x.max_players;
+          const isTeam = x.format === "team";
+          const tm = myTeam.data?.team;
+          const teamOk = !!tm && !!tm.is_captain && tm.members >= 5;
           const enough = (me?.balance ?? 0) >= x.entry_fee || (usePass && (me?.tournament_passes ?? 0) > 0);
           if (done) return (
             <>
@@ -461,9 +467,30 @@ export function TournamentPage() {
                   <div className="kv"><span>{t("Ishtirokchilar")}</span><span className="mono b">{x.players_count} / {x.max_players}</span></div>
                   <div className="kv"><span>{t("Boshlanish")}</span><span className="mono b">{dateTime(x.starts_at)}</span></div>
                 </div>
+                {isTeam && <div className="card tight sm">👥 {t("Jamoaviy turnir: jamoani sardor ro'yxatdan o'tkazadi, jamoada kamida 5 kishi bo'lishi kerak.")}</div>}
                 {x.rules && <div className="card"><div className="b" style={{ marginBottom: 6 }}>{t("Qoidalar")}</div><div className="pre sm mut">{x.rules}</div></div>}
+                {bk.data && bk.data.rounds.length > 0 && <><div className="sec-title">{t("Setka")}</div><BracketView b={bk.data} /></>}
                 {x.joined && <div className="card tight g sm">✅ {t("Siz ro'yxatdan o'tgansiz. Boshlanishidan oldin Telegram orqali eslatma yuboramiz.")}</div>}
-                {canJoin && (
+                {canJoin && isTeam && (
+                  <div className="card col" style={{ borderColor: teamOk ? "rgba(29,233,182,.45)" : "rgba(255,214,10,.4)" }}>
+                    {tm ? (
+                      <>
+                        <div className="b">[{tm.tag}] {tm.name}</div>
+                        <div className="mut xs">{t("{n} ta a'zo", { n: tm.members })}{tm.is_captain ? ` · 👑 ${t("siz sardorsiz")}` : ""}</div>
+                        {!tm.is_captain && <div className="y xs">{t("Jamoani faqat sardor ro'yxatdan o'tkazadi")}</div>}
+                        {tm.is_captain && tm.members < 5 && <div className="y xs">{t("Jamoada kamida 5 kishi bo'lishi kerak")}</div>}
+                      </>
+                    ) : (
+                      <>
+                        <div className="b">{t("Sizda jamoa yo'q")}</div>
+                        <div className="mut xs">{t("Arena → Qidiruv → Jamoa bo'limida jamoa tuzing yoki jamoaga qo'shiling.")}</div>
+                      </>
+                    )}
+                    <div className="row between"><span className="sm">{t("Qatnashish narxi")}</span><span className="y mono b">{x.entry_fee ? som(x.entry_fee) : t("Bepul")}</span></div>
+                    {!enough && <div className="r sm">{t("Balans yetarli emas")}</div>}
+                  </div>
+                )}
+                {canJoin && !isTeam && (
                   <>
                     <div className="b">{t("Ishtirokchi ma'lumotlari")}</div>
                     <Field label={t("O'yindagi nik")}><input className="input" maxLength={64} placeholder={t("Nik")} value={nick} onChange={(e) => setNick(e.target.value)} /></Field>
@@ -490,7 +517,21 @@ export function TournamentPage() {
                   </>
                 )}
               </div>
-              {canJoin && (
+              {canJoin && isTeam && (
+                <BottomBar>
+                  {enough ? (
+                    <button className="btn full" disabled={!teamOk || busy} onClick={() => run(async () => {
+                      st.setData(await api.post<Tournament>(`/tournaments/${x.id}/join`, { tg_username: tgUser.trim(), use_pass: usePass }));
+                      toast(t("Jamoangiz turnirga qo'shildi"), "ok");
+                      refreshMe();
+                      setDone(true);
+                    })}>{t("Jamoani ro'yxatdan o'tkazish")}</button>
+                  ) : (
+                    <button className="btn full" onClick={() => nav("/wallet")}>+ {t("Balansni to'ldirish")}</button>
+                  )}
+                </BottomBar>
+              )}
+              {canJoin && !isTeam && (
                 <BottomBar>
                   {enough ? (
                     <button className="btn full" disabled={!nick.trim() || !gameId || !agree || busy} onClick={() => run(async () => {

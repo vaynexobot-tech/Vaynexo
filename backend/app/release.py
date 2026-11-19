@@ -11,8 +11,11 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-19.qidiruv"
-NOTES = """🔎 Arena → Qidiruv: 5v5 jamoaviy bahs, 1v1 duel, rankedga sherik, jamoa (o'yinchi kerak / jamoa kerak / jamoalar)
+RELEASE = "2026-11-19.turnir-setka"
+NOTES = """🏆 Turnirlar: jamoaviy (5v5) format — jamoani sardor ro'yxatdan o'tkazadi (kamida 5 a'zo); turnir setkasi (olimpiya tizimi)
+   Admin → Turnirlar → «Setka»: yaratish va g'olibni belgilash; final g'olibiga (jamoaning hammasiga) ball avtomatik
+🎁 Vaucher kodlari: Roblox, Steam Wallet va boshqa kod beriladigan mahsulotlar sotuvda — kod botda va «Xaridlar tarixi»da
+🔎 Arena → Qidiruv: 5v5 jamoaviy bahs, 1v1 duel, rankedga sherik, jamoa (o'yinchi kerak / jamoa kerak / jamoalar)
    Haqiqiy jamoalar: sardor, 7 tagacha a'zo, o'rtacha rank, qo'shilish so'rovi va taklif; viloyat va «Menga mos rank» filtri
    🔔 Sherik signali (mos sherik chiqsa bot xabar beradi), 🤝 Hurmat (birga o'ynaganlarni baholash, so'kinadiganlar belgilanadi)
 📊 Tirik MLBB statistikasi (Rone Arena): Qahramonlar → «Tier» (S–D, rank va kun bo'yicha, jadval), qahramon sahifasida g'alaba/tanlov/ban %,

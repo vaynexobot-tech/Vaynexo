@@ -304,12 +304,25 @@ async def join_tournament(session: AsyncSession, t_id: int, user_id: int, data: 
         raise BadState("Joylar tugagan")
     if await session.scalar(select(TournamentEntry.id).where(TournamentEntry.tournament_id == t_id, TournamentEntry.user_id == user_id)):
         raise BadState("Siz allaqachon ro'yxatdasiz")
-    nick = (data.get("nick") or "").strip()[:64]
-    game_id = (data.get("game_id") or "").strip()[:32]
-    if not nick or not game_id:
-        raise AppError("bad_entry", "Nik va o'yin ID'sini kiriting")
+    team_id = None
+    if t.format == "team":
+        from app.services import bracket
+
+        team, members = await bracket.team_for_entry(session, user_id)
+        if await session.scalar(select(TournamentEntry.id).where(TournamentEntry.tournament_id == t_id, TournamentEntry.team_id == team.id)):
+            raise BadState("Jamoangiz allaqachon ro'yxatda")
+        if await session.scalar(select(TournamentEntry.id).where(TournamentEntry.tournament_id == t_id,
+                                                                 TournamentEntry.user_id.in_([m.user_id for m in members]))):
+            raise BadState("Jamoangiz a'zosi bu turnirda boshqa jamoa bilan ro'yxatda")
+        u = await session.get(User, user_id)
+        nick, game_id, team_id = f"[{team.tag}] {team.name}"[:64] if team.tag else team.name, (u.ml_id or "—")[:32], team.id
+    else:
+        nick = (data.get("nick") or "").strip()[:64]
+        game_id = (data.get("game_id") or "").strip()[:32]
+        if not nick or not game_id:
+            raise AppError("bad_entry", "Nik va o'yin ID'sini kiriting")
     entry = TournamentEntry(
-        tournament_id=t_id, user_id=user_id, nick=nick, game_id=game_id,
+        tournament_id=t_id, user_id=user_id, nick=nick, game_id=game_id, team_id=team_id,
         server=(data.get("server") or "").strip()[:16], tg_username=(data.get("tg_username") or "").strip()[:64],
     )
     session.add(entry)

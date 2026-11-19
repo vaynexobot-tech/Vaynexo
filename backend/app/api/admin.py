@@ -460,6 +460,7 @@ class TournamentIn(BaseModel):
     starts_at: datetime
     rules: str = Field("", max_length=5000)
     status: str = Field("open", pattern="^(soon|open|running|finished)$")
+    format: str = Field("solo", pattern="^(solo|team)$")
 
 
 @router.post("/tournaments")
@@ -484,7 +485,35 @@ async def update_tournament(t_id: int, body: TournamentIn, admin: AdminUser, ses
 @router.get("/tournaments/{t_id}/entries")
 async def entries(t_id: int, admin: AdminUser, session: SessionDep):
     rows = await session.scalars(select(TournamentEntry).where(TournamentEntry.tournament_id == t_id).order_by(TournamentEntry.id))
-    return [{"user_id": e.user_id, "nick": e.nick, "game_id": e.game_id, "server": e.server, "tg_username": e.tg_username} for e in rows]
+    return [{"user_id": e.user_id, "nick": e.nick, "game_id": e.game_id, "server": e.server, "tg_username": e.tg_username,
+             "team_id": e.team_id} for e in rows]
+
+
+@router.post("/tournaments/{t_id}/bracket")
+async def make_bracket(t_id: int, admin: AdminUser, session: SessionDep):
+    """Setkani yaratish (ishtirokchilar aralashtiriladi, juft bo'lmasa — avtomatik o'tish)."""
+    from app.services import bracket
+
+    out = Outbox()
+    async with session.begin():
+        await bracket.generate(session, t_id, out)
+    await out.flush()
+    return await bracket.bracket_dict(session, t_id)
+
+
+class MatchWinnerIn(BaseModel):
+    entry_id: int
+
+
+@router.post("/tournaments/matches/{mid}/winner")
+async def match_winner(mid: int, body: MatchWinnerIn, admin: AdminUser, session: SessionDep):
+    from app.services import bracket
+
+    out = Outbox()
+    async with session.begin():
+        t_id = await bracket.set_winner(session, mid, body.entry_id, out)
+    await out.flush()
+    return await bracket.bracket_dict(session, t_id)
 
 
 # ------------------------------------------------------------------ sozlamalar

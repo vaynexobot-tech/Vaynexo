@@ -144,9 +144,16 @@ async def tournament(t_id: int, user: CurrentUser, session: SessionDep):
     return S.tournament(t, bool(joined))
 
 
+@router.get("/tournaments/{t_id}/bracket")
+async def tournament_bracket(t_id: int, user: CurrentUser, session: SessionDep):
+    from app.services import bracket
+
+    return await bracket.bracket_dict(session, t_id, me=user.id)
+
+
 class JoinIn(BaseModel):
-    nick: str = Field(max_length=64)
-    game_id: str = Field(max_length=32)
+    nick: str = Field("", max_length=64)
+    game_id: str = Field("", max_length=32)
     server: str = Field("", max_length=16)
     tg_username: str = Field("", max_length=64)
     use_pass: bool = False

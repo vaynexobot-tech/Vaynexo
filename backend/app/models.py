@@ -384,6 +384,7 @@ class Tournament(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(16), default="open", index=True)  # open | running | finished
     players_count: Mapped[int] = mapped_column(Integer, default=0)
     reminded: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # 30 daqiqa oldin eslatma
+    format: Mapped[str] = mapped_column(String(8), default="solo", server_default="solo")  # solo | team (5v5 jamoalar)
 
 
 class TournamentEntry(TimestampMixin, Base):
@@ -397,6 +398,22 @@ class TournamentEntry(TimestampMixin, Base):
     game_id: Mapped[str] = mapped_column(String(32))
     server: Mapped[str] = mapped_column(String(16), default="")
     tg_username: Mapped[str] = mapped_column(String(64), default="")
+    team_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("teams.id"), index=True)
+
+
+class TournamentMatch(TimestampMixin, Base):
+    """Turnir setkasi (olimpiya tizimi): raund, o'rin, ikki ishtirokchi va g'olib."""
+
+    __tablename__ = "tournament_matches"
+    __table_args__ = (UniqueConstraint("tournament_id", "round", "slot", name="uq_tournament_match"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    tournament_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("tournaments.id"), index=True)
+    round: Mapped[int] = mapped_column(Integer)  # 1 — birinchi raund, oxirgisi — final
+    slot: Mapped[int] = mapped_column(Integer)
+    a_entry_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("tournament_entries.id"))
+    b_entry_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("tournament_entries.id"))
+    winner_entry_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("tournament_entries.id"))
 
 
 # ---------------------------------------------------------------- Sozlamalar (admin paneldan o'zgaradi)

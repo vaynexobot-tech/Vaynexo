@@ -38,5 +38,30 @@ async def set_open(value: bool) -> None:
     _cache[:] = [value, time.monotonic()]
 
 
+GUESTS_KEY = "_guest_ids"  # yopiq rejimda ham kira oladigan odamlar (Telegram ID, vergul bilan)
+_guests: list = [None, 0.0]
+
+
+async def guests() -> set[int]:
+    if time.monotonic() - _guests[1] < 15:
+        return set(_guests[0] or ())
+    try:
+        async with SessionLocal() as s:
+            v = await s.scalar(select(AppSetting.value).where(AppSetting.key == GUESTS_KEY))
+        val = {int(x) for x in (v or "").split(",") if x.strip().isdigit()}
+    except Exception:  # noqa: BLE001 — baza javob bermasa oxirgi ro'yxat saqlanadi
+        val = set(_guests[0] or ())
+    _guests[:] = [val, time.monotonic()]
+    return set(val)
+
+
+async def set_guests(ids: set[int]) -> None:
+    v = ",".join(str(i) for i in sorted(ids))
+    async with SessionLocal() as s, s.begin():
+        await s.execute(insert(AppSetting).values(key=GUESTS_KEY, value=v)
+                        .on_conflict_do_update(index_elements=["key"], set_={"value": v}))
+    _guests[:] = [set(ids), time.monotonic()]
+
+
 async def allowed(user_id: int) -> bool:
-    return user_id in settings.admin_ids or await is_open()
+    return user_id in settings.admin_ids or await is_open() or user_id in await guests()

@@ -169,6 +169,43 @@ async def close_all(message: Message):
         await message.answer("🔒 Ilova yopildi: faqat adminlar kira oladi, qolganlarga «Tez kunda» chiqadi. Ochish: /ochish")
 
 
+@router.message(Command("ruxsat"))
+async def guest_add(message: Message, command: CommandObject):
+    """Admin: yopiq rejimda ma'lum odamga ruxsat. /ruxsat 123456789 — qo'shish; /ruxsat — ro'yxat."""
+    if not is_admin(message.from_user.id):
+        return
+    from app.services import launch
+
+    ids = await launch.guests()
+    arg = (command.args or "").strip()
+    if not arg:
+        await message.answer("👥 Ruxsat berilganlar: " + (", ".join(str(i) for i in sorted(ids)) or "yo'q")
+                             + "\n\nQo'shish: /ruxsat <ID>\nOlib tashlash: /ruxsatyoq <ID>\nID ni odam @userinfobot dan bilib oladi.")
+        return
+    if not arg.isdigit():
+        await message.answer("ID faqat raqamlardan iborat bo'lsin. Masalan: /ruxsat 123456789")
+        return
+    ids.add(int(arg))
+    await launch.set_guests(ids)
+    await message.answer(f"✅ {arg} ga ruxsat berildi (jami {len(ids)}). Endi u /start bosib ilovaga kira oladi.")
+
+
+@router.message(Command("ruxsatyoq"))
+async def guest_remove(message: Message, command: CommandObject):
+    if not is_admin(message.from_user.id):
+        return
+    from app.services import launch
+
+    arg = (command.args or "").strip()
+    ids = await launch.guests()
+    if not arg.isdigit() or int(arg) not in ids:
+        await message.answer("Bunday ID ro'yxatda yo'q. Ro'yxat: /ruxsat")
+        return
+    ids.discard(int(arg))
+    await launch.set_guests(ids)
+    await message.answer(f"🚫 {arg} dan ruxsat olib tashlandi.")
+
+
 @router.message(Command("help"), F.chat.type == "private")
 async def help_cmd(message: Message):
     from app.services import launch

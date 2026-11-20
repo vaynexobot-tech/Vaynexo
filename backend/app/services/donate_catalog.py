@@ -58,6 +58,10 @@ def build_provider(row: DonateProvider):
         from app.providers.yupay import YupayProvider
 
         return YupayProvider(key, row.base_url)
+    if row.kind == "fazercards":
+        from app.providers.fazercards import FazerCardsProvider
+
+        return FazerCardsProvider(key, row.base_url)
     from app.providers.http import HttpProvider
 
     return HttpProvider(row.base_url, key, cfg=row.config or {})

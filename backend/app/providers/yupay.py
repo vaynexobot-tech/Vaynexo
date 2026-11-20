@@ -259,7 +259,7 @@ class YupayProvider:
         }
         return ProviderResult("failed", message=hints.get(code, f"yupay {r.status_code} {code}".strip()))
 
-    async def status(self, order_ref: str) -> ProviderResult:
+    async def status(self, order_ref: str, provider_ref: str | None = None) -> ProviderResult:
         try:
             r = await self.client.get(f"/orders/{quote(order_ref, safe='')}")
         except httpx.HTTPError as e:

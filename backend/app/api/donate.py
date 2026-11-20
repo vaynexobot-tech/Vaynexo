@@ -191,6 +191,50 @@ async def _handle_webhook(request: Request, api_key: str) -> dict:
     return {"ok": True}
 
 
+fazer_webhook_router = APIRouter(prefix="/fazercards", tags=["fazercards"])
+
+
+def verify_fazer_signature(headers, body: bytes, secret: str) -> bool:
+    """X-Webhook-Signature: sha256=<hex HMAC-SHA256(xom tana, vebhuk siri)> (FazerCards hujjati)."""
+    import hashlib
+    import hmac
+
+    if not secret:
+        return False
+    expected = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(headers.get("x-webhook-signature", ""), expected)
+
+
+@fazer_webhook_router.post("/webhook/{provider_id}")
+async def fazer_webhook(provider_id: int, request: Request, session: SessionDep):
+    """FazerCards buyurtma holati o'zgardi. Tanada kod yo'q va bizning ID yo'q: ularning ID'si (`ord-N`) bo'yicha topamiz,
+    keyin holatni o'zimiz so'raymiz. Vebhuk kelmasa ham navbat o'zi so'rab turadi."""
+    import re
+
+    from app.security import decrypt
+
+    row = await session.get(DonateProvider, provider_id)
+    if row is None or row.kind != "fazercards":
+        raise NotFound("Provayder")
+    secret = decrypt((row.config or {}).get("webhook_secret_enc") or "") or ""
+    await session.rollback()
+    body = (await request.body())[:20_000]
+    if not verify_fazer_signature(request.headers, body, secret):
+        raise AppError("bad_signature", "Imzo noto'g'ri", 401)
+    try:
+        data = json.loads(body)
+    except ValueError:
+        return {"ok": True}
+    oid = str((data.get("data") or {}).get("order_id") or "") if isinstance(data, dict) else ""
+    if data.get("event") == "order.status_changed" and re.fullmatch(r"ord-\d+", oid):
+        ids = list(await session.scalars(select(DonateOrder.id).where(
+            DonateOrder.provider_ref == oid, DonateOrder.status == "processing",
+            DonateOrder.package_id.in_(select(DonatePackage.id).where(DonatePackage.provider_id == provider_id)))))
+        for i in ids:
+            await enqueue("fulfil_donate", i, "check")
+    return {"ok": True}
+
+
 @webhook_router.post("/webhook")
 async def yupay_webhook(request: Request):
     """Render'dagi eski sozlama (DONATE_PROVIDER_KEY) uchun."""

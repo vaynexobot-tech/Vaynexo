@@ -88,7 +88,7 @@ class HttpProvider:
             return ProviderResult("failed", message=str(data.get("message") or f"http {r.status_code}"))
         return self._result(data)
 
-    async def status(self, order_ref: str) -> ProviderResult:
+    async def status(self, order_ref: str, provider_ref: str | None = None) -> ProviderResult:
         try:
             r = await self.client.get(self.paths["status"].format(ref=order_ref))
             if r.status_code == 404:

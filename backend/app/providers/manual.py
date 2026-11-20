@@ -15,5 +15,5 @@ class ManualProvider:
     async def create(self, order_ref: str, sku: str, game: str, player_id: str, zone_id: str) -> ProviderResult:
         return ProviderResult("manual")
 
-    async def status(self, order_ref: str) -> ProviderResult:
+    async def status(self, order_ref: str, provider_ref: str | None = None) -> ProviderResult:
         return ProviderResult("manual")

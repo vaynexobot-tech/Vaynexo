@@ -91,7 +91,7 @@ async def test_donate_unknown_goes_to_review_then_admin_refund(api, ctx):
         async def create(self, *a):
             return ProviderResult("unknown", message="timeout")
 
-        async def status(self, ref):
+        async def status(self, ref, provider_ref=None):
             return ProviderResult("unknown", message="timeout")
 
     set_provider(Silent())
@@ -115,7 +115,7 @@ async def test_donate_retry_detects_earlier_success(api):
             calls["create"] += 1
             return ProviderResult("unknown", message="timeout")
 
-        async def status(self, ref):
+        async def status(self, ref, provider_ref=None):
             return ProviderResult("success", ref="P-1")
 
     set_provider(Flaky())

@@ -21,5 +21,5 @@ class MockProvider:
             return ProviderResult("unknown", message="timeout")
         return ProviderResult("success", ref=f"MOCK-{order_ref}")
 
-    async def status(self, order_ref: str) -> ProviderResult:
+    async def status(self, order_ref: str, provider_ref: str | None = None) -> ProviderResult:
         return ProviderResult("success", ref=f"MOCK-{order_ref}")

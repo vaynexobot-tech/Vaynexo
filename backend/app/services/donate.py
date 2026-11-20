@@ -162,18 +162,19 @@ async def fulfil_step(sessions: async_sessionmaker, order_id: int, mode: str, ou
         ref = order_ref(order)
         sku, game, pid, zid = order.package.provider_sku, order.game, order.player_id, order.zone_id
         is_voucher = order.package.delivery == "voucher"
+        prov_ref = order.provider_ref
 
     if mode == "create" and attempts > 1:
         # Qayta urinishdan oldin: balki oldingi so'rov aslida yetib borgandir.
-        prev = await provider.status(ref)
+        prev = await provider.status(ref, prov_ref)
         result = prev if prev.status in ("success", "pending") else await provider.create(ref, sku, game, pid, zid)
     elif mode == "create":
         result = await provider.create(ref, sku, game, pid, zid)
     else:
-        result = await provider.status(ref)
+        result = await provider.status(ref, prov_ref)
     if result.status == "success" and is_voucher and not result.artifact:
         # kod faqat buyurtmani o'qiganda keladi — bir marta holatni so'raymiz
-        again = await provider.status(ref)
+        again = await provider.status(ref, result.ref or prov_ref)
         if again.status == "success" and again.artifact:
             result = again
         else:

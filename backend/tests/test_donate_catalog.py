@@ -256,7 +256,7 @@ async def test_voucher_order_delivers_code(api, ctx, monkeypatch):
         async def create(self, *a):
             return ProviderResult("success", ref="Y1")  # kod yo'q — holatdan olinadi
 
-        async def status(self, ref):
+        async def status(self, ref, provider_ref=None):
             Prov.calls += 1
             return ProviderResult("success", ref="Y1", artifact={"code": "RBX-1234-ABCD", "pin": "9876"})
 

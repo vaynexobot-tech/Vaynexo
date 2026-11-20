@@ -24,5 +24,5 @@ class DonateProvider(Protocol):
     async def create(self, order_ref: str, sku: str, game: str, player_id: str, zone_id: str) -> ProviderResult:
         """Buyurtma berish. `order_ref` bizning noyob ID — provayder uni takrorni oldini olish uchun ishlatishi kerak."""
 
-    async def status(self, order_ref: str) -> ProviderResult:
-        """Avval berilgan buyurtma holati."""
+    async def status(self, order_ref: str, provider_ref: str | None = None) -> ProviderResult:
+        """Avval berilgan buyurtma holati. `provider_ref` — provayderning o'z buyurtma ID'si (agar o'zimizniki bilan so'rab bo'lmasa)."""

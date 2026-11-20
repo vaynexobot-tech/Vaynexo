@@ -375,7 +375,7 @@ function Disputes() {
   );
 }
 
-interface Prov { id: number; name: string; kind: string; kind_label: string; base_url: string; host: string | null; key_set: boolean; is_active: boolean; config: Record<string, string>; last_ok_at: string | null; last_error: string | null; synced_at: string | null; balance_usd: string | null; webhook_url: string | null }
+interface Prov { id: number; name: string; kind: string; kind_label: string; base_url: string; host: string | null; key_set: boolean; is_active: boolean; config: Record<string, string>; last_ok_at: string | null; last_error: string | null; synced_at: string | null; balance_usd: string | null; webhook_url: string | null; webhook_secret_set?: boolean }
 interface ProvList { providers: Prov[]; legacy_env: boolean; usd_rate: number; markup: number }
 interface PingRes { ok: boolean; status?: number; ms?: number; error?: string; sample?: string; balance_usd?: string; title?: string; account?: string }
 interface SyncRes { games: number; packages: number; new_games: string[] }
@@ -383,15 +383,15 @@ interface SyncRes { games: number; packages: number; new_games: string[] }
 function ProvidersAdmin() {
   const { toast } = useApp();
   const st = useLoad(() => api.get<ProvList>("/admin/donate/providers"));
-  const [edit, setEdit] = useState<(Partial<Prov> & { api_key?: string }) | null>(null);
+  const [edit, setEdit] = useState<(Partial<Prov> & { api_key?: string; webhook_secret?: string }) | null>(null);
   const [res, setRes] = useState<Record<number, string>>({});
   const [rate, setRate] = useState<number | "">("");
   const [markup, setMarkup] = useState<number | "">("");
   const [adv, setAdv] = useState(false);
   const { busy, run } = useAction();
-  const kindSeg = [{ v: "yupay", label: "Yupay" }, { v: "http", label: "Boshqa API" }];
+  const kindSeg = [{ v: "yupay", label: "Yupay" }, { v: "fazercards", label: "FazerCards" }, { v: "http", label: "Boshqa API" }];
   const save = () => run(async () => {
-    const body = { name: edit!.name, kind: edit!.kind ?? "yupay", base_url: edit!.base_url ?? "", api_key: edit!.api_key || null, is_active: edit!.is_active ?? true, config: edit!.config ?? null };
+    const body = { name: edit!.name, kind: edit!.kind ?? "yupay", base_url: edit!.base_url ?? "", api_key: edit!.api_key || null, webhook_secret: edit!.webhook_secret || null, is_active: edit!.is_active ?? true, config: edit!.config ?? null };
     if (edit!.id) await api.put(`/admin/donate/providers/${edit!.id}`, body);
     else await api.post("/admin/donate/providers", body);
     toast("Saqlandi", "ok"); setEdit(null); st.reload();
@@ -415,14 +415,14 @@ function ProvidersAdmin() {
                   setRes({ ...res, [p.id]: r.ok ? `✅ Ulandi${r.ms ? ` · ${r.ms} ms` : ""}${r.balance_usd != null ? `\nDepozit: $${r.balance_usd}` : ""}${r.title ? ` · ${r.title}` : ""}` : `❌ ${r.error ?? "Xato"}` });
                   st.reload();
                 })}>Tekshirish</button>
-                <button className="btn small grow" disabled={busy || p.kind !== "yupay"} onClick={() => run(async () => {
+                <button className="btn small grow" disabled={busy || p.kind === "http"} onClick={() => run(async () => {
                   const r = await api.post<SyncRes>(`/admin/donate/providers/${p.id}/sync`);
                   setRes({ ...res, [p.id]: `✅ ${r.games} ta o'yin, ${r.packages} ta paket${r.new_games.length ? `\nYangi (yashirin): ${r.new_games.join(", ")}\nO'yinlar bo'limidan yoqing.` : ""}` });
                   st.reload();
                 })}>Katalogni yangilash</button>
                 <button className="btn small ghost" onClick={() => { setEdit({ ...p }); setAdv(false); }}>Tahrirlash</button>
               </div>
-              {p.webhook_url && <details><summary className="mut xs">Vebhuk manzili (ixtiyoriy, Yupay kabinetiga)</summary><Copy value={p.webhook_url} /></details>}
+              {p.webhook_url && <details><summary className="mut xs">Vebhuk manzili (ixtiyoriy, provayder kabinetiga)</summary><Copy value={p.webhook_url} /></details>}
             </div>
           ))}
           <button className="btn full" onClick={() => { setEdit({ kind: "yupay", is_active: true, name: "Yupay" }); setAdv(false); }}>+ API qo'shish</button>
@@ -451,6 +451,7 @@ function ProvidersAdmin() {
                 {!edit.id && <Field label="Turi"><Seg value={edit.kind ?? "yupay"} onChange={(v) => setEdit({ ...edit, kind: v })} options={kindSeg} /></Field>}
                 {edit.kind === "http" && <Field label="Manzil (https://...)"><input className="input mono" inputMode="url" autoCapitalize="off" value={edit.base_url ?? ""} onChange={(e) => setEdit({ ...edit, base_url: e.target.value })} placeholder="https://api.example.com/v1" /></Field>}
                 <Field label={edit.id && edit.key_set ? "API kalit (o'zgartirmaslik uchun bo'sh qoldiring)" : "API kalit"}><input className="input mono" type="password" autoComplete="off" autoCapitalize="off" value={edit.api_key ?? ""} onChange={(e) => setEdit({ ...edit, api_key: e.target.value.trim() })} placeholder={edit.kind === "yupay" ? "ypk_…" : ""} /></Field>
+                {edit.kind === "fazercards" && <Field label={edit.webhook_secret_set ? "Vebhuk siri (o'zgartirmaslik uchun bo'sh qoldiring)" : "Vebhuk siri (ixtiyoriy — tezroq yetkazish uchun)"}><input className="input mono" type="password" autoComplete="off" autoCapitalize="off" value={edit.webhook_secret ?? ""} onChange={(e) => setEdit({ ...edit, webhook_secret: e.target.value.trim() })} /></Field>}
                 <div className="row between"><span className="sm">Faol</span><Toggle on={edit.is_active ?? true} onChange={(v) => setEdit({ ...edit, is_active: v })} /></div>
                 {edit.kind === "http" && (
                   <>
@@ -460,7 +461,7 @@ function ProvidersAdmin() {
                     ))}
                   </>
                 )}
-                <div className="mut xs">Kalit faqat shu so'rovda yuboriladi, serverda shifrlanadi va keyin ko'rsatilmaydi. Yupay'da kalitning IP ro'yxatini bo'sh qoldiring.</div>
+                <div className="mut xs">Kalit faqat shu so'rovda yuboriladi, serverda shifrlanadi va keyin ko'rsatilmaydi. Yupay'da kalitning IP ro'yxatini bo'sh qoldiring. FazerCards: yangi o'yinlar yashirin holatda keladi (nomi «fz-…»), «O'yinlar» bo'limidan yoqing.</div>
                 <div className="row">
                   <button className="btn grow" disabled={busy || (edit.name ?? "").trim().length < 2 || (!edit.id && !edit.api_key)} onClick={save}>Saqlash</button>
                   {edit.id && <button className="btn danger" disabled={busy} onClick={async () => {

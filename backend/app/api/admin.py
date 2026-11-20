@@ -853,27 +853,41 @@ async def broadcast(body: BroadcastIn, admin: AdminUser, session: SessionDep):
 
 
 # ------------------------------------------------------------------ donat provayderlari (bir nechta API)
-KINDS = {"yupay": "Yupay Merchant API", "http": "Umumiy HTTP API (qo'lda paketlar)"}
+KINDS = {"yupay": "Yupay Merchant API", "fazercards": "FazerCards Reseller API", "http": "Umumiy HTTP API (qo'lda paketlar)"}
+DEFAULT_HOST = {"yupay": "api.yupay.uz", "fazercards": "api.fzr.cards"}
+
+
+def _norm_base(kind: str, url: str) -> str:
+    """Yupay/FazerCards uchun faqat to'g'ri API manzili saqlanadi, aks holda bo'sh (standart manzil ishlatiladi)."""
+    u = (url or "").strip()
+    if kind == "yupay":
+        return u if "/merchant/" in u else ""
+    if kind == "fazercards":
+        return u if u.startswith("https://") and "/api/" in u else ""
+    return u
 
 
 class ProviderIn(BaseModel):
     name: str = Field(min_length=2, max_length=64)
-    kind: str = Field("yupay", pattern="^(yupay|http)$")
+    kind: str = Field("yupay", pattern="^(yupay|fazercards|http)$")
     base_url: str = Field("", max_length=200)
     api_key: str | None = Field(None, max_length=300)  # bo'sh/None — eski kalit saqlanadi
     is_active: bool = True
     config: dict | None = None
+    webhook_secret: str | None = Field(None, max_length=200)  # FazerCards vebhuk siri (shifrlanadi); bo'sh — o'zgarmaydi
 
 
 def _provider_dict(p: DonateProvider) -> dict:
     from urllib.parse import urlparse
 
     return {"id": p.id, "name": p.name, "kind": p.kind, "kind_label": KINDS.get(p.kind, p.kind),
-            "base_url": p.base_url, "host": urlparse(p.base_url).netloc if p.base_url else ("api.yupay.uz" if p.kind == "yupay" else None),
-            "key_set": bool(p.key_enc), "is_active": p.is_active, "config": p.config or {},
+            "base_url": p.base_url, "host": urlparse(p.base_url).netloc if p.base_url else DEFAULT_HOST.get(p.kind),
+            "key_set": bool(p.key_enc), "is_active": p.is_active, "config": {k: v for k, v in (p.config or {}).items() if not k.endswith("_enc")},
+            "webhook_secret_set": bool((p.config or {}).get("webhook_secret_enc")),
             "last_ok_at": S.iso(p.last_ok_at), "last_error": p.last_error, "synced_at": S.iso(p.synced_at),
             "balance_usd": p.balance_usd,
-            "webhook_url": f"{settings.webapp_url.rstrip('/')}/api/yupay/webhook/{p.id}" if p.kind == "yupay" else None}
+            "webhook_url": (f"{settings.webapp_url.rstrip('/')}/api/{'yupay' if p.kind == 'yupay' else 'fazercards'}/webhook/{p.id}"
+                            if p.kind in ("yupay", "fazercards") else None)}
 
 
 @router.get("/donate/providers")
@@ -895,8 +909,11 @@ async def donate_provider_create(body: ProviderIn, admin: AdminUser, session: Se
     if body.kind == "http" and not body.base_url.startswith("https://"):
         raise AppError("bad_url", "Manzil https:// bilan boshlansin")
     async with session.begin():
-        p = DonateProvider(name=body.name.strip(), kind=body.kind, base_url="" if body.kind == "yupay" and "/merchant/" not in body.base_url else body.base_url.strip(), key_enc=encrypt(key),
-                           is_active=body.is_active, config=body.config or {})
+        cfg = dict(body.config or {})
+        if (body.webhook_secret or "").strip():
+            cfg["webhook_secret_enc"] = encrypt(body.webhook_secret.strip())
+        p = DonateProvider(name=body.name.strip(), kind=body.kind, base_url=_norm_base(body.kind, body.base_url), key_enc=encrypt(key),
+                           is_active=body.is_active, config=cfg)
         session.add(p)
     # Qo'shilishi bilan katalog avtomatik yuklanadi (xato bo'lsa provayder saqlanib qoladi, xatosi ko'rsatiladi)
     pid, active = p.id, p.is_active
@@ -925,9 +942,13 @@ async def donate_provider_update(pid: int, body: ProviderIn, admin: AdminUser, s
         p = await session.get(DonateProvider, pid)
         if p is None:
             raise NotFound("Provayder")
-        p.name, p.base_url, p.is_active = body.name.strip(), ("" if body.kind == "yupay" and "/merchant/" not in body.base_url else body.base_url.strip()), body.is_active
-        if body.config is not None:
-            p.config = body.config
+        p.name, p.base_url, p.is_active = body.name.strip(), _norm_base(p.kind, body.base_url), body.is_active
+        old = {k: v for k, v in (p.config or {}).items() if k.endswith("_enc")}  # shifrlangan sirlar UI'dan kelmaydi — saqlab qolamiz
+        if body.config is not None or (body.webhook_secret or "").strip():
+            cfg = {**(body.config if body.config is not None else {k: v for k, v in (p.config or {}).items() if not k.endswith("_enc")}), **old}
+            if (body.webhook_secret or "").strip():
+                cfg["webhook_secret_enc"] = encrypt(body.webhook_secret.strip())
+            p.config = cfg
         if (body.api_key or "").strip():
             p.key_enc = encrypt(body.api_key.strip())
     donate_catalog.forget_provider(pid)

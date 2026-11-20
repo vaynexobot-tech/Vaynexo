@@ -680,6 +680,20 @@ class PartnerVideo(TimestampMixin, Base):
 
 
 # ---------------------------------------------------------------- admin jurnali
+class MediaFile(TimestampMixin, Base):
+    """Yuklangan rasm/video — bazada saqlanadi (server diski har deploy'da tozalanadi)."""
+
+    __tablename__ = "media_files"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    name: Mapped[str] = mapped_column(String(40), unique=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    kind: Mapped[str] = mapped_column(String(8))  # image | video
+    content_type: Mapped[str] = mapped_column(String(32))
+    size: Mapped[int] = mapped_column(Integer)
+    data: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)
+
+
 class AdminLog(TimestampMixin, Base):
     """Adminning har bir o'zgartiruvchi harakati: kim, qachon, nima qildi."""
 

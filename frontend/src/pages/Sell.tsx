@@ -49,7 +49,7 @@ export function Sell() {
     for (const file of list) {
       const isVideo = file.type.startsWith("video/");
       if (!isVideo && !file.type.startsWith("image/")) { toast(t("Faqat rasm yoki video"), "err"); continue; }
-      if (file.size > (isVideo ? 50 : 5) * 1024 * 1024) { toast(isVideo ? t("Video 50 MB dan oshmasin") : t("Rasm 5 MB dan oshmasin"), "err"); continue; }
+      if (file.size > (isVideo ? 20 : 5) * 1024 * 1024) { toast(isVideo ? t("Video 20 MB dan oshmasin") : t("Rasm 5 MB dan oshmasin"), "err"); continue; }
       setUploading((n) => n + 1);
       try {
         const m = await api.upload(file);
@@ -136,7 +136,7 @@ export function Sell() {
             )}
           </div>
           <input ref={fileRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm" multiple hidden onChange={(e) => onFiles(e.target.files)} />
-          <div className="mut xs">📷 {t("Rasm — 5 MB gacha")} · 🎬 {t("Video — 50 MB gacha")}</div>
+          <div className="mut xs">📷 {t("Rasm — 5 MB gacha")} · 🎬 {t("Video — 20 MB gacha")}</div>
         </Field>
         <div className="card tight mut sm">⚠️ {t("Sotilgan akkauntni qaytarib olish taqiqlanadi va bloklanishga olib keladi. Login/parolni e'longa yozmang — ular faqat sotuvdan keyin garant orqali beriladi.")}</div>
       </div>

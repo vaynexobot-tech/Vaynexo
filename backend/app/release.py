@@ -11,8 +11,10 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-19.turnir-setka"
-NOTES = """🏆 Turnirlar: jamoaviy (5v5) format — jamoani sardor ro'yxatdan o'tkazadi (kamida 5 a'zo); turnir setkasi (olimpiya tizimi)
+RELEASE = "2026-11-20.media-db"
+NOTES = """🖼 Yuklangan rasm va videolar endi bazada saqlanadi — deploy qilinganda yo'qolmaydi (video chegarasi 20 MB)
+   ⚠️ Eski (shu yangilanishgacha yuklangan) rasmlar server diskida edi — ular allaqachon yo'qolgan bo'lishi mumkin; e'lon egalari qayta yuklaydi
+🏆 Turnirlar: jamoaviy (5v5) format — jamoani sardor ro'yxatdan o'tkazadi (kamida 5 a'zo); turnir setkasi (olimpiya tizimi)
    Admin → Turnirlar → «Setka»: yaratish va g'olibni belgilash; final g'olibiga (jamoaning hammasiga) ball avtomatik
 🎁 Vaucher kodlari: Roblox, Steam Wallet va boshqa kod beriladigan mahsulotlar sotuvda — kod botda va «Xaridlar tarixi»da
 🔎 Arena → Qidiruv: 5v5 jamoaviy bahs, 1v1 duel, rankedga sherik, jamoa (o'yinchi kerak / jamoa kerak / jamoalar)

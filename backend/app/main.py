@@ -90,6 +90,7 @@ async def validation_error(request: Request, exc: RequestValidationError):
     return JSONResponse({"error": "validation", "message": f"Ma'lumot noto'g'ri: {field}"}, status_code=422)
 
 
+app.include_router(media.public_router)  # /media/db/<fayl> — StaticFiles montajidan oldin
 for r in (user.router, wallet.router, wallet.p2p_router, donate.router, donate.webhook_router, market.router, media.router, services.router, rent.router, admin.router, account.router, ai.router, arena.router, teams.router):
     app.include_router(r, prefix="/api")
 
@@ -119,7 +120,7 @@ async def tg_webhook(request: Request, x_telegram_bot_api_secret_token: str | No
     return {"ok": True}
 
 
-# Dev uchun: media fayllarni API o'zi beradi (prod'da Caddy beradi).
+# Eski (diskdagi) fayllar: bor bo'lsa beradi; yangilari bazadan (/media/db/...) keladi.
 Path(settings.media_dir).mkdir(parents=True, exist_ok=True)
 app.mount(settings.media_url, StaticFiles(directory=settings.media_dir), name="media")
 

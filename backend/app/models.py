@@ -205,7 +205,7 @@ class DonatePackage(Base):
     diamonds: Mapped[int] = mapped_column(Integer, default=0)
     bonus: Mapped[int] = mapped_column(Integer, default=0)
     price: Mapped[int] = mapped_column(BigInteger)
-    provider_sku: Mapped[str] = mapped_column(String(64))
+    provider_sku: Mapped[str] = mapped_column(String(200))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_hot: Mapped[bool] = mapped_column(Boolean, default=False)
     sort: Mapped[int] = mapped_column(Integer, default=0)

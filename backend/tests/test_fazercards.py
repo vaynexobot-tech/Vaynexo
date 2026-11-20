@@ -121,3 +121,13 @@ def test_http_kind_with_fazercards_url_is_auto_detected():
 
     row = SimpleNamespace(kind="http", base_url="https://api.fzr.cards/api/v2", key_enc=encrypt("k"), config={})
     assert isinstance(build_provider(row), FazerCardsProvider)
+
+
+async def test_long_names_fit_columns():
+    long = "A" * 200
+    h = router(**{"GET /api/v2/topups": httpx.Response(200, json={"ok": True, "items": [
+        {"category_id": "c1", "name": long}, {"category_id": "c2", "name": long}], "meta": {"has_more": False, "next_cursor": None}}),
+        "GET /api/v2/topups/offers": lambda r: httpx.Response(200, json={**OFFERS, "category_id": r.url.params["category_id"], "name": long})})
+    brands = await make(h).catalog(force=True)
+    assert len(brands) == 2 and len({b["slug"] for b in brands}) == 2  # bir xil uzun nomlar ham to'qnashmaydi
+    assert all(len(b["slug"]) <= 64 and len(b["name"]) <= 80 for b in brands)

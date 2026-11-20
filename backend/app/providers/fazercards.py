@@ -161,15 +161,15 @@ class FazerCardsProvider:
                 return None
             fields = [{"key": f.get("key"), "label": f.get("label") or f.get("key"), "placeholder": "", "pattern": ""}
                       for f in d.get("fields") or [] if f.get("key")]
-            name = str(d.get("name") or c.get("name") or cid)
-            return {"slug": f"{SLUG_PREFIX}{slugify(name) or slugify(cid)}", "name": name, "logo_url": c.get("imageurl") or d.get("imageurl"),
+            name = str(d.get("name") or c.get("name") or cid)[:80]  # DonateGame.name — 80 belgi
+            return {"slug": f"{SLUG_PREFIX}{(slugify(name) or slugify(cid))[:50]}", "name": name, "logo_url": c.get("imageurl") or d.get("imageurl"),
                     "category_name": "FazerCards",
                     "products": [{"name": name, "required_fields": fields or [{"key": "player_id", "label": "Player ID"}], "skus": skus}]}
 
         brands = [b for b in await asyncio.gather(*(one(c) for c in cats)) if b]
         seen: set[str] = set()
         for b in brands:  # bir xil nomli kategoriyalar (mintaqalar) to'qnashmasin
-            base, n = b["slug"], 2
+            base, n = b["slug"][:58], 2  # DonateGame.slug — 64 belgi
             while b["slug"] in seen:
                 b["slug"], n = f"{base}-{n}", n + 1
             seen.add(b["slug"])

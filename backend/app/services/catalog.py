@@ -13,9 +13,21 @@ async def tg_prices(session) -> dict:
 
     mode = await A.get_value(session, "tg_price_mode")
     if mode == "percent":
+        from app.services import tg_auto
+
         k = 100 + await A.get_value(session, "tg_markup_percent")
         premium = {m: -(-await A.get_value(session, f"premium_cost_{m}") * k // 100) for m in PREMIUM_MONTHS}  # yuqoriga yaxlitlash
         star_x100 = await A.get_value(session, "stars_cost") * k  # 1 Star narxi × 100 (kasr qismini yo'qotmaslik uchun)
+        # Yupay avtomatik yoqilgan bo'lsa — tannarx Yupay narxidan (dollar × kurs), qo'lda kiritilgan tannarxdan emas
+        costs = await tg_auto.yupay_costs(session)
+        if costs:
+            import math
+
+            for m, c in costs["premium"].items():
+                if m in premium:
+                    premium[m] = math.ceil(c * k / 100 / 100) * 100  # 100 so'mgacha yuqoriga
+            if costs["star"]:
+                star_x100 = math.ceil(costs["star"] * k)
     else:
         premium = {m: await A.get_value(session, f"premium_price_{m}") for m in PREMIUM_MONTHS}
         star_x100 = await A.get_value(session, "stars_price") * 100

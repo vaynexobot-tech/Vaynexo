@@ -53,6 +53,34 @@ async def find_target(session: AsyncSession, kind: str, details: dict) -> tuple[
     return (p, prov, f"{p.provider_sku.split('@')[0]}@qty:{qty}") if qty > 0 else None
 
 
+async def yupay_costs(session: AsyncSession) -> dict | None:
+    """Yupay tannarxi so'mda: {"premium": {oy: so'm}, "star": 1 Star so'm (kasr)} — yoki None (Yupay ulanmagan)."""
+    from decimal import Decimal, InvalidOperation
+
+    if not await enabled(session):
+        return None
+    rate = int(await app_settings.get_value(session, "donate_usd_rate"))
+    out: dict = {"premium": {}, "star": None}
+    for kind, slug in AUTO_KINDS.items():
+        game = await session.get(DonateGame, slug)
+        if game is None or game.provider_id is None:
+            continue
+        pkgs = list(await session.scalars(select(DonatePackage).where(
+            DonatePackage.game == slug, DonatePackage.provider_id == game.provider_id, DonatePackage.is_active.is_(True))))
+        try:
+            if kind == "premium":
+                for p in pkgs:
+                    if p.diamonds and p.cost_usd:
+                        out["premium"][p.diamonds] = float(Decimal(p.cost_usd) * rate)
+            else:  # eng katta paket — yaxlitlash xatosi eng kichik
+                big = max((p for p in pkgs if p.diamonds and p.cost_usd), key=lambda p: p.diamonds, default=None)
+                if big:
+                    out["star"] = float(Decimal(big.cost_usd) / big.diamonds * rate)
+        except (InvalidOperation, ValueError):
+            continue
+    return out if (out["premium"] or out["star"]) else None
+
+
 async def eligible(session: AsyncSession, kind: str, details: dict) -> bool:
     return await enabled(session) and await find_target(session, kind, details) is not None
 

@@ -106,3 +106,26 @@ async def test_gift_stays_manual_and_toggle(api, ctx, monkeypatch):
 async def _details(oid):
     async with SessionLocal() as s:
         return (await s.get(TgOrder, oid)).details
+
+
+async def test_prices_follow_yupay_cost(api, monkeypatch):
+    from app.services import catalog
+
+    assert (await api(1).put("/admin/settings", {"key": "tg_price_mode", "value": "percent"})).status_code == 200
+    async with SessionLocal() as s:
+        before = await catalog.tg_prices(s)
+    await _setup(monkeypatch, lambda r: httpx.Response(201, json={"status": "delivered"}))
+    async with SessionLocal() as s, s.begin():
+        s.add(DonatePackage(game="telegram-premium", name="12 мес", diamonds=12, price=1, provider_sku="p12", cost_usd="30.02", source="api"))
+        pk = (await s.scalars(__import__("sqlalchemy").select(DonatePackage).where(DonatePackage.game == "telegram-premium"))).all()
+        for p in pk:
+            p.provider_id = (await s.get(DonateGame, "telegram-premium")).provider_id
+            if p.diamonds == 3:
+                p.cost_usd = "12.54"
+        st = (await s.scalars(__import__("sqlalchemy").select(DonatePackage).where(DonatePackage.game == "telegram-stars"))).one()
+        st.cost_usd, st.diamonds = "78.18", 5000
+    async with SessionLocal() as s:
+        after = await catalog.tg_prices(s)
+    # 12.54$ × 12800 × 1.15 (standart ustama) = 184 589 → 184 600; 1 Star: 78.18/5000 × 12800 × 115 = 23 017
+    assert after["premium"][3] == 184_600 and after["premium"][12] == 441_900 and before["premium"][3] != after["premium"][3]
+    assert after["star_x100"] == 23_017

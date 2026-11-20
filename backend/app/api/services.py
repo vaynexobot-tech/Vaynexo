@@ -39,7 +39,11 @@ async def tg_order(body: TgOrderIn, user: CurrentUser, session: SessionDep):
     out = Outbox()
     async with session.begin():
         o = await svc.create_tg_order(session, user, body.model_dump(), out)
+        auto = "auto" in (o.details or {})
+        oid = o.id
     await out.flush()
+    if auto:
+        await enqueue("fulfil_tg", oid, "create")
     return S.tg_order(o)
 
 

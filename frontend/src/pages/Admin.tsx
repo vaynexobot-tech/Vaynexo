@@ -572,7 +572,7 @@ function DonateReview() {
   );
 }
 
-const HIDE_TG = ["price_mode"];
+const HIDE_TG = ["auto", "price_mode"];
 const TG_LABEL: Record<string, string> = { months: "Muddat (oy)", stars: "Stars soni", gift: "Sovg'a", nft: "NFT", message: "Xabar", anonymous: "Anonim", link: "Havola", for_self: "O'ziga" };
 
 function TgAdmin() {
@@ -594,6 +594,11 @@ function TgAdmin() {
             <div className="row between"><span className="b">{o.title}</span><span className="y mono">{som(o.price)}</span></div>
             <Copy value={o.target_username} label={`Kimga · ${o.ref} · user ${o.user_id}`} />
             <div className="mut xs pre">{Object.entries(o.details).filter(([k, v]) => v !== "" && v !== false && v != null && !HIDE_TG.includes(k)).map(([k, v]) => `${TG_LABEL[k] ?? k}: ${v === true ? "ha" : v}`).join("\n")}</div>
+            {o.status === "processing" && (o.details as { auto?: { manual?: boolean; why?: string } }).auto && (
+              <div className={"xs " + ((o.details as { auto?: { manual?: boolean } }).auto?.manual ? "y" : "g")}>
+                {(o.details as { auto?: { manual?: boolean; why?: string } }).auto?.manual ? `⚠️ Qo'lda bajaring: ${(o.details as { auto?: { why?: string } }).auto?.why ?? ""}` : "🤖 Yupay orqali avtomatik bajarilmoqda…"}
+              </div>
+            )}
             {o.status === "processing" && (
               <div className="row"><button className="btn small green grow" disabled={busy} onClick={() => act(o, "done")}>Bajarildi</button><button className="btn small danger" disabled={busy} onClick={() => act(o, "refund")}>Qaytarish</button></div>
             )}

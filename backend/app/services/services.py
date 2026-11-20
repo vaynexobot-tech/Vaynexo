@@ -76,7 +76,13 @@ async def create_tg_order(session: AsyncSession, user: User, data: dict, out: Ou
     session.add(order)
     await session.flush()
     await wallet.debit(session, user.id, price, "tg_service", f"tg:{order.id}", ref_type="tg", ref_id=order.id)
-    out.admins(f"⭐️ Yangi TG buyurtma #{order.id}\n{title}\nKimga: {target}\nSumma: {fmt(price)}", webapp_button("Bajarish", "/admin"), topic="tg")
+    from app.services import tg_auto
+
+    auto = await tg_auto.eligible(session, kind, details)
+    order.details = {**order.details, "auto": {"attempts": 0}} if auto else order.details
+    out.admins(f"⭐️ Yangi TG buyurtma #{order.id}\n{title}\nKimga: {target}\nSumma: {fmt(price)}"
+               + ("\n🤖 Yupay orqali avtomatik bajariladi" if auto else ""),
+               None if auto else webapp_button("Bajarish", "/admin"), topic="tg")
     return order
 
 

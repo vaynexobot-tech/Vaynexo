@@ -17,7 +17,7 @@ from app.bot.handlers import boost_post_kb, boost_post_text, get_share_pct
 from app.bot.instance import get_bot
 from app.config import settings
 from app.db import SessionLocal
-from app.models import BoostOrder, DonateOrder
+from app.models import BoostOrder, DonateOrder, TgOrder
 from app.queue import LITE, redis_settings
 from app.services import donate, market, p2p, rental
 from app.services import services as svc
@@ -51,6 +51,17 @@ async def fulfil_donate(ctx, order_id: int, mode: str = "create"):
     if nxt:
         next_mode, delay = nxt
         await ctx["redis"].enqueue_job("fulfil_donate", order_id, next_mode, _defer_by=timedelta(seconds=delay))
+
+
+async def fulfil_tg(ctx, order_id: int, mode: str = "create"):
+    from app.services import tg_auto
+
+    out = Outbox()
+    nxt = await tg_auto.fulfil_step(SessionLocal, order_id, mode, out)
+    await out.flush()
+    if nxt:
+        next_mode, delay = nxt
+        await ctx["redis"].enqueue_job("fulfil_tg", order_id, next_mode, _defer_by=timedelta(seconds=delay))
 
 
 async def post_boost(ctx, order_id: int):
@@ -172,6 +183,13 @@ async def cron_rescue_donates(ctx):
         ))
     for oid in ids:
         await ctx["redis"].enqueue_job("fulfil_donate", oid, "create", _job_id=f"rescue:{oid}")
+    # Navbatga tushmay qolgan avtomatik TG buyurtmalar (urinish hali boshlanmagan)
+    async with SessionLocal() as session:
+        tg_rows = list(await session.scalars(select(TgOrder).where(TgOrder.status == "processing", TgOrder.created_at < limit_time).limit(50)))
+    for o in tg_rows:
+        auto = (o.details or {}).get("auto")
+        if auto is not None and not auto.get("manual") and int(auto.get("attempts", 0)) == 0:
+            await ctx["redis"].enqueue_job("fulfil_tg", o.id, "create", _job_id=f"rescue-tg:{o.id}")
 
 
 async def startup(ctx):
@@ -183,7 +201,7 @@ async def shutdown(ctx):
 
 
 class WorkerSettings:
-    functions = [send_tg, fulfil_donate, post_boost, update_boost_post]
+    functions = [send_tg, fulfil_donate, fulfil_tg, post_boost, update_boost_post]
     cron_jobs = [
         cron(cron_expire_topups, second=0),
         cron(cron_provider_balance, minute={7, 37}, second=50),

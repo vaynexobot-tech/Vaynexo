@@ -11,8 +11,10 @@ from app.models import AppSetting
 
 log = logging.getLogger(__name__)
 
-RELEASE = "2026-11-20.media-db"
-NOTES = """🖼 Yuklangan rasm va videolar endi bazada saqlanadi — deploy qilinganda yo'qolmaydi (video chegarasi 20 MB)
+RELEASE = "2026-11-20.tg-auto"
+NOTES = """⭐️ Telegram Premium va Stars endi Yupay orqali AVTOMATIK bajariladi (gift va NFT — qo'lda). Yupay javob bermasa yoki rad etsa —
+   pul qaytadi yoki admin guruhiga «qo'lda bajaring» xabari keladi. O'chirish: Sozlamalar → «Telegram Premium va Stars avtomatik»
+🖼 Yuklangan rasm va videolar endi bazada saqlanadi — deploy qilinganda yo'qolmaydi (video chegarasi 20 MB)
    ⚠️ Eski (shu yangilanishgacha yuklangan) rasmlar server diskida edi — ular allaqachon yo'qolgan bo'lishi mumkin; e'lon egalari qayta yuklaydi
 🏆 Turnirlar: jamoaviy (5v5) format — jamoani sardor ro'yxatdan o'tkazadi (kamida 5 a'zo); turnir setkasi (olimpiya tizimi)
    Admin → Turnirlar → «Setka»: yaratish va g'olibni belgilash; final g'olibiga (jamoaning hammasiga) ball avtomatik

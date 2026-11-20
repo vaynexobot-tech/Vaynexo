@@ -181,9 +181,13 @@ async def _handle_webhook(request: Request, api_key: str) -> dict:
     except ValueError:
         return {"ok": True}
     if request.headers.get("x-yupay-event") == "order.status_changed":
-        m = re.fullmatch(r"VX-D(\d+)", str(data.get("merchant_order_id", "")))
+        mo = str(data.get("merchant_order_id", ""))
+        m = re.fullmatch(r"VX-D(\d+)", mo)
         if m:
             await enqueue("fulfil_donate", int(m.group(1)), "check")
+        t = re.fullmatch(r"VX-T(\d+)", mo)
+        if t:
+            await enqueue("fulfil_tg", int(t.group(1)), "check")
     return {"ok": True}
 
 

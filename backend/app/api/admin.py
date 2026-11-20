@@ -942,6 +942,8 @@ async def donate_provider_update(pid: int, body: ProviderIn, admin: AdminUser, s
         p = await session.get(DonateProvider, pid)
         if p is None:
             raise NotFound("Provayder")
+        if p.kind == "http" and body.kind in ("yupay", "fazercards"):
+            p.kind = body.kind  # turni tuzatish (masalan, FazerCards adashib «Boshqa API» deb qo'shilgan)
         p.name, p.base_url, p.is_active = body.name.strip(), _norm_base(p.kind, body.base_url), body.is_active
         old = {k: v for k, v in (p.config or {}).items() if k.endswith("_enc")}  # shifrlangan sirlar UI'dan kelmaydi — saqlab qolamiz
         if body.config is not None or (body.webhook_secret or "").strip():

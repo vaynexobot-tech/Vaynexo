@@ -111,3 +111,13 @@ def test_webhook_signature():
     assert not verify_fazer_signature({"x-webhook-signature": sig}, body, "boshqa")
     assert not verify_fazer_signature({"x-webhook-signature": sig}, body, "")  # sir qo'yilmagan — hech narsa qabul qilinmaydi
     assert not verify_fazer_signature({}, body, "sekret")
+
+
+def test_http_kind_with_fazercards_url_is_auto_detected():
+    from types import SimpleNamespace
+
+    from app.security import encrypt
+    from app.services.donate_catalog import build_provider
+
+    row = SimpleNamespace(kind="http", base_url="https://api.fzr.cards/api/v2", key_enc=encrypt("k"), config={})
+    assert isinstance(build_provider(row), FazerCardsProvider)

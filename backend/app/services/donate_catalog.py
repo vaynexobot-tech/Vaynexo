@@ -58,7 +58,7 @@ def build_provider(row: DonateProvider):
         from app.providers.yupay import YupayProvider
 
         return YupayProvider(key, row.base_url)
-    if row.kind == "fazercards":
+    if row.kind == "fazercards" or (row.kind == "http" and "fzr.cards" in (row.base_url or "")):  # adashib «Boshqa API» tanlangan
         from app.providers.fazercards import FazerCardsProvider
 
         return FazerCardsProvider(key, row.base_url)

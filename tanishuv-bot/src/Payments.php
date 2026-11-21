@@ -37,6 +37,9 @@ final class Payments
         foreach (self::products('premium') as $p) {
             $rows[] = [[$ctx->t('premium.pkg', ['days' => $p['days'], 'price' => $p['price_xtr']]), 'pm:b:' . $p['id']]];
         }
+        if (P2p::enabled()) {
+            $rows[] = [[$ctx->t('premium.card_btn'), 'pm:card']];
+        }
         $rows[] = [[$ctx->t('premium.invite_btn'), 'pm:inv']];
         $rows[] = [[$ctx->t('btn.back'), 'm:home']];
         $ctx->send(implode("\n\n", $lines), Kb::inline($rows));
@@ -77,6 +80,10 @@ final class Payments
             }
             $ctx->answer();
             self::createOrder($ctx, $prod, null);
+            return;
+        }
+        if ($p[0] === 'pm' && in_array($p[1] ?? '', ['card', 'cb'], true)) {
+            P2p::callback($ctx, $p);
             return;
         }
         if ($p[0] === 'pm' && ($p[1] ?? '') === 'menu') {

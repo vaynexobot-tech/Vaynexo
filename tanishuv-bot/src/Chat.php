@@ -104,6 +104,9 @@ final class Chat
             $ctx->answer($ctx->t('err.unavailable'), true);
             return;
         }
+        if (!Gate::pass($ctx, $mid)) {
+            return;
+        }
         $other = Users::find($otherId, true);
         if (!Users::isVisible($other)) {
             $ctx->answer($ctx->t('err.unavailable'), true);

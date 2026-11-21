@@ -116,7 +116,7 @@ $t('bank: HMAC, timestamp, test event, duplicate, ambiguous, reference, unmatche
     // Nol moslik
     [$c, $b] = bankSend(ev(['amount_minor' => 999, 'card_last4' => '1002']));
     T::eq($b['result'], 'unmatched', 'nol moslik → unmatched');
-    // Bank kirimi Premium yoki boost bermaydi
+    // Oddiy bank kirimi (P2P buyurtmasiz) Premium yoki boost bermaydi
     T::eq((int)$db->val('SELECT COUNT(*) FROM tb_users WHERE id IN (201,202,203,204) AND premium_until IS NOT NULL'), 0, 'bank kirimi Premium yoqmadi');
     T::eq((int)$db->val('SELECT COUNT(*) FROM tb_boosts WHERE user_id IN (201,202,203,204)'), 0, 'bank kirimi boost yoqmadi');
     T::eq((int)$db->val("SELECT COUNT(*) FROM tb_orders WHERE user_id IN (201,202,203,204)"), 0, 'Stars hisobiga aralashmadi');

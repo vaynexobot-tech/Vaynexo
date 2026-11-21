@@ -109,6 +109,14 @@ final class App
                 $p[] = 'bank.hmac_secret boshqa kalitlardan farqli bo‘lishi kerak';
             }
         }
+        $sk = (string)self::cfg('bank.sms_key', '');
+        if ($sk !== '') {
+            if (strlen($sk) < 32 || !preg_match('/^[A-Za-z0-9_-]+$/', $sk)) {
+                $p[] = 'bank.sms_key kamida 32 belgi (A-Z, a-z, 0-9, _ -) bo‘lishi kerak';
+            } elseif (in_array($sk, $vals, true) || $sk === (string)self::cfg('bank.hmac_secret', '')) {
+                $p[] = 'bank.sms_key boshqa kalitlardan farqli bo‘lishi kerak';
+            }
+        }
         return $p;
     }
 
@@ -155,6 +163,7 @@ final class App
             (string)self::cfg('setup_key', ''),
             (string)self::cfg('cron_key', ''),
             (string)self::cfg('bank.hmac_secret', ''),
+            (string)self::cfg('bank.sms_key', ''),
         ], static fn($s) => strlen($s) >= 4));
     }
 }

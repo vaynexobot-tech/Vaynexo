@@ -17,6 +17,10 @@ final class Kb
                 if ($b === null) {
                     continue;
                 }
+                if (($b[2] ?? null) === 'url') {
+                    $r[] = ['text' => $b[0], 'url' => $b[1]];
+                    continue;
+                }
                 if (strlen($b[1]) > 64) {
                     throw new \LogicException('callback_data 64 baytdan oshdi: ' . $b[1]);
                 }

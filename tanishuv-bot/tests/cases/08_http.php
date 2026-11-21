@@ -269,7 +269,7 @@ $t('document root: ichki papkalar .htaccess bilan yopilgan, ochiq qism faqat pub
     T::ok(str_contains($root, 'Nginx'), 'Nginx ogohlantirishi yozilgan');
     $pub = array_map('basename', glob(TB_ROOT . '/public/*'));
     sort($pub);
-    T::eq($pub, ['bank-webhook.php', 'cron.php', 'hmac-test.html', 'index.php', 'setup.php', 'webhook.php'], 'public/ da faqat kerakli fayllar');
+    T::eq($pub, ['bank-webhook.php', 'cron.php', 'hmac-test.html', 'index.php', 'setup.php', 'sms-webhook.php', 'webhook.php'], 'public/ da faqat kerakli fayllar');
     // src fayllari to‘g‘ridan-to‘g‘ri ishga tushirilganda hech narsa chiqarmaydi
     foreach (glob(TB_ROOT . '/src/*.php') as $f) {
         if (basename($f) === 'bootstrap.php') {

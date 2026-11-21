@@ -96,6 +96,14 @@ final class Admin
             Bank::adminCallback($ctx, $p);
             return;
         }
+        if (in_array($a, ['gc', 'gct', 'gcd', 'gca'], true)) {
+            Gate::adminCallback($ctx, $a, $arg);
+            return;
+        }
+        if (str_starts_with($a, 'pp')) {
+            P2p::adminCallback($ctx, $a, $arg);
+            return;
+        }
         switch ($a) {
             case 'h':
                 if (str_starts_with((string)($ctx->u['state'] ?? ''), 'adm:')) {
@@ -381,6 +389,14 @@ final class Admin
         }
         if (str_starts_with($state, 'adm:m')) {
             MenuEditor::input($ctx, $text);
+            return;
+        }
+        if ($state === 'adm:gch') {
+            Gate::adminInput($ctx, $text);
+            return;
+        }
+        if (str_starts_with($state, 'adm:p2p')) {
+            P2p::adminInput($ctx, $state, $text);
             return;
         }
         if (in_array($state, ['adm:card', 'adm:pend'], true)) {
@@ -687,6 +703,7 @@ final class Admin
             [[$ctx->t('adm.cf_vf'), 'a:cf:vf'], [$ctx->t('adm.cf_ah'), 'a:cf:ah']],
             [[$ctx->t('adm.cf_lg'), 'a:cf:lg'], [$ctx->t('adm.cf_pr'), 'a:cf:pr']],
             [[$ctx->t('adm.cf_rt'), 'a:cf:rt']],
+            [[$ctx->t('adm.cf_gate'), 'a:gc'], [$ctx->t('adm.cf_p2p'), 'a:pp']],
             self::back($ctx),
         ]);
         $edit ? $ctx->edit($txt, $kb) : $ctx->send($txt, $kb);

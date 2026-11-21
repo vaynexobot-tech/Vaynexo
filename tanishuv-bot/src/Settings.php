@@ -22,6 +22,13 @@ final class Settings
         'retention' => '1',          // 1 = CRON qaytarish eslatmalarini yuboradi
         'ref_reward_days' => '1',
         'ref_max_rewards' => '30',
+        'chat_gate' => '0',          // 1 = suhbat boshlash: Premium yoki majburiy kanallarga obuna
+        'gate_channels' => '[]',     // JSON: [{"ref":"@kanal","title":"...","url":"https://t.me/kanal"}]
+        'p2p_enabled' => '0',        // 1 = Uzcard/Humo (P2P) bilan Premium sotib olish
+        'p2p_card' => '',            // qabul qiluvchi karta raqami (to‘lovchiga ko‘rsatiladi)
+        'p2p_holder' => '',
+        'p2p_senders' => '',         // SMS yuboruvchi nomlari (vergul bilan); bo‘sh = hammasi
+        'p2p_prices' => '{"premium_1":5000,"premium_3":12000,"premium_7":25000,"premium_30":70000}',
     ];
     public const LIKEMSG_MODES = ['on', 'moderate', 'off'];
 

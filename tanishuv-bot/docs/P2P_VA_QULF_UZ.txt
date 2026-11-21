@@ -1,0 +1,38 @@
+SUHBAT QULFI VA P2P (UZCARD / HUMO) TO'LOV
+==========================================
+
+1) SUHBAT QULFI (Premium yoki kanalga obuna)
+   - /admin -> Sozlamalar -> "Suhbat qulfi".
+   - Yoqilsa: match bo'lgach "Suhbat boshlash" bosilganda Premium YOKI barcha majburiy kanallarga obuna kerak.
+   - Kanal qo'shish: @kanal_nomi yuboring. Bot har bir kanalda ADMIN bo'lishi shart (obunani tekshirish uchun).
+     Yopiq kanal: "-100123456789 https://t.me/+taklifhavolasi".
+   - Kanal qo'shilmasa, qulf faqat Premiumni talab qiladi.
+   - Faqat suhbatni BOSHLAGAN tomon tekshiriladi, sherigi bepul qo'shiladi.
+   - Obuna har safar jonli tekshiriladi. Telegram xato bersa (masalan bot admin emas) foydalanuvchi to'silmaydi, xato logga yoziladi.
+   - Standart holat: O'CHIQ.
+
+2) P2P TO'LOV
+   Oqim: Premium -> "💳 Uzcard / Humo bilan to'lash" -> paket -> bot kartani va ANIQ summani ko'rsatadi
+   (narx + 1..99 so'm, har buyurtmada noyob) -> foydalanuvchi o'tkazadi -> bank SMS i telefondan
+   sms-webhook.php ga keladi -> summa va karta mos kelsa Premium avtomatik yoqiladi (1 soat ichida).
+
+   Yoqish:
+   a) config.php ga ikkita qiymat qo'shing (kamida 32 belgi, boshqa kalitlardan farqli):
+        'bank' => ['enabled' => true, 'hmac_secret' => '...', 'max_skew' => 300, 'sms_key' => 'YANGI_64_BELGILI_KALIT'],
+   b) /admin -> Sozlamalar -> "P2P to'lov": karta (raqam | egasi), SMS yuboruvchilar, narxlar, keyin "Yoqish".
+   c) Telefonda SMS forwarder ilovasi o'rnating va uni shu manzilga ulang:
+        https://SIZNING-DOMEN/tanishuv-bot/public/sms-webhook.php?key=SMS_KEY
+      (yoki sarlavha: X-Sms-Key: SMS_KEY). Metod POST, JSON yoki form.
+      Maydonlar: sender|from|number|address (yuboruvchi), text|message|body|sms|content (matn), ixtiyoriy id.
+   d) "SMS yuboruvchilar" ga bank SMS i keladigan nomni yozing (masalan HUMOCARD). Bo'sh qoldirsangiz hamma qabul qilinadi
+      (kalit sizdan boshqada bo'lmasa ham xavfsizroq: nomni albatta yozing).
+
+   Xavfsizlik:
+   - Faqat BOT bergan noyob summaga aniq mos kelgan kirim Premium yoqadi. Mos kelmagan yoki noaniq kirim hech narsa bermaydi.
+   - Bir SMS ikki marta hisoblanmaydi (event_id = SMS matni hashi yoki forwarder id si).
+   - Karta raqami bazada admin kiritgan sozlama sifatida saqlanadi (to'lovchiga ko'rsatiladi). CVV/PIN so'ralmaydi va saqlanmaydi.
+   - SMS_KEY sirli qoladi: kim biladi, soxta SMS yuborib Premium olishi mumkin. Yuboruvchi nomi filtri buni qiyinlashtiradi.
+
+   MUHIM: SMS matni formatlari banklarda farq qiladi. Tahlilchi "Popolnenie/Kirim/+summa UZS/*1234" ko'rinishlarini biladi,
+   lekin sizning HUMO/UZCARD SMS larining HAQIQIY matnlari bilan sinab ko'rish shart. Mos kelmasa, Admin -> Kirimlar -> Tarix da
+   "unmatched" ko'rinadi.

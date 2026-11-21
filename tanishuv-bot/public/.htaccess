@@ -1,4 +1,4 @@
-# Ochiq qism: faqat webhook.php, cron.php, setup.php, bank-webhook.php, hmac-test.html, index.php
+# Ochiq qism: faqat webhook.php, cron.php, setup.php, bank-webhook.php, sms-webhook.php, hmac-test.html, index.php
 Options -Indexes
 DirectoryIndex index.php
 

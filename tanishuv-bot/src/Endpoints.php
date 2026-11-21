@@ -136,6 +136,52 @@ final class Endpoints
         self::out(200, ['ok' => true] + $st);
     }
 
+    /** SMS forwarder: POST (JSON yoki form). Kalit: X-Sms-Key sarlavhasi yoki ?key=. */
+    public static function sms(): void
+    {
+        if (self::method() !== 'POST') {
+            header('Allow: POST');
+            self::out(405, ['ok' => false, 'error' => 'method']);
+        }
+        self::boot();
+        $key = (string)App::cfg('bank.sms_key', '');
+        if (strlen($key) < 32) {
+            self::out(503, ['ok' => false, 'error' => 'not_configured']);
+        }
+        $given = (string)($_SERVER['HTTP_X_SMS_KEY'] ?? $_GET['key'] ?? '');
+        if ($given === '' || !hash_equals($key, $given)) {
+            self::out(401, ['ok' => false, 'error' => 'bad_key']);
+        }
+        $raw = self::readBody(P2p::MAX_BODY);
+        if ($raw === null) {
+            self::out(413, ['ok' => false, 'error' => 'body_too_large']);
+        }
+        $j = json_decode($raw, true);
+        if (!is_array($j) || array_is_list($j)) {
+            parse_str($raw, $j);
+            $j = $j ?: $_POST;
+        }
+        $pick = static function (array $keys) use ($j): ?string {
+            foreach ($keys as $k) {
+                if (isset($j[$k]) && is_scalar($j[$k]) && (string)$j[$k] !== '') {
+                    return (string)$j[$k];
+                }
+            }
+            return null;
+        };
+        $text = $pick(['text', 'message', 'body', 'sms', 'content']);
+        if ($text === null) {
+            self::out(422, ['ok' => false, 'error' => 'invalid_field', 'field' => 'text']);
+        }
+        try {
+            [$code, $body] = P2p::handleSms((string)$pick(['sender', 'from', 'number', 'address']), $text, $pick(['id', 'event_id']));
+        } catch (\Throwable $e) {
+            Log::error('sms', $e);
+            self::out(500, ['ok' => false, 'error' => 'internal']);
+        }
+        self::out($code, $body);
+    }
+
     public static function bank(): void
     {
         if (self::method() !== 'POST') {

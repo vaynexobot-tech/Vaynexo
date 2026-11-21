@@ -58,7 +58,7 @@ final class Bank
             // Test: faqat imzo va format tekshiriladi. DB ga yozilmaydi, pending yopilmaydi, "Ulangan" yoqilmaydi.
             return [200, ['ok' => true, 'test' => true, 'valid' => true]];
         }
-        return self::record($e);
+        return self::recordEvent($e);
     }
 
     /** @return array|string normallashgan event yoki xato maydon nomi */
@@ -103,7 +103,8 @@ final class Bank
         return ['source' => $src, 'event_id' => $eid, 'test' => $test, 'amount' => $amt, 'currency' => $cur, 'last4' => $last4, 'ref' => $ref, 'occurred' => $occAt];
     }
 
-    private static function record(array $e): array
+    /** Normallashgan event ni yozadi va moslaydi (SMS endpointi ham shuni ishlatadi). */
+    public static function recordEvent(array $e): array
     {
         $db = App::db();
         try {
@@ -136,7 +137,10 @@ final class Bank
                 );
                 $evId = $db->lastId();
                 if ($pid !== null) {
-                    $db->exec("UPDATE tb_bank_pending SET status = 'matched', matched_event_id = ? WHERE id = ? AND status = 'pending'", [$evId, $pid]);
+                    $upd = $db->exec("UPDATE tb_bank_pending SET status = 'matched', matched_event_id = ? WHERE id = ? AND status = 'pending'", [$evId, $pid]);
+                    if ($upd === 1) {
+                        P2p::onMatched($db, $pid);
+                    }
                 }
                 $db->setSetting('bank_connected_at', gmdate('Y-m-d H:i:s'));
                 foreach ((array)App::cfg('admin_ids', []) as $aid) {

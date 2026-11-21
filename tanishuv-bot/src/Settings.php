@@ -22,6 +22,8 @@ final class Settings
         'retention' => '1',          // 1 = CRON qaytarish eslatmalarini yuboradi
         'ref_reward_days' => '1',
         'ref_max_rewards' => '30',
+        'paid_enabled' => '0',       // 1 = pullik Premium/boost (Stars, karta). 0 = Premium faqat kanalga obuna uchun
+        'sub_premium_days' => '7',   // kanalga obuna bo‘lganda beriladigan Premium kunlari
         'chat_gate' => '0',          // 1 = suhbat boshlash: Premium yoki majburiy kanallarga obuna
         'gate_channels' => '[]',     // JSON: [{"ref":"@kanal","title":"...","url":"https://t.me/kanal"}]
         'p2p_enabled' => '0',        // 1 = Uzcard/Humo (P2P) bilan Premium sotib olish

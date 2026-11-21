@@ -44,6 +44,51 @@ final class Gate
         return self::enabled() && !Users::isPremium($ctx->u) && !App::isAdmin($ctx->uid);
     }
 
+    public static function subDays(): int
+    {
+        return max(1, min(365, Settings::int('sub_premium_days')));
+    }
+
+    /** Obuna uchun Premium: mavjud muddat bilan «hozir + N kun» dan kattasi (kunlar yig‘ilib ketmaydi). */
+    public static function grantPremium(Ctx $ctx): string
+    {
+        $cur = !empty($ctx->u['premium_until']) ? (int)strtotime($ctx->u['premium_until'] . ' UTC') : 0;
+        $until = gmdate('Y-m-d H:i:s', max($cur, time() + self::subDays() * 86400));
+        $ctx->set(['premium_until' => $until]);
+        return $until;
+    }
+
+    /** @return array<int, array> kanal URL tugmalari qatorlari */
+    public static function joinRows(Ctx $ctx, array $channels): array
+    {
+        $rows = [];
+        foreach ($channels as $c) {
+            $rows[] = [[$ctx->t('gate.join', ['title' => $c['title']]), $c['url'], 'url']];
+        }
+        return $rows;
+    }
+
+    /** «Obuna bo‘ldim» bosilganda: tekshiradi va Premium beradi. */
+    public static function claim(Ctx $ctx): void
+    {
+        $channels = self::channels();
+        if (!$channels) {
+            $ctx->answer($ctx->t('sub.none'), true);
+            return;
+        }
+        $miss = self::missing($ctx->uid);
+        if ($miss) {
+            $ctx->answer($ctx->t('sub.not_yet'), true);
+            $rows = self::joinRows($ctx, $miss);
+            $rows[] = [[$ctx->t('sub.check'), 'pm:sub']];
+            $ctx->send($ctx->t('sub.not_yet'), Kb::inline($rows));
+            return;
+        }
+        $until = self::grantPremium($ctx);
+        $ctx->answer();
+        $ctx->send($ctx->t('sub.granted', ['date' => substr($until, 0, 16) . ' UTC', 'days' => self::subDays()]));
+    }
+
     /** Obuna bo‘lmagan kanallar. */
     public static function missing(int $uid): array
     {
@@ -75,12 +120,10 @@ final class Gate
         $channels = self::channels();
         $miss = self::missing($ctx->uid);
         if ($channels && !$miss) {
+            self::grantPremium($ctx);   // obuna bo‘lgan: Premium ham beriladi
             return true;
         }
-        $rows = [];
-        foreach ($miss as $c) {
-            $rows[] = [[$ctx->t('gate.join', ['title' => $c['title']]), $c['url'], 'url']];
-        }
+        $rows = self::joinRows($ctx, $miss);
         if ($channels) {
             $rows[] = [[$ctx->t('gate.check'), 'c:s:' . $matchId]];
         }
@@ -95,7 +138,8 @@ final class Gate
     public static function adminView(Ctx $ctx): void
     {
         $lines = [$ctx->t('adm.gate_title', ['on' => self::enabled() ? '✅' : '❌'])];
-        $kb = [[[$ctx->t('adm.gate_toggle'), 'a:gct']]];
+        $lines[] = $ctx->t('adm.gate_days', ['n' => self::subDays()]);
+        $kb = [[[$ctx->t('adm.gate_toggle'), 'a:gct'], [$ctx->t('adm.gate_days_btn'), 'a:gcn']]];
         foreach (self::channels() as $i => $c) {
             $lines[] = ($i + 1) . '. ' . $c['title'] . ' — ' . $c['ref'];
             $kb[] = [[$ctx->t('adm.gate_del', ['title' => $c['title']]), 'a:gcd:' . $i]];
@@ -127,11 +171,27 @@ final class Gate
                 }
                 self::adminView($ctx);
                 return;
+            case 'gcn':
+                $ctx->setState('adm:gdays');
+                $ctx->send($ctx->t('adm.gate_days_prompt'), Kb::inline([[[$ctx->t('btn.back'), 'a:gc']]]));
+                return;
             case 'gca':
                 $ctx->setState('adm:gch');
                 $ctx->send($ctx->t('adm.gate_prompt'), Kb::inline([[[$ctx->t('btn.back'), 'a:gc']]]));
                 return;
         }
+    }
+
+    public static function adminDays(Ctx $ctx, string $text): void
+    {
+        if (!preg_match('/^\d{1,3}$/', trim($text)) || (int)$text < 1 || (int)$text > 365) {
+            $ctx->send($ctx->t('adm.gate_days_prompt'), Kb::inline([[[$ctx->t('btn.back'), 'a:gc']]]));
+            return;
+        }
+        Settings::set('sub_premium_days', (string)(int)$text);
+        Admin::audit($ctx, 'settings.sub_days', null, (string)(int)$text);
+        $ctx->setState(null);
+        self::adminView($ctx);
     }
 
     /** "@kanal" yoki "-100123456 https://t.me/+invite" */

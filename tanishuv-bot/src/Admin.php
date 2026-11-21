@@ -96,7 +96,7 @@ final class Admin
             Bank::adminCallback($ctx, $p);
             return;
         }
-        if (in_array($a, ['gc', 'gct', 'gcd', 'gca'], true)) {
+        if (in_array($a, ['gc', 'gct', 'gcd', 'gca', 'gcn'], true)) {
             Gate::adminCallback($ctx, $a, $arg);
             return;
         }
@@ -389,6 +389,10 @@ final class Admin
         }
         if (str_starts_with($state, 'adm:m')) {
             MenuEditor::input($ctx, $text);
+            return;
+        }
+        if ($state === 'adm:gdays') {
+            Gate::adminDays($ctx, $text);
             return;
         }
         if ($state === 'adm:gch') {

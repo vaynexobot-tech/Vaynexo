@@ -21,7 +21,7 @@ final class P2p
 
     public static function enabled(): bool
     {
-        return Settings::on('p2p_enabled') && self::cardDigits() !== '';
+        return Settings::on('paid_enabled') && Settings::on('p2p_enabled') && self::cardDigits() !== '';
     }
 
     public static function cardDigits(): string

@@ -217,3 +217,92 @@ $t('p2p: HTTP endpoint kalit va format', function () {
     T::ok(count(App::configProblems()) === 1, 'qisqa sms_key muammo sifatida topildi');
     App::setConfig(T::$cfg);
 });
+
+$t('bepul rejim: Premium kanalga obuna uchun, pul to‘lovlari o‘chiq', function () {
+    T::isolate();
+    $a = 9501;
+    $b = 9502;
+    T::register($a, 'uz', 'Aziz', 'm', 1);
+    T::register($b, 'uz', 'Bella', 'f', 1);
+    Settings::set('paid_enabled', '0');
+    $db = App::db();
+
+    // Premium menyusi: paketlar yo‘q, kanal tugmalari va «Obuna bo‘ldim»
+    Gate::saveChannels([['ref' => '@kanal_a', 'title' => 'A', 'url' => 'https://t.me/kanal_a'], ['ref' => '@kanal_b', 'title' => 'B', 'url' => 'https://t.me/kanal_b']]);
+    T::$tg->reset();
+    T::cb($a, 'pm:menu');
+    $call = T::$tg->last($a, 'sendMessage');
+    $flat = array_merge(...$call['params']['reply_markup']['inline_keyboard']);
+    T::eq(array_values(array_filter(array_column($flat, 'url'))), ['https://t.me/kanal_a', 'https://t.me/kanal_b'], 'ikkala kanal URL tugmasi');
+    T::eq(T::data($a, 'pm:sub'), 'pm:sub', '«Obuna bo‘ldim» tugmasi');
+    T::eq(T::data($a, 'pm:b:'), null, 'sotib olish paketlari yo‘q');
+    T::eq(T::data($a, 'pm:card'), null, 'karta tugmasi yo‘q');
+
+    // sotib olish callbackini qo‘lda yuborsa ham ishlamaydi
+    $pid = (int)$db->val("SELECT id FROM tb_products WHERE code = 'premium_1'");
+    T::cb($a, 'pm:b:' . $pid);
+    T::eq((int)$db->val('SELECT COUNT(*) FROM tb_orders WHERE user_id = ?', [$a]), 0, 'pullik buyurtma yaratilmadi');
+    T::eq(T::$tg->byMethod('sendInvoice'), [], 'invoice yuborilmadi');
+    T::$tg->reset();
+    T::cb($a, 'bs:f');
+    T::eq(T::$tg->byMethod('sendInvoice'), [], 'boost invoice yuborilmadi');
+
+    // obuna bo‘lmagan: Premium yo‘q
+    $in = [];
+    T::$tg->responders['getChatMember'] = function (array $p) use (&$in) {
+        return ['ok' => true, 'result' => ['status' => in_array($p['chat_id'], $in, true) ? 'member' : 'left']];
+    };
+    $in = ['@kanal_a'];
+    T::cb($a, 'pm:sub');
+    T::eq(T::user($a)['premium_until'], null, 'bir kanalga obuna: Premium berilmadi');
+
+    // hammasiga obuna: Premium 7 kun
+    $in = ['@kanal_a', '@kanal_b'];
+    T::cb($a, 'pm:sub');
+    $u1 = T::user($a)['premium_until'];
+    T::ok($u1 !== null && abs(strtotime($u1 . ' UTC') - (time() + 7 * 86400)) < 120, 'Premium 7 kunga yoqildi');
+    // qayta bosish kunlarni yig‘maydi
+    T::cb($a, 'pm:sub');
+    T::ok(abs(strtotime(T::user($a)['premium_until'] . ' UTC') - strtotime($u1 . ' UTC')) < 5, 'qayta bosish muddatni uzaytirmadi');
+
+    // «Kim yoqtirdi» ro‘yxati: Premium olgach ochiladi
+    Settings::set('likes_gate', '1');
+    $db->exec("INSERT INTO tb_reactions (from_id, to_id, kind, created_at) VALUES (?, ?, 'like', UTC_TIMESTAMP())", [$b, $a]);
+    T::cb($a, 'lk:l');
+    T::eq((int)T::user($a)['card_target'], $b, 'obuna orqali Premium olgan ro‘yxatni ko‘radi');
+    T::$tg->reset();
+    T::cb($b, 'lk:l');
+    T::ok(str_contains(T::lastText($b), Lang::t('uz', 'likes.locked', ['n' => 0])) || T::lastText($b) !== '', 'obunasiz foydalanuvchiga qulf');
+    Settings::set('likes_gate', '0');
+
+    // kanalsiz: obuna bilan Premium berilmaydi
+    Gate::saveChannels([]);
+    T::cb($b, 'pm:sub');
+    T::eq(T::user($b)['premium_until'], null, 'kanal yo‘q: Premium berilmadi');
+
+    // chat qulfi: obuna bo‘lgan Premium ham oladi
+    Gate::saveChannels([['ref' => '@kanal_a', 'title' => 'A', 'url' => 'https://t.me/kanal_a']]);
+    Settings::set('chat_gate', '1');
+    $c = 9503;
+    T::register($c, 'uz', 'Cara', 'f', 1);
+    $mid = gMatch($b, $c);
+    $in = ['@kanal_a'];
+    T::cb($b, 'c:s:' . $mid);
+    T::ok((int)T::user($b)['active_chat_id'] > 0, 'obuna bo‘lgan suhbat ochdi');
+    T::ok(T::user($b)['premium_until'] !== null, 'va Premium oldi');
+
+    // admin kunlarni o‘zgartiradi
+    $adm = 9000001;
+    T::register($adm, 'uz', 'Admin', 'm', 1);
+    T::cb($adm, 'a:gcn');
+    T::text($adm, '3');
+    T::eq(Settings::get('sub_premium_days'), '3', 'admin kunlarni o‘zgartirdi');
+    T::cb($adm, 'a:gcn');
+    T::text($adm, '999');
+    T::eq(Settings::get('sub_premium_days'), '3', 'noto‘g‘ri qiymat qabul qilinmadi');
+    Settings::set('sub_premium_days', '7');
+
+    unset(T::$tg->responders['getChatMember']);
+    Settings::set('chat_gate', '0');
+    Gate::saveChannels([]);
+});

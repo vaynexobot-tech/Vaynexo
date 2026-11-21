@@ -39,6 +39,7 @@ foreach ($tests as $name => $fn) {
     App::$hooks = [];
     T::setAdmins([9000001, 9000002]);
     Menu::reset();
+    \TB\Settings::set('paid_enabled', '1');   // eski testlar pullik rejimni tekshiradi; standart '0'
     \TB\Settings::set('likes_gate', '0');   // standart '1'; Premium-qulf alohida testda tekshiriladi
     $before = count(T::$fail);
     try {

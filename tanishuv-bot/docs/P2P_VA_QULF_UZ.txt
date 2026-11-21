@@ -1,3 +1,15 @@
+BEPUL REJIM (STANDART): PUL ISHLATILMAYDI
+=========================================
+- Pullik Premium/boost (Telegram Stars va karta P2P) standart holatda O'CHIQ (sozlama paid_enabled = 0).
+- Premium kanalga obuna uchun beriladi: Premium menyusida kanal tugmalari va "Obuna bo'ldim" turadi.
+  Obuna tekshirilsa Premium N kunga yoqiladi (standart 7 kun; /admin -> Sozlamalar -> Suhbat qulfi -> "Premium kunlari").
+  Qayta bosish kunlarni yig'maydi; muddat tugagach yana bosish kerak, obuna saqlanib turishi shart.
+- Kanallar: /admin -> Sozlamalar -> Suhbat qulfi -> "Kanal qo'shish" (bot kanalda ADMIN bo'lishi shart).
+- "Suhbat qulfi"ni yoqsangiz, match bo'lgach suhbat ochish uchun Premium yoki obuna kerak. Obuna bo'lgan kishi Premium ham oladi.
+- Pullik rejimni qayta yoqish (kerak bo'lsa) phpMyAdmin da:
+    UPDATE tb_settings SET value='1' WHERE name='paid_enabled';
+  (qator bo'lmasa: INSERT INTO tb_settings (name,value,updated_at) VALUES ('paid_enabled','1',UTC_TIMESTAMP());)
+
 SUHBAT QULFI VA P2P (UZCARD / HUMO) TO'LOV
 ==========================================
 

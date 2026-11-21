@@ -31,6 +31,20 @@ final class Payments
             'likes' => $used['like'], 'likes_max' => $caps['like'],
             'supers' => $used['super'], 'supers_max' => $caps['super'],
         ]);
+        if (!Settings::on('paid_enabled')) {
+            $channels = Gate::channels();
+            $lines[] = $ctx->t('premium.features_free');
+            $lines[] = $ctx->t($channels ? 'sub.how' : 'sub.none', ['days' => Gate::subDays()]);
+            $lines[] = $ctx->t('limit.utc');
+            $rows = Gate::joinRows($ctx, $channels);
+            if ($channels) {
+                $rows[] = [[$ctx->t('sub.check'), 'pm:sub']];
+            }
+            $rows[] = [[$ctx->t('premium.invite_btn'), 'pm:inv']];
+            $rows[] = [[$ctx->t('btn.back'), 'm:home']];
+            $ctx->send(implode("\n\n", $lines), Kb::inline($rows));
+            return;
+        }
         $lines[] = $ctx->t('premium.features');
         $lines[] = $ctx->t('limit.utc');
         $rows = [];
@@ -47,6 +61,10 @@ final class Payments
 
     public static function boostMenu(Ctx $ctx): void
     {
+        if (!Settings::on('paid_enabled')) {
+            $ctx->send($ctx->t('boost.unavailable'), Kb::inline([[[$ctx->t('btn.back'), 'm:home']]]));
+            return;
+        }
         $p = self::products('boost')[0] ?? null;
         $lines = [$ctx->t('boost.title')];
         $active = App::db()->all(
@@ -72,6 +90,14 @@ final class Payments
     public static function callback(Ctx $ctx, array $p): void
     {
         $db = App::db();
+        if ($p[0] === 'pm' && ($p[1] ?? '') === 'sub') {
+            Gate::claim($ctx);
+            return;
+        }
+        if (!Settings::on('paid_enabled') && (($p[0] === 'pm' && ($p[1] ?? '') === 'b') || $p[0] === 'bs')) {
+            $ctx->answer($ctx->t('err.stale'));
+            return;
+        }
         if ($p[0] === 'pm' && ($p[1] ?? '') === 'b' && ctype_digit($p[2] ?? '')) {
             $prod = $db->one("SELECT * FROM tb_products WHERE id = ? AND kind = 'premium' AND active = 1", [(int)$p[2]]);
             if (!$prod) {

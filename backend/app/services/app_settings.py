@@ -148,8 +148,9 @@ FEATURES = {  # kalit: nomi
     "market": "Account savdo", "rent": "Account ijara", "boost": "Boost xizmati", "tg": "Telegram xizmatlar (Premium/Stars)",
     "arena": "Arena (turnir, reyting)", "partner": "Hamkor dasturi", "ai": "AI yordamchi", "top": "Top xaridorlar",
 }
+DEFAULT_OFF = {"ai", "market", "rent", "boost"}  # «Tez kunda»: admin panel → Ko'proq → Bo'limlar orqali ochiladi
 for _k, _n in FEATURES.items():
-    SCHEMA[f"feature_{_k}"] = Spec("choice", "off" if _k == "ai" else "on", f"{_n}", "Bo'limlar (ilovada ko'rinishi)", choices={"on": "Yoqilgan", "off": "O'chirilgan"})
+    SCHEMA[f"feature_{_k}"] = Spec("choice", "off" if _k in DEFAULT_OFF else "on", f"{_n}", "Bo'limlar (ilovada ko'rinishi)", choices={"on": "Yoqilgan", "off": "O'chirilgan"})
 
 
 async def features(session: AsyncSession) -> dict[str, bool]:

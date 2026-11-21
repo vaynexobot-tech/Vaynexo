@@ -498,11 +498,55 @@ export function BotAdmin({ onChange }: { onChange?: () => void }) {
   );
 }
 
+// ---------------------------------------------------------------- BO'LIMLAR (ochish / «Tez kunda»)
+interface SRow { key: string; value: number | string; label: string; group: string }
+const SECTION_HINT: Record<string, string> = {
+  feature_market: "Akkaunt sotish va sotib olish (garant bilan)", feature_rent: "Akkauntni ijaraga berish va olish",
+  feature_boost: "Rank boost buyurtmalari", feature_tg: "Premium, Stars, sovg'alar", feature_arena: "Turnir, viktorina, reyting",
+  feature_partner: "Videolar va mukofot", feature_top: "Top xaridorlar reytingi", feature_ai: "AI yordamchi",
+};
+
+export function SectionsAdmin() {
+  const { toast } = useApp();
+  const st = useLoad(() => api.get<SRow[]>("/admin/settings"));
+  const { busy, run } = useAction();
+  const set = (key: string, on: boolean) => run(async () => {
+    st.setData(await api.put<SRow[]>("/admin/settings", { key, value: on ? "on" : "off" }));
+    toast(on ? "Bo'lim ochildi" : "Bo'lim «Tez kunda» holatiga o'tdi", "ok");
+  });
+  return (
+    <Loadable state={st}>
+      {(rows) => {
+        const feats = rows.filter((r) => r.key.startsWith("feature_"));
+        return (
+          <>
+            <div className="mut xs">Yopilgan bo'lim foydalanuvchilarga «Tez kunda» bo'lib ko'rinadi. Siz (admin) yopiq bo'limga baribir kira olasiz.</div>
+            <div className="adm2-list">
+              {feats.map((r) => (
+                <div key={r.key} className="adm2-it">
+                  <span className={"adm2-dot " + (r.value === "on" ? "g" : "m")} />
+                  <div className="grow" style={{ minWidth: 0 }}>
+                    <div className="b">{r.label}</div>
+                    <div className="mut xs ell">{SECTION_HINT[r.key] ?? ""}</div>
+                  </div>
+                  <span className={"badge " + (r.value === "on" ? "g" : "y")}>{r.value === "on" ? "Ochiq" : "Tez kunda"}</span>
+                  <Toggle on={r.value === "on"} onChange={(v) => !busy && set(r.key, v)} />
+                </div>
+              ))}
+            </div>
+          </>
+        );
+      }}
+    </Loadable>
+  );
+}
+
 // ---------------------------------------------------------------- KO'PROQ
 export type MenuItem = { v: string; icon: string; c: string; label: string; sub: string };
 export const MORE: { title: string; items: MenuItem[] }[] = [
   { title: "Bot", items: [
     { v: "bot", icon: "lock", c: "r", label: "Botni ochish va mehmonlar", sub: "Yopiq/ochiq, ruxsat berilgan ID'lar, inline qidiruv" },
+    { v: "sections", icon: "rocket", c: "y", label: "Bo'limlar: ochish / Tez kunda", sub: "Akkaunt savdo, ijara, boost, Telegram, Arena..." },
     { v: "broadcast", icon: "mega", c: "y", label: "Ommaviy xabar", sub: "Barcha yoki tanlangan foydalanuvchilarga" },
   ] },
   { title: "Pul", items: [

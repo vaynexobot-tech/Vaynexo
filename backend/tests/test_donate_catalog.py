@@ -203,13 +203,17 @@ async def test_provider_webhook_uses_own_key(api, ctx):
     assert (await c.post(f"/api/yupay/webhook/{row.id + 5}", content=body, headers=hdr)).status_code == 404
 
 
-async def test_features_default_on_and_toggle(api):
-    me = (await api(5).get("/me")).json()
-    assert me["features"]["market"] is True and me["features"]["ai"] is False and set(me["features"]) >= {"market", "tg", "arena"}
-    assert (await api(1).put("/admin/settings", {"key": "feature_market", "value": "off"})).status_code == 200
-    assert (await api(5).get("/me")).json()["features"]["market"] is False
-    assert (await api(1).put("/admin/settings", {"key": "feature_market", "value": "on"})).status_code == 200
-    assert (await api(5).get("/me")).json()["features"]["market"] is True
+async def test_features_default_soon_and_toggle(api):
+    """Akkaunt savdo, ijara, boost, AI — «Tez kunda» (yopiq); Telegram, Arena va boshqalar ochiq. Admin ochib-yopa oladi."""
+    f = (await api(5).get("/me")).json()["features"]
+    assert (f["market"], f["rent"], f["boost"], f["ai"]) == (False, False, False, False)
+    assert f["tg"] is True and f["arena"] is True and set(f) >= {"market", "tg", "arena"}
+    for k in ("market", "rent", "boost"):
+        assert (await api(1).put("/admin/settings", {"key": f"feature_{k}", "value": "on"})).status_code == 200
+        assert (await api(5).get("/me")).json()["features"][k] is True
+        assert (await api(1).put("/admin/settings", {"key": f"feature_{k}", "value": "off"})).status_code == 200
+        assert (await api(5).get("/me")).json()["features"][k] is False
+    assert (await api(5).put("/admin/settings", {"key": "feature_market", "value": "on"})).status_code == 403
 
 
 async def test_game_image_upload(api, client):

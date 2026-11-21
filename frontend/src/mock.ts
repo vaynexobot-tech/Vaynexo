@@ -37,7 +37,7 @@ const state: Json = {
     phone: null, ml_id: "84512937", bio: null, is_admin: true, sales: 2, positive_percent: 97, active_listings: 1,
     referral_bonus: 1234, referral_min_topup: 10_000, ref_link: "https://t.me/VaynexoBot?startapp=ref_1001", ref_invited: 3, ref_paid: 1, ref_earned: 1234,
     commission_percent: 5, kyc_status: "none", kyc_note: null, pin_set: false, bio_set: false, notify_chat: true, notify_tour: true,
-    purchases_count: 7, rent_count: 1, kyc_required: { marketplace: true, rental: true }, features: { market: true, rent: true, boost: true, tg: true, arena: true, partner: true, ai: false, top: true }, points: 1_240,
+    purchases_count: 7, rent_count: 1, kyc_required: { marketplace: true, rental: true }, features: { market: false, rent: false, boost: false, tg: true, arena: true, partner: true, ai: false, top: true }, points: 1_240,
     vip_credit_days: 0, tournament_passes: 1, boost_coupon_percent: 0, badge: null, wallet_id: "VX 4821 7730",
   },
   settings: {
@@ -565,11 +565,14 @@ for (const m of [1, 3, 6, 12]) {
 }
 for (const [c, n] of GIFT_NAMES) SPEC.push([`gift_price_${c}`, "money", `Gift: ${n} (so'm)`, "Telegram: Gift va NFT", 1, 1e8]);
 for (const [c, n] of NFT_NAMES) SPEC.push([`nft_price_${c}`, "money", `NFT: ${n} (so'm)`, "Telegram: Gift va NFT", 1, 1e8]);
+const FEATS: [string, string][] = [["market", "Account savdo"], ["rent", "Account ijara"], ["boost", "Boost xizmati"], ["tg", "Telegram xizmatlar (Premium/Stars)"], ["arena", "Arena (turnir, reyting)"], ["partner", "Hamkor dasturi"], ["ai", "AI yordamchi"], ["top", "Top xaridorlar"]];
+for (const [k, n] of FEATS) { SPEC.push([`feature_${k}`, "choice", n, "Bo'limlar (ilovada ko'rinishi)", 0, 0, [{ v: "on", label: "Yoqilgan" }, { v: "off", label: "O'chirilgan" }]]); state.settings[`feature_${k}`] = state.me.features[k] ? "on" : "off"; }
 const settingsRows = () => SPEC.map(([key, kind, label, group, min, max, choices]) => ({ key, kind, label, group, min, max, choices: choices ?? [], value: state.settings[key], show_if: SHOW[key] ?? null }));
 on("GET", "/admin/settings", settingsRows);
 on("PUT", "/admin/settings", (_m, b) => {
   if (typeof b.value === "number" && !(b.value >= 0)) throw new MockError("bad_setting", "Qiymat 0 dan kam bo'lmasin");
   state.settings[b.key] = b.value;
+  if (String(b.key).startsWith("feature_")) state.me.features[String(b.key).slice(8)] = b.value === "on";
   return settingsRows();
 });
 on("GET", "/admin/listings", () => state.listings.filter((l: Json) => l.status === "moderation").map(full));

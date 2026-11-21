@@ -11,6 +11,7 @@ import { ChatPage, Chats } from "./pages/Chat";
 import { DealPage, Deals } from "./pages/Deal";
 import Donate, { DonateOrderPage } from "./pages/Donate";
 import Home from "./pages/Home";
+import TradeSoon from "./pages/TradeSoon";
 import { HeroPage, Heroes } from "./pages/Heroes";
 import { ListingDetail, Market, PayListing } from "./pages/Market";
 import { MyRentals, Rent, RentalPage, RentDetail, RentSell } from "./pages/Rent";
@@ -44,7 +45,7 @@ function DeepLink() {
 /** Admin Sozlamalarida o'chirilgan bo'lim sahifasi ochilmaydi (admin o'zi kira oladi). */
 function Gate({ f, children }: { f: string; children: JSX.Element }) {
   const { me } = useApp();
-  return me?.is_admin || me?.features?.[f] ? children : <Navigate to="/" replace />;
+  return me?.is_admin || me?.features?.[f] ? children : <Navigate to="/soon" replace />;
 }
 
 function App() {
@@ -109,6 +110,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/wallet" element={<Wallet />} />
+          <Route path="/soon" element={<TradeSoon />} />
           <Route path="/partner" element={<Gate f="partner"><Partner /></Gate>} />
           <Route path="/donate/order/:id" element={<DonateOrderPage />} />
           <Route path="/donate/:game" element={<Donate />} />

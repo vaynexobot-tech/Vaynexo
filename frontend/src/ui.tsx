@@ -274,7 +274,7 @@ export function BottomNav() {
     on("arena") ? { to: "/arena", icon: "arena", label: t("Arena") } : { to: "/history", icon: "clock", label: t("Tarix") },
     { to: "/settings", icon: "settings", label: t("Sozlamalar") },
   ];
-  const first = tradeItems[0];
+  const first = tradeItems.length === TRADE_ITEMS.length ? tradeItems[0] : { to: "/soon" }; // biror bo'lim yopiq bo'lsa — «Tez kunda» ro'yxati
   return (
     <nav className="nav">
       <div className="nav-in">

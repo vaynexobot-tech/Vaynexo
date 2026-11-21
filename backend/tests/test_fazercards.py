@@ -131,3 +131,37 @@ async def test_long_names_fit_columns():
     brands = await make(h).catalog(force=True)
     assert len(brands) == 2 and len({b["slug"] for b in brands}) == 2  # bir xil uzun nomlar ham to'qnashmaydi
     assert all(len(b["slug"]) <= 64 and len(b["name"]) <= 80 for b in brands)
+
+
+async def test_admin_provider_test_endpoint_saves_balance(api, monkeypatch):
+    """«Tekshirish» tugmasi: ulanish natijasi saqlanadi (avval «transaction is already begun» bilan 500 berardi)."""
+    from app.db import SessionLocal
+    from app.models import DonateProvider
+    from app.security import encrypt
+    from app.services import donate_catalog
+
+    async with SessionLocal() as s, s.begin():
+        row = DonateProvider(name="Fazer", kind="fazercards", base_url="", key_enc=encrypt("k"), config={})
+        s.add(row)
+    pid = row.id
+    prov = make(router(**{"GET /api/v2/me": httpx.Response(200, json={"ok": True, "login": "a", "plan": "gold", "subscriptionActive": True}),
+                          "GET /api/v2/balance": httpx.Response(200, json={"ok": True, "balance": "7.5000", "currency": "USD"})}))
+    monkeypatch.setattr(donate_catalog, "provider_instance", lambda r: prov)
+    r = await api(1).post(f"/admin/donate/providers/{pid}/test")
+    assert r.status_code == 200 and r.json()["ok"] and r.json()["balance_usd"] == "7.5000"
+
+
+async def test_get_retries_on_connect_error(monkeypatch):
+    calls = {"n": 0}
+
+    def h(req: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise httpx.ConnectError("ssl")
+        return httpx.Response(200, json={"ok": True})
+
+    async def no_sleep(_):
+        return None
+
+    monkeypatch.setattr("app.providers.fazercards.asyncio.sleep", no_sleep)
+    assert (await make(h)._get("/x")) == {"ok": True} and calls["n"] == 3

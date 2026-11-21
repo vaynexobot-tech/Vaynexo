@@ -100,7 +100,14 @@ class FazerCardsProvider:
 
     # ------------------------------------------------------------------ yordamchi
     async def _get(self, path: str, **params) -> dict:
-        r = await self.client.get(path, params={k: v for k, v in params.items() if v is not None})
+        for attempt in range(3):  # vaqtinchalik ulanish/SSL xatolarida qayta uriniladi (sinxronlash kechasi bir marta yiqilgan)
+            try:
+                r = await self.client.get(path, params={k: v for k, v in params.items() if v is not None})
+                break
+            except httpx.ConnectError:
+                if attempt == 2:
+                    raise
+                await asyncio.sleep(1.5 * (attempt + 1))
         if r.status_code in (401, 403):
             code, msg = _err(r)
             if code == "subscription_inactive":

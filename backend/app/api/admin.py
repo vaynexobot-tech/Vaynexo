@@ -984,6 +984,7 @@ async def donate_provider_test_one(pid: int, admin: AdminUser, session: SessionD
     if p is None:
         raise NotFound("Provayder")
     inst = donate_catalog.provider_instance(p)
+    await session.rollback()  # o'qish tranzaksiyasini yopamiz: pastda yangi tranzaksiya ochiladi
     res = await inst.ping()
     async with session.begin():
         row = await session.get(DonateProvider, pid)

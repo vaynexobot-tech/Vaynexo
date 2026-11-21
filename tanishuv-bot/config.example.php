@@ -42,11 +42,13 @@ return [
         'premium_supers' => 10,
     ],
 
-    // SMS/bank integratsiyasi. Hozir o‘chiq.
+    // SMS/bank integratsiyasi va P2P (karta) to‘lov.
+    // P2P uchun: enabled => true, hmac_secret va sms_key — har biri 64 belgili, boshqa kalitlardan FARQLI.
     'bank' => [
         'enabled' => false,
         'hmac_secret' => '',
         'max_skew' => 300,
+        'sms_key' => '',   // SMS forwarder shu kalit bilan sms-webhook.php ga yuboradi
     ],
 
     // CRON bitta chaqiruvda ishlaydigan maksimal vaqt (soniya)

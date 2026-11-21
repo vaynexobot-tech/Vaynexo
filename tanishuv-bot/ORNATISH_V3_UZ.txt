@@ -1,0 +1,79 @@
+TANISHUV BOT v3 — HOSTINGGA (sysdc) O'RNATISH
+=============================================
+
+TALABLAR: PHP 8.1+ (64-bit), kengaytmalar: curl, pdo_mysql, mbstring, json.
+MySQL 5.7+/8 yoki MariaDB 10.3+. HTTPS (SSL) yoqilgan domen. Cron.
+
+------------------------------------------------------------
+A) BOT ALLAQACHON ISHLAB TURGAN BO'LSA (YANGILASH)
+------------------------------------------------------------
+1. ZAXIRA: phpMyAdmin -> bazani tanlang -> Export -> Go. Fayllar papkasini ham yuklab oling.
+   Eski config.php ni alohida saqlab qo'ying!
+2. phpMyAdmin -> bazani tanlang -> Import -> sql/upgrade_v3.sql -> Go.
+   (MySQL 8 da oxirgi 2 ta ALTER qatorida xato chiqsa — bu normal, indeks qo'lda qo'shiladi
+   yoki e'tibor bermang; bot ishlayveradi.)
+3. Fayl menejeri -> tanishuv-bot papkasi: zip ichidagi fayllarni ustidan yuklang (Extract, almashtirish).
+   config.php ni O'CHIRMANG va ALMASHTIRMANG (zip ichida config.php yo'q, faqat config.example.php).
+4. config.php ga 'bank' ichiga 'sms_key' => '...' qatorini qo'shing (P2P kerak bo'lsa, pastdagi E bo'limi).
+5. Telegramda botga /start yozib tekshiring. /admin -> Statistika ochilsa — hammasi joyida.
+
+------------------------------------------------------------
+B) YANGI O'RNATISH
+------------------------------------------------------------
+1. Hosting panel -> MySQL bazalar: yangi baza va foydalanuvchi yarating, foydalanuvchiga baza uchun BARCHA huquqlarni bering.
+2. phpMyAdmin -> shu bazani tanlang -> Import -> sql/database.sql -> Go. (29 ta tb_ jadval paydo bo'ladi.)
+3. Fayl menejeri -> public_html (yoki domen papkasi) ichiga zipni yuklang va oching.
+   Natija: public_html/tanishuv-bot/...
+4. tanishuv-bot/config.example.php dan nusxa oling, nomini config.php qiling va to'ldiring:
+   bot_token, bot_username (@ siz), db (host/name/user/pass), public_url
+   (masalan https://domen.uz/tanishuv-bot/public), admin_ids (o'z Telegram ID ingiz — botda /id).
+   webhook_secret, setup_key, cron_key — har biri 64 belgili, har xil. Yaratish (istalgan kompyuterda):
+       php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
+   yoki https://www.random.org/strings/ (64 belgi, harf+raqam).
+5. tanishuv-bot/storage papkasiga yozish huquqi bering (755 yoki 775).
+6. Brauzerda oching: https://domen.uz/tanishuv-bot/public/setup.php
+   setup_key ni kiriting -> getMe OK -> "setWebhook" -> OK. Keyin "Setupni yopish" ni bosing.
+7. Telegramda botga /start.
+
+------------------------------------------------------------
+C) CRON (MAJBURIY — har 1 daqiqada)
+------------------------------------------------------------
+Panel -> Cron jobs -> har daqiqa (* * * * *):
+   curl -s "https://domen.uz/tanishuv-bot/public/cron.php?key=CRON_KEY" >/dev/null
+(yoki wget -q -O - "..."). CRON_KEY = config.php dagi cron_key.
+Cron eslatmalar, xabar yuborish (broadcast), muddati o'tgan to'lovlarni yopish va tozalashni bajaradi.
+
+------------------------------------------------------------
+D) XAVFSIZLIK TEKSHIRUVI (o'rnatgandan keyin)
+------------------------------------------------------------
+Brauzerda bular OCHILMASLIGI (403/404) kerak:
+   https://domen.uz/tanishuv-bot/config.php
+   https://domen.uz/tanishuv-bot/src/App.php
+   https://domen.uz/tanishuv-bot/sql/database.sql
+Agar ochilsa: hosting Nginx ishlatmoqda (.htaccess ishlamaydi) — domen document root ni
+tanishuv-bot/public ga qo'ying yoki hosting yordamiga yozing.
+
+------------------------------------------------------------
+E) P2P KARTA TO'LOVI (ixtiyoriy)
+------------------------------------------------------------
+1. config.php:  'bank' => ['enabled' => true, 'hmac_secret' => '64_BELGI_1', 'max_skew' => 300, 'sms_key' => '64_BELGI_2'],
+2. Botda /admin -> Sozlamalar -> "P2P to'lov":
+   - Karta: 8600 1234 5678 9012 | Ism Familiya
+   - SMS yuboruvchilar: bank SMS i keladigan nom (masalan HUMOCARD yoki raqam)
+   - Narxlar: premium_1=5000, premium_3=12000, premium_7=25000, premium_30=70000
+   - "Yoqish"
+3. Kartaga SMS keladigan Android telefonga "SMS Forwarder" turidagi ilova o'rnating:
+   URL:  https://domen.uz/tanishuv-bot/public/sms-webhook.php?key=SMS_KEY
+   Metod: POST, maydonlar: from = yuboruvchi, text = SMS matni (JSON yoki form).
+   Filtr: faqat bank SMS lari. Telefon doim internetda va zaryadda bo'lsin.
+4. Sinov: botda Premium -> "Karta orqali to'lash" -> paket -> ko'rsatilgan ANIQ summani o'tkazing.
+   1–2 daqiqada "To'lov qabul qilindi" kelishi kerak. Kelmasa: /admin -> Kirimlar -> Tarix
+   ("unmatched" bo'lsa — SMS matnini menga yuboring, tahlilchini moslayman).
+
+------------------------------------------------------------
+F) SUHBAT QULFI (ixtiyoriy)
+------------------------------------------------------------
+Botni kanalingizga ADMIN qiling -> /admin -> Sozlamalar -> "Suhbat qulfi" -> "Kanal qo'shish" -> @kanal -> "Yoqish".
+Shundan keyin match bo'lgan foydalanuvchi suhbat ochishi uchun Premium yoki kanalga obuna kerak.
+
+Batafsil: docs/YANGILANISH_V3_UZ.txt, docs/P2P_VA_QULF_UZ.txt

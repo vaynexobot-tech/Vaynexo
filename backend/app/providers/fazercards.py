@@ -58,6 +58,16 @@ def _err(r: httpx.Response) -> tuple[str, str]:
         return "", ""
 
 
+def _why(e: Exception) -> str:
+    """Xato sababi odam o'qiydigan ko'rinishda (httpx ba'zan bo'sh matn beradi — masalan, timeout)."""
+    m = str(e).strip() or repr(e)
+    if "CERTIFICATE" in m.upper() or "SSL" in m.upper():
+        return f"SSL sertifikat xatosi ({m[:120]}) — FazerCards serveri yoki tarmoq muammosi, birozdan keyin qayta urinib ko'ring"
+    if isinstance(e, httpx.TimeoutException):
+        return "javob kelmadi (timeout) — FazerCards sekin yoki bu serverni to'sib qo'ygan"
+    return f"{e.__class__.__name__}: {m[:140]}"
+
+
 def map_order(order: dict) -> ProviderResult:
     """FazerCards buyurtma obyektini bizning natijaga aylantirish."""
     status = str(order.get("status") or "").lower()
@@ -104,9 +114,9 @@ class FazerCardsProvider:
             try:
                 r = await self.client.get(path, params={k: v for k, v in params.items() if v is not None})
                 break
-            except httpx.ConnectError:
+            except httpx.TransportError as e:
                 if attempt == 2:
-                    raise
+                    raise RuntimeError(_why(e)) from e
                 await asyncio.sleep(1.5 * (attempt + 1))
         if r.status_code in (401, 403):
             code, msg = _err(r)
@@ -189,7 +199,7 @@ class FazerCardsProvider:
         try:
             r = await self.client.get("/me")
         except httpx.HTTPError as e:
-            return {"ok": False, "error": f"Ulanib bo'lmadi: {e.__class__.__name__}"}
+            return {"ok": False, "error": f"Ulanib bo'lmadi: {_why(e)}"}
         ms = int((time.monotonic() - t0) * 1000)
         if r.status_code == 401:
             return {"ok": False, "status": 401, "ms": ms, "error": "Kalit qabul qilinmadi (401): kalit noto'g'ri yoki bekor qilingan"}

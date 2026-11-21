@@ -326,9 +326,9 @@ async def sync_all() -> None:
                 r = await s.get(DonateProvider, row.id)
                 await sync_provider(s, r)
         except Exception as e:  # noqa: BLE001
-            log.warning("Katalog sinxronlanmadi (%s): %s", row.name, e)
+            log.warning("Katalog sinxronlanmadi (%s): %r", row.name, e)
             async with SessionLocal() as s, s.begin():
                 r = await s.get(DonateProvider, row.id)
                 if r:
-                    r.last_error = f"{e.__class__.__name__}: {str(e)[:200]}"
+                    r.last_error = f"{e.__class__.__name__}: {(str(e) or repr(e))[:200]}"
     await invalidate_packages_cache()

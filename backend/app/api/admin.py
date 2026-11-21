@@ -1011,8 +1011,8 @@ async def donate_provider_sync(pid: int, admin: AdminUser, session: SessionDep):
     except Exception as e:  # noqa: BLE001
         async with SessionLocal() as s, s.begin():
             row = await s.get(DonateProvider, pid)
-            row.last_error = f"{e.__class__.__name__}: {str(e)[:200]}"
-        raise AppError("sync_failed", f"Katalogni olib bo'lmadi: {e.__class__.__name__}. Kalit va manzilni tekshiring", 502) from None
+            row.last_error = f"{e.__class__.__name__}: {(str(e) or repr(e))[:200]}"
+        raise AppError("sync_failed", f"Katalogni olib bo'lmadi: {e.__class__.__name__}: {(str(e) or repr(e))[:160]}", 502) from None
     await invalidate_packages_cache()
     return stats
 

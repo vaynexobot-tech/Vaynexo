@@ -165,3 +165,17 @@ async def test_get_retries_on_connect_error(monkeypatch):
 
     monkeypatch.setattr("app.providers.fazercards.asyncio.sleep", no_sleep)
     assert (await make(h)._get("/x")) == {"ok": True} and calls["n"] == 3
+
+
+async def test_ping_explains_ssl_and_timeout():
+    def ssl_err(req):
+        raise httpx.ConnectError("[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate")
+
+    r = await make(ssl_err).ping()
+    assert not r["ok"] and "SSL sertifikat" in r["error"]
+
+    def to(req):
+        raise httpx.ReadTimeout("")
+
+    r = await make(to).ping()
+    assert not r["ok"] and "timeout" in r["error"]

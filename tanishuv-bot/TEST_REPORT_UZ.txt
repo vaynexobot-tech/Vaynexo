@@ -1,0 +1,94 @@
+TANISHUV BOT — TEST HISOBOTI
+============================
+Sana: 2026-11-18
+Muhit: PHP 8.3.6 CLI + Apache 2 (mod_php), MariaDB 10.11 (vaqtinchalik test bazasi,
+har ishga tushirishda yangi tb_test_xxxx baza yaratiladi va oxirida o‘chiriladi).
+Telegram API: soxta (mock) transport va mock HTTP server. Haqiqiy token bilan API
+chaqirilmadi, haqiqiy Stars xaridi qilinmadi.
+
+Ishga tushirish:  php tests/run.php
+NATIJA: 51 ta test guruhi, 1542 ta tekshiruv o‘tdi, 0 ta xato (~15 soniya).
+
+TEST GURUHLARI
+--------------
+✔ i18n: UZ/RU/EN kalitlari teng
+✔ i18n: placeholderlar teng
+✔ i18n: koddagi barcha kalitlar tarjimada bor
+✔ registration: uch tilda to‘liq ro‘yxatdan o‘tish va bosh menyu tartibi
+✔ registration: har bosqichda /start saqlangan bosqichdan davom etadi
+✔ registration: 18+ bosqichini soxta callback bilan chetlab o‘tib bo‘lmaydi
+✔ registration: 5 ta foto chegarasi
+✔ registration: Telegram profil rasmi va fallback
+✔ registration: ism uzunligi 2–40
+✔ registration: tasdiqlangach ro‘yxat xabarlari chatdan o‘chiriladi, menyu qoladi
+✔ profile: har maydonni alohida tahrirlash boshqa maydonlarni o‘zgartirmaydi
+✔ profile: bekor qilingan foto qoralamasi eski rasmlarni o‘chirmaydi
+✔ profile: review bosqichidan tahrirlash
+✔ search: jins filtri, hudud va boost ustuvorligi, boost filtrni chetlab o‘tmaydi
+✔ search: o‘zi, suspended, tugallanmagan va 18+ tasdiqlamaganlar chiqmaydi; 24 soat qoidasi
+✔ search: soxta nishon, eskirgan nonce, takroriy reaksiya, mutual like va match
+✔ search: kunlik limitlar (bepul 1 super like) va UTC yozuvi
+✔ chat: faqat match a’zolari boshlaydi/tugatadi, bir vaqtda bitta suhbat
+✔ chat: anonim relay metadata ni olib tashlaydi (forward/copy yo‘q, protect_content)
+✔ chat: shikoyat suhbatni tugatadi, sabab 5–500, admin navbatiga tushadi
+✔ admin: har admin callback va amalda ruxsat tekshiriladi
+✔ admin: kechiktirilgan matn bosqichida ruxsat qayta tekshiriladi
+✔ admin: shikoyatlar navbati va "Ko‘rib chiqildi"
+✔ admin: broadcast preview, tasdiq, CRON 30 tadan, o‘z tilida; admin olib tashlansa bekor
+✔ menu: rename, alias, add, move, text, action, preview, save va version conflict
+✔ stars: sendInvoice XTR, provider_token bo‘sh, buyurtma snapshot
+✔ stars: pre_checkout egasi, summa, valyuta, order, muddat va profil holatini tekshiradi
+✔ stars: pre_checkout outbox yoki broadcast lockini kutmaydi
+✔ stars: successful_payment idempotent, charge reuse rad, renewal qo‘shiladi
+✔ stars: boost auditoriyasi va premium/boost muddati CRONsiz tugaydi
+✔ webhook: handler o‘rtasida DB xatosi → marker va biznes holati rollback, keyin qayta ishlanadi
+✔ webhook: doimiy yiqiladigan update 5 urinishdan keyin o‘tkazib yuboriladi (bot to‘xtab qolmaydi)
+✔ parallel: 8 ta PHP worker ayni update va ayni to‘lovni yuborganda xizmat 1 marta yoqiladi
+✔ bank: 20 ta karta, bir kartada bir nechta pending, faqat **** 1234
+✔ bank: HMAC, timestamp, test event, duplicate, ambiguous, reference, unmatched
+✔ outbox: dedupe, 429 retry_after, backoff, payload {} bilan tozalanadi
+✔ lock: GET_LOCK nomi baza nomiga bog‘langan va 64 belgidan oshmaydi
+✔ delete: /delete profil, rasm file_id, reaksiyalarni o‘chiradi; to‘lov yozuvlari qoladi
+✔ admin: suspend faol suhbatni tugatadi va qidiruvdan chiqaradi
+✔ callback_data: har bir tugma 64 baytdan oshmaydi
+✔ http: webhook, cron, bank endpointlari (metod, secret, JSON, body limit, kalit, imzo)
+✔ http: setup.php (HTTPS, setup_key, CSRF, getMe, getWebhookInfo, setWebhook, yopish)
+✔ xavfsizlik: config tekshiruvi, maxfiy qiymatlar logda yo‘q, PDO sozlamalari
+✔ document root: ichki papkalar .htaccess bilan yopilgan, ochiq qism faqat public/
+✔ yosh: ro‘yxatda so‘raladi, 18 dan kichik va admin chegarasi tekshiriladi, kartada ko‘rinadi
+✔ yangilanish: eski profilda yosh yoki maqsad bo‘lmasa, o‘sha bosqich so‘raladi
+✔ qidiruv: yosh oralig‘i, maqsad, faqat tasdiqlanganlar va yashirilganlar filtri
+✔ like bilan xabar: yetkazish, havola va so‘z filtri, moderatsiya, o‘chiq rejim
+✔ tasdiqlash: selfi navbati, admin tasdiqlaydi/rad etadi, rasm o‘zgarsa belgi olinadi
+✔ avto-yashirish: 3 ta turli shikoyat anketani yashiradi, admin qaytaradi
+✔ admin: sozlamalar, Premium sovg‘a, foydalanuvchi kartasi
+
+QO‘SHIMCHA TEKSHIRUVLAR
+-----------------------
+✔ Barcha PHP fayllar: php -l (sintaksis xatosi yo‘q)
+✔ SQL: database.sql va migration.sql da DROP / TRUNCATE / ALTER buyrug‘i yo‘q;
+  hammasi CREATE TABLE IF NOT EXISTS va INSERT IGNORE
+✔ SQL fayllar bo‘sh bazaga va mavjud boshqa jadvalli bazaga import qilindi (25 ta tb_
+  jadval); ikkinchi marta import va upgrade.sql xato bermaydi, ma’lumotni o‘chirmaydi
+✔ PHP 8.4 da eskirgan imkoniyatlar (implicit nullable, E_STRICT, lcg_value va h.k.)
+  statik qidiruv bilan tekshirildi — topilmadi
+✔ Haqiqiy Apache: tests/apache_check.sh — src, locales, sql, config, docs, tests,
+  storage, config.php, *.sql, *.log → 403; public/webhook.php GET → 405;
+  public/index.php, hmac-test.html → 200
+✔ config.php: 4 ta kalit kriptografik tasodifiy, 64 belgi, bir-biridan farqli;
+  App::configProblems() bo‘sh
+✔ ZIP: CRC (unzip -t), alohida papkaga qayta ochish, originallar bilan baytma-bayt
+  solishtirish, ochilgan nusxada php -l va php tests/run.php
+
+JONLI SINALMAGAN (bu muhitda imkonsiz)
+--------------------------------------
+- Haqiqiy Telegram Bot API (token berilmagan; talab bo‘yicha chaqirilmadi)
+- Haqiqiy Telegram Stars xaridi
+- SYSDC paneli, uning PHP 8.4.26 si va CRON rejalashtiruvchisi (lokal PHP 8.3.6;
+  kod PHP 8.1+ uchun yozilgan, 8.4 da eskirgan funksiya ishlatilmagan)
+- LiteSpeed / Nginx (.htaccess faqat Apache da sinaldi; Nginx uni o‘qimaydi —
+  ORNATISH_UZ.txt 9-qadam)
+- fastcgi_finish_request / litespeed_finish_request (mavjud bo‘lmasa oddiy javob
+  qaytariladi; mock muhitda sinaldi)
+- Haqiqiy SMS/bank shlyuzi (integratsiya o‘chiq)
+O‘rnatgandan keyin ORNATISH_UZ.txt dagi 6–9-qadamlar shu qismlarni jonli tekshiradi.

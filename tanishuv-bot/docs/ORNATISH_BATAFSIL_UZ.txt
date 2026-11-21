@@ -1,0 +1,216 @@
+TANISHUV BOT — BATAFSIL O‘RNATISH YO‘RIQNOMASI (SYSDC hosting, telefon orqali)
+(Qisqa variant: tanishuv-bot/ORNATISH_UZ.txt)
+=====================================================================
+
+Domen:        https://6af5109a87832.goldxost.ru
+Loyiha:       tanishuv-bot
+Ochiq manzil: https://6af5109a87832.goldxost.ru/tanishuv-bot/public
+Baza:         6af5109a8775e_vaynexo (host: localhost, port: 3306)
+Admin ID:     8861528108
+
+Kerak bo‘ladi: telefon brauzeri, SYSDC panel (fayl menejeri, phpMyAdmin, CRON), Telegram.
+Composer, VPS yoki terminal KERAK EMAS. Rasm fayllari hostingga yuklanmaydi (faqat
+Telegram file_id saqlanadi), shuning uchun 204 MiB disk yetarli: loyiha ~0.3 MiB.
+
+Panel menyularining nomi SYSDC versiyasiga qarab biroz farq qilishi mumkin; quyida eng
+keng tarqalgan nomlar yozilgan.
+
+
+0-QADAM. ZAXIRA NUSXA (MAJBURIY)
+--------------------------------
+Bazada kino-bot yoki VAYNEXO ma’lumotlari bo‘lishi mumkin. Hech narsa o‘chirilmaydi,
+lekin baribir avval zaxira oling:
+  1) SYSDC panel → "Ma’lumotlar bazalari" (MySQL) → phpMyAdmin.
+  2) Chap tomonda 6af5109a8775e_vaynexo bazasini bosing.
+  3) Yuqorida "Export" (Экспорт) → "Quick" → Format: SQL → "Export" (Go).
+  4) Yuklangan .sql faylni telefoningizda saqlab qo‘ying.
+Fayllar zaxirasi: fayl menejerida domen ildizidagi mavjud papkalarni (kino-bot, VAYNEXO
+va h.k.) tanlab "Arxivlash"/"Сжать" qiling va arxivni yuklab oling.
+
+
+1-QADAM. PHP 8.4 NI TANLASH
+---------------------------
+  1) SYSDC panel → "Saytlar"/"WWW-domenlar" (yoki "PHP sozlamalari") → 6af5109a87832.goldxost.ru.
+  2) PHP versiyasi: 8.4 (8.4.26) ni tanlang va saqlang.
+  3) Kengaytmalar (extensions) ro‘yxatida yoqilgan bo‘lsin: curl, pdo_mysql, mbstring, json.
+     (Odatda sukut bo‘yicha yoqilgan.)
+Bot 64-bit PHP talab qiladi; setup.php buni avtomatik tekshiradi.
+
+
+2-QADAM. SSL (HTTPS)
+--------------------
+Telegram webhook faqat HTTPS bilan ishlaydi, setup.php ham faqat HTTPS da ochiladi.
+  1) SYSDC panel → "SSL sertifikatlar" → domen uchun Let’s Encrypt (bepul) sertifikat
+     chiqaring yoki mavjudligini tekshiring.
+  2) Brauzerda https://6af5109a87832.goldxost.ru ni oching — qulf belgisi bo‘lishi kerak.
+
+
+3-QADAM. ZIP NI YUKLASH VA OCHISH
+---------------------------------
+  1) SYSDC panel → "Fayl menejeri" → domen ildiz papkasini oching (kino-bot va VAYNEXO
+     fayllari turgan papka; odatda public_html yoki www/6af5109a87832.goldxost.ru).
+  2) "Yuklash" (Загрузить) → tanishuv-bot-tayyor.zip ni tanlang.
+  3) ZIP ustida "Arxivdan chiqarish" (Извлечь/Распаковать) → shu papkaning o‘ziga.
+     ZIP ichida faqat bitta tanishuv-bot/ papkasi bor, shuning uchun mavjud kino-bot va
+     VAYNEXO fayllari BOSIB KETILMAYDI.
+  4) Natija: domen_ildizi/tanishuv-bot/ papkasi paydo bo‘ladi:
+       tanishuv-bot/public/        ← ochiq qism (webhook, cron, setup)
+       tanishuv-bot/src/, locales/, sql/, docs/, tests/, storage/  ← yopiq
+       tanishuv-bot/config.php     ← tayyor konfiguratsiya
+  5) ZIP faylni o‘chirib tashlashingiz mumkin.
+  6) tanishuv-bot/storage/ papkasiga yozish huquqi bo‘lsin (odatda 755 yetarli).
+
+
+4-QADAM. SQL NI phpMyAdmin ORQALI IMPORT QILISH
+-----------------------------------------------
+Avval tekshiring: phpMyAdmin → 6af5109a8775e_vaynexo → "SQL" yorlig‘i → yozing:
+    SHOW TABLES LIKE 'tb\_%';
+→ "Go". Natija BO‘SH bo‘lishi kerak.
+
+!!! OGOHLANTIRISH: agar tb_ bilan boshlanadigan jadvallar (tb_users va h.k.) ALLAQACHON
+!!! bo‘lsa, SQL ni QAYTA IMPORT QILMANG. Bot allaqachon o‘rnatilgan.
+
+Bazada boshqa loyiha jadvallari BOR bo‘lsa (kino-bot, VAYNEXO):
+  → tanishuv-bot/sql/migration.sql ni import qiling. U faqat tb_ prefiksli YANGI
+    jadvallarni yonma-yon qo‘shadi; mavjud jadvallarga tegmaydi (DROP/ALTER/DELETE yo‘q).
+Baza butunlay bo‘sh bo‘lsa:
+  → database.sql ni import qiling (alohida yuklab olingan fayl yoki tanishuv-bot/sql/database.sql).
+(Ikkala fayl ham bir xil tb_ jadvallarni yaratadi; farqi faqat sarlavhadagi izohlarda.)
+Botning OLDINGI versiyasi allaqachon o‘rnatilgan bo‘lsa: faqat tanishuv-bot/sql/upgrade.sql
+ni import qiling — u faqat yangi jadvallar va sozlamalarni qo‘shadi.
+
+Import: phpMyAdmin → bazani tanlang → "Import" → "Choose file" → faylni tanlang →
+Kodlash: utf-8 → "Import"/"Go". Muvaffaqiyatli bo‘lsa 25 ta tb_ jadval paydo bo‘ladi.
+
+
+5-QADAM. TOKEN VA PAROLNI config.php GA YOZISH
+----------------------------------------------
+Fayl: domen_ildizi/tanishuv-bot/config.php
+config.php ichida webhook_secret, setup_key, cron_key va bank.hmac_secret allaqachon
+kriptografik tasodifiy, bir-biridan farqli 64 belgili qiymatlar bilan to‘ldirilgan.
+Baza nomi, foydalanuvchi, host, domen va admin ID ham yozilgan.
+
+Agar bot tokeni va MySQL parolini menga yubormagan bo‘lsangiz, ularni o‘zingiz yozasiz:
+  1) Fayl menejeri → tanishuv-bot/config.php → "Tahrirlash" (Редактировать).
+  2) "⚠️ SHU YERGA" izohi turgan ikki qatorni toping:
+       'bot_token' => '',      →  'bot_token' => '123456789:AA....',
+       'pass' => '',           →  'pass' => 'MySQL_parolingiz',
+     Qiymatni bitta qo‘shtirnoq ' ' ichiga yozing. Parolda ' belgisi bo‘lsa, uni \' deb yozing.
+  3) Ixtiyoriy: 'support_contact' => '@sizning_username', 'bot_username' => 'bot_username'.
+  4) Saqlang.
+Token yoki parolni chatga, skrinshotga yoki ochiq joyga yozmang. config.example.php ga
+HECH QACHON haqiqiy qiymat yozmang (u faqat namuna).
+
+
+6-QADAM. setup.php (TEKSHIRUV VA WEBHOOK)
+-----------------------------------------
+  1) config.php dan setup_key qiymatini nusxalang (fayl menejerida ochib, qo‘shtirnoq ichidagi
+     64 belgini belgilab "Nusxalash").
+  2) Brauzerda oching (aynan https bilan):
+       https://6af5109a87832.goldxost.ru/tanishuv-bot/public/setup.php
+  3) setup_key ni kiriting → "Kirish". Session 15 daqiqa amal qiladi.
+  4) Jadvaldagi hamma qator yashil ✔ bo‘lishi kerak: PHP, 64-bit, curl, pdo_mysql,
+     mbstring, tb_ jadvallar (25), getMe (@bot_nomi), admin_ids.
+     getMe xato bo‘lsa — token noto‘g‘ri. MySQL xatosi bo‘lsa — parol yoki import.
+  5) "setWebhook (secret_token bilan)" tugmasini bosing → "setWebhook: OK".
+     Sahifa yangilanganda "Webhook URL" qatori yashil bo‘ladi:
+       https://6af5109a87832.goldxost.ru/tanishuv-bot/public/webhook.php
+     setWebhook secret_token, allowed_updates (message, callback_query, pre_checkout_query)
+     va drop_pending_updates=false bilan chaqiriladi. Bot buyruqlari ham 3 tilda o‘rnatiladi.
+  6) Hammasi ishlagach (7–8-qadamlardan keyin) "Setupni bazada yopish" ni bosing.
+     Shundan keyin setup.php ishlamaydi. Qayta ochish kerak bo‘lsa: phpMyAdmin →
+     tb_settings jadvali → setup_closed qatorida value ni 0 qiling.
+
+
+7-QADAM. CRON (HAR 1 DAQIQADA)
+------------------------------
+CRON navbatdagi xabarlarni yuboradi, broadcastni 30 tadan navbatga qo‘yadi, muddati o‘tgan
+buyurtmalarni yopadi va vaqtinchalik yozuvlarni tozalaydi.
+  1) config.php dan cron_key qiymatini nusxalang.
+  2) SYSDC panel → "CRON"/"Rejalashtiruvchi" (Планировщик) → "Yangi vazifa".
+  3) Vaqt: har daqiqa  →  * * * * *
+  4) Buyruq (CRON_KEY o‘rniga nusxalangan qiymatni qo‘ying):
+       wget -q -O /dev/null "https://6af5109a87832.goldxost.ru/tanishuv-bot/public/cron.php?key=CRON_KEY"
+     wget bo‘lmasa:
+       curl -fsS -o /dev/null "https://6af5109a87832.goldxost.ru/tanishuv-bot/public/cron.php?key=CRON_KEY"
+     Panelda "URL ni chaqirish" turi bo‘lsa, shunchaki manzilni kiriting:
+       https://6af5109a87832.goldxost.ru/tanishuv-bot/public/cron.php?key=CRON_KEY
+  5) Tekshirish: shu manzilni brauzerda oching → {"ok":true,...} chiqishi kerak.
+     Kalitsiz yoki noto‘g‘ri kalit bilan 403 chiqadi.
+CRON to‘xtab qolsa ham Premium va boost muddati har foydalanishda real vaqt bilan
+tekshiriladi — muddati o‘tgan xizmat baribir ishlamaydi.
+
+
+8-QADAM. /start VA /admin BILAN TEKSHIRISH
+------------------------------------------
+  1) Telegramda botingizni oching → /start.
+     Til tanlash → 18+ tasdiqlash → ism → rasm → jins → hudud → qiziqishlar → anketa → Tasdiqlash.
+     Tasdiqlashni bosganingizdan keyin ro‘yxat paytidagi savol-javob xabarlari chatdan
+     avtomatik o‘chadi (Telegram 48 soatdan eski xabarlarni o‘chirishga ruxsat bermaydi).
+  2) Pastda menyu chiqadi:
+       🔍 Suhbatdosh qidirish
+       💌 Menga qiziqqanlar
+       👤 Profilim
+       💎 Premium | 🚀 Profilni ko‘tarish
+  3) /admin yozing (faqat 8861528108 uchun ochiladi) → Foydalanuvchilar, Shikoyatlar,
+     Premium, Profilni ko‘tarish, Statistika, Xabar yuborish, Botni tahrirlash,
+     Kirimlar va to‘lovlar.
+  4) Boshqa ID dan /admin "Noma’lum buyruq" deb javob beradi.
+  5) Premium narxlari: 1 kun 25, 3 kun 60, 7 kun 120, 30 kun 350 Stars; boost 1 kun 30 Stars.
+     /admin → Premium / Profilni ko‘tarish bo‘limida o‘zgartiriladi.
+  6) Stars to‘lovini ishlatish uchun @BotFather da botga to‘lov sozlash shart emas
+     (XTR uchun provider_token bo‘sh). Birinchi haqiqiy xaridni kichik paket bilan sinang.
+
+
+8.1. ADMIN PANEL IMKONIYATLARI (/admin)
+  ✅ Tasdiqlash — selfi so‘rovlari: rasm + anketa rasmi, «Tasdiqlash» yoki rad etish sababi.
+  💌 Like xabarlari — moderatsiya rejimida xabarlarni yetkazish/rad etish, oxirgi xabarlar.
+  🙈 Yashirilganlar — shikoyatlar bo‘yicha avtomatik yashirilgan anketalar; «👁 Ko‘rsatish».
+  ⚙️ Sozlamalar — ruxsat etilgan yosh (min/max), like xabari rejimi (yoqilgan / moderatsiya /
+     o‘chiq), havola va @username bloklash, taqiqlangan so‘zlar, selfi tasdiqlash yoqish/o‘chirish,
+     avtomatik yashirish (necha shikoyat, necha kun ichida; 0 = o‘chiq).
+  👥 Foydalanuvchilar — kartada yosh, maqsad, ✅, 🙈, shikoyat/like/match soni; to‘xtatish,
+     yashirish, ✅ berish/olish, 🎁 Premium sovg‘a qilish (1–365 kun).
+  Har bir admin harakati tb_admin_audit jadvaliga yoziladi.
+
+9-QADAM. XAVFSIZLIKNI TEKSHIRISH
+--------------------------------
+Brauzerda quyidagilar 403 (Forbidden) qaytarishi KERAK:
+  https://6af5109a87832.goldxost.ru/tanishuv-bot/config.php
+  https://6af5109a87832.goldxost.ru/tanishuv-bot/src/Db.php
+  https://6af5109a87832.goldxost.ru/tanishuv-bot/sql/database.sql
+  https://6af5109a87832.goldxost.ru/tanishuv-bot/locales/uz.php
+  https://6af5109a87832.goldxost.ru/tanishuv-bot/tests/run.php
+Agar ular ochilsa yoki bo‘sh sahifa/yuklab olish chiqsa — server .htaccess ni o‘qimayapti
+(masalan, faqat Nginx). Unda darhol SYSDC qo‘llab-quvvatlash xizmatiga yozing va
+domen uchun document root ni tanishuv-bot/public/ ga qo‘yishni yoki yuqoridagi papkalarni
+yopishni so‘rang. Eng xavfsiz variant — document root = tanishuv-bot/public/.
+
+
+XAVFSIZLIK OGOHLANTIRISHLARI
+----------------------------
+- Bot tokeni, MySQL paroli, setup_key, cron_key va webhook_secret ni hech kimga bermang.
+  Token oshkor bo‘lsa @BotFather → /revoke, yangi tokenni config.php ga yozing va
+  setup.php da setWebhook ni qayta bosing.
+- webhook_secret, setup_key va cron_key bir-biridan farqli bo‘lishi shart; aks holda bot
+  ishlamaydi (503).
+- Setup tugagach "Setupni bazada yopish" ni albatta bosing.
+- Apache/LiteSpeed .htaccess fayllari src, locales, sql, config, docs, tests, storage ni
+  yopadi. Nginx .htaccess ni O‘QIMAYDI.
+- SQL fayllarda DROP DATABASE / DROP TABLE yo‘q. tb_ jadvallari mavjud bo‘lsa SQL ni qayta
+  import qilmang.
+- SMS/bank integratsiyasi o‘chiq. Yoqish: tanishuv-bot/docs/BANK_INTEGRATSIYA_UZ.txt.
+  Bank kirimi Premium/boostni yoqmaydi; faqat Telegram Stars yoqadi.
+- /delete profil, rasm file_id va reaksiyalarni o‘chiradi; to‘lov va audit yozuvlari
+  saqlanib qoladi (bu /privacy da yozilgan).
+- Xatolar tanishuv-bot/storage/app.log ga yoziladi (token va parollar yashiriladi,
+  fayl 512 KiB dan oshsa almashtiriladi).
+
+
+MUAMMOLAR
+---------
+- Bot javob bermayapti: setup.php → "Oxirgi xato" qatorini ko‘ring; CRON ishlayotganini
+  tekshiring; storage/app.log ni o‘qing.
+- 503 config_insecure: config.php dagi kalitlardan biri bo‘sh, qisqa yoki takrorlangan.
+- MySQL ulanish xatosi: config.php dagi 'pass' va baza nomini tekshiring.
+- Webhook 403: setWebhook ni setup.php orqali qayta bosing (secret_token yangilanadi).

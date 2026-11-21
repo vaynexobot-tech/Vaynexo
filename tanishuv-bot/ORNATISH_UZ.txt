@@ -1,0 +1,71 @@
+TANISHUV BOT — O‘RNATISH (SYSDC, telefondan, ~10 daqiqa)
+=======================================================
+
+Hamma narsa oldindan sozlangan: domen, baza nomi, admin ID (8861528108) va barcha maxfiy
+kalitlar config.php ichida yozilgan. Siz faqat fayl yuklaysiz va bir necha tugma bosasiz.
+
+Kerakli manzillar:
+  Bot sahifasi:  https://6af5109a87832.goldxost.ru/tanishuv-bot/public/setup.php
+  Baza:          6af5109a8775e_vaynexo
+
+
+1) ZAXIRA (1 daqiqa)
+   SYSDC panel → phpMyAdmin → 6af5109a8775e_vaynexo → Export → Go.
+   Yuklangan faylni saqlab qo‘ying. (Bot hech narsani o‘chirmaydi, bu shunchaki ehtiyot.)
+
+2) PHP 8.4 va SSL
+   SYSDC panel → domen sozlamalari → PHP versiyasi: 8.4 → Saqlash.
+   SSL sertifikat (Let’s Encrypt) yoqilgan bo‘lsin: sayt https:// bilan ochilishi kerak.
+
+3) FAYLLARNI YUKLASH
+   SYSDC panel → Fayl menejeri → domen ildiz papkasi (kino-bot turgan joy).
+   tanishuv-bot-tayyor.zip ni yuklang → ustiga bosing → «Arxivdan chiqarish».
+   tanishuv-bot papkasi paydo bo‘ladi. Boshqa papkalarga tegmaydi. ZIP ni o‘chirsangiz bo‘ladi.
+
+4) BAZA
+   phpMyAdmin → 6af5109a8775e_vaynexo → Import → database.sql ni tanlang → Go.
+   Bu fayl faqat tb_ bilan boshlanadigan 25 ta yangi jadval qo‘shadi. Kino-bot va boshqa
+   jadvallarga tegmaydi. Adashib ikki marta import qilsangiz ham hech narsa buzilmaydi.
+
+5) TOKEN VA PAROL (agar menga yubormagan bo‘lsangiz)
+   Fayl menejeri → tanishuv-bot/config.php → Tahrirlash.
+   «⚠️ SHU YERGA» deb yozilgan ikki qatorga qo‘shtirnoq ichiga yozing:
+       'bot_token' => 'BotFather bergan token',
+       'pass' => 'MySQL parolingiz',
+   Saqlang. Boshqa hech narsani o‘zgartirmang.
+   (Token va parolni menga yuborgan bo‘lsangiz, bu qadam allaqachon bajarilgan.)
+
+6) BOTNI ULASH
+   config.php ichidan setup_key qatoridagi uzun kalitni nusxalang.
+   Oching: https://6af5109a87832.goldxost.ru/tanishuv-bot/public/setup.php
+   Kalitni kiriting → «Kirish». «Webhook» qatoridan boshqa hamma qator yashil ✔ bo‘lsin.
+   «setWebhook» tugmasini bosing → «setWebhook: OK».
+
+7) CRON (har daqiqada)
+   config.php ichidan cron_key qatoridagi kalitni nusxalang.
+   SYSDC panel → CRON (Планировщик) → Yangi vazifa → har daqiqa (* * * * *).
+   Turi «URL» bo‘lsa, manzil:
+     https://6af5109a87832.goldxost.ru/tanishuv-bot/public/cron.php?key=CRON_KEY
+   Turi «buyruq» bo‘lsa:
+     wget -q -O /dev/null "https://6af5109a87832.goldxost.ru/tanishuv-bot/public/cron.php?key=CRON_KEY"
+   CRON_KEY o‘rniga nusxalangan kalitni qo‘ying.
+
+8) SINASH
+   Telegramda botga /start yozing → ro‘yxatdan o‘ting.
+   /admin yozing → admin panel ochiladi.
+   Hammasi ishlasa: setup.php → «Setupni bazada yopish» ni bosing.
+
+9) XAVFSIZLIKNI TEKSHIRISH (30 soniya)
+   Brauzerda oching — «403 Forbidden» chiqishi kerak:
+     https://6af5109a87832.goldxost.ru/tanishuv-bot/config.php
+   Agar fayl ochilib qolsa, SYSDC yordamiga yozing: «tanishuv-bot papkasida .htaccess
+   ishlamayapti». Bu juda muhim: config.php da parol bor.
+
+
+ESLATMA
+- Token, parol, setup_key va cron_key ni hech kimga bermang va chatga yozmang.
+- Token oshkor bo‘lsa: @BotFather → /revoke, yangi tokenni config.php ga yozing, 6-qadamni takrorlang.
+- Admin panelda: ✅ Tasdiqlash, 💌 Like xabarlari, 🙈 Yashirilganlar, ⚙️ Sozlamalar,
+  👥 Foydalanuvchilar (yashirish, ✅ berish, 🎁 Premium sovg‘a), Statistika, Xabar yuborish.
+- Muammo bo‘lsa: setup.php dagi qizil ✘ qatoriga qarang yoki tanishuv-bot/storage/app.log ni oching.
+- Batafsil yo‘riqnoma: tanishuv-bot/docs/ORNATISH_BATAFSIL_UZ.txt

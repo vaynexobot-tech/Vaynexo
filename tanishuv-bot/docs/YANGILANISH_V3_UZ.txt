@@ -1,0 +1,27 @@
+TANISHUV BOT — v3 YANGILANISH (schema 2 -> 3)
+=============================================
+
+Yangi o'rnatish: sql/database.sql (yoki ildizdagi database.sql) ni import qiling.
+Eski (v2) o'rnatish: faqat sql/upgrade_v3.sql ni import qiling (takror import xavfsiz).
+Keyin fayllarni yangilang. config.php ga tegmang: yangi config kaliti kerak emas.
+
+NIMA QO'SHILDI
+- Bloklash: qidiruv kartasida va suhbatda "🚫 Bloklash"; /blocks — soni va hammasini olib tashlash.
+  Blok ikki tomonlama: qidiruv, ro'yxat, like, match va suhbat boshlashda hisobga olinadi.
+- "Kim yoqtirdi" ro'yxati faqat Premium (admin: Sozlamalar -> "Likelar: Premium" bilan o'chiriladi).
+  Bepul foydalanuvchi sonni ko'radi, "Juda yoqdi" va saqlanganlar ochiq qoladi.
+- Referal: /invite va Premium menyusidagi tugma. Taklif qilingan odam anketani tugatsa,
+  taklif qilgan ref_reward_days (standart 1) kun Premium oladi, jami ref_max_rewards (30) tagacha.
+  Havola ishlashi uchun config.php da bot_username to'ldirilgan bo'lishi kerak.
+- Eslatmalar (CRON orqali): yangi like olganlarga (24 soatda 1 marta) va 3-30 kun kirmaganlarga (7 kunda 1 marta).
+  Admin: Sozlamalar -> "Eslatmalar".
+- Yangi anketalar tekshiruvi (standart O'CHIQ): Sozlamalar -> "Anketa tekshiruvi" ni yoqsangiz, har yangi anketa
+  admin navbatiga (/admin -> Yangi anketalar) tushadi: "Yaxshi" yoki "Yashirish".
+- Qidiruv tartibi: boost -> hudud -> umumiy qiziqishlar -> yosh yaqinligi -> oxirgi faollik.
+  Yangi indekslar (idx_users_pick, idx_users_seen) katta bazada tezlikni oshiradi.
+- Statistika: bloklar, referallar, XTR 7/30 kun, eslatmalar soni, ro'yxatdan o'tish voronkasi (30 kun).
+
+TAVSIYA
+- Hosting cron'ini HAR 1 DAQIQAGA qo'ying (public/cron.php, cron_key bilan): eslatmalar va broadcast shu orqali ishlaydi.
+- Bazaning kunlik zaxira nusxasini hosting panelidan yoqing (tb_users, tb_orders, tb_reactions muhim).
+- Testlar: php tests/run.php (1662 tekshiruv).

@@ -1,0 +1,84 @@
+TANISHUV BOT — SMS/BANK KIRIMLARI INTEGRATSIYASI
+=================================================
+
+HOZIRGI HOLAT: O‘CHIQ. config.php da 'bank' => ['enabled' => false]. O‘chiq paytda
+bank-webhook.php har qanday so‘rovga 503 {"ok":false,"error":"disabled"} qaytaradi.
+
+MUHIM QOIDALAR
+- Bank/SMS kirimlari Telegram Stars to‘lovlaridan ALOHIDA hisoblanadi.
+- Bank kirimi HECH QACHON Premium yoki "Profilni ko‘tarish" ni yoqmaydi. Raqamli xizmat
+  faqat Telegram Stars successful_payment orqali yoqiladi.
+- To‘liq karta raqami, PIN va CVV saqlanmaydi. Faqat karta nomi va oxirgi 4 raqam
+  (**** 1234) saqlanadi. Kartalar soniga sun’iy limit yo‘q (18 tadan ko‘p bo‘lishi mumkin).
+- Bitta karta bir vaqtda bir nechta kutilayotgan (pending) kirim uchun ishlatilishi mumkin;
+  karta bitta buyurtma uchun band qilinmaydi.
+
+1. YOQISH
+   1) 64 belgili tasodifiy kalit yarating (webhook_secret, setup_key, cron_key dan FARQLI).
+   2) config.php:  'bank' => ['enabled' => true, 'hmac_secret' => 'YANGI_KALIT', 'max_skew' => 300],
+   3) SMS/bank shlyuzingizga shu kalitni va manzilni bering:
+      https://6af5109a87832.goldxost.ru/tanishuv-bot/public/bank-webhook.php
+
+2. SO‘ROV FORMATI
+   Metod: POST (boshqa metod → 405)
+   Body: JSON, ko‘pi bilan 32 KiB (katta → 413)
+   Sarlavhalar:
+     Content-Type: application/json
+     X-Bank-Timestamp: <Unix vaqt, soniyada>
+     X-Bank-Signature: <hex(HMAC-SHA256(hmac_secret, timestamp + "." + raw_body))>
+   Imzo aynan yuborilayotgan xom (raw) body baytlari ustida hisoblanadi.
+   Server vaqti bilan timestamp farqi 300 soniyadan oshsa → 401 timestamp_skew.
+
+   JSON maydonlari (to‘liq sxema: docs/bank-contract.json):
+     source        majburiy  masalan "sms_gateway"
+     event_id      majburiy  manba ichida noyob
+     test          ixtiyoriy true/false (standart false)
+     amount_minor  majburiy  butun son, eng kichik birlikda (15 000 so‘m = 1500000)
+     currency      majburiy  "UZS"
+     card_last4    ixtiyoriy "1234"
+     reference     ixtiyoriy "TB-0001"
+     occurred_at   ixtiyoriy "2026-11-18T07:05:13Z"
+
+3. MOSLASH QOIDALARI
+   - source + event_id noyob. Takroriy event 200 {"duplicate":true} qaytaradi va ikkinchi
+     marta hisoblanmaydi.
+   - reference bo‘lsa: aynan shu reference, summa va valyutaga ega, muddati o‘tmagan pending.
+   - reference bo‘lmasa: card_last4, summa va valyuta bo‘yicha.
+   - Aniq 1 ta moslik → matched (pending yopiladi).
+   - 0 ta moslik → unmatched.
+   - 2 va undan ko‘p moslik → ambiguous. Hech bir buyurtmaga taxminan biriktirilmaydi.
+
+4. TEST EVENT (test=true)
+   - Faqat imzo va format tekshiriladi.
+   - DB ga event YOZILMAYDI, pending YOPILMAYDI, "Ulangan" holati YOQILMAYDI.
+   - Admin panelda "Ulanmagan" holati birinchi haqiqiy imzolangan test=false event
+     kelguncha saqlanadi.
+   Namuna: docs/bank-test-event.json
+   Haqiqiy event namunasi: docs/bank-real-event-example.json
+
+5. TELEFONDA TEKSHIRISH
+   Brauzerda oching: https://6af5109a87832.goldxost.ru/tanishuv-bot/public/hmac-test.html
+   Kalitni kiriting, "Imzolash" yoki "Imzolab ... yuborish" ni bosing. Kalit faqat
+   brauzeringizda hisoblanadi va hech qayerga yuborilmaydi.
+
+6. CURL NAMUNASI (kompyuterda)
+   TS=$(date +%s)
+   BODY='{"source":"sms_gateway","event_id":"test-0001","test":true,"amount_minor":15000000,"currency":"UZS","card_last4":"1234"}'
+   SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "HMAC_KALIT" -hex | sed 's/^.* //')
+   curl -X POST https://6af5109a87832.goldxost.ru/tanishuv-bot/public/bank-webhook.php \
+     -H "Content-Type: application/json" -H "X-Bank-Timestamp: $TS" -H "X-Bank-Signature: $SIG" \
+     --data-binary "$BODY"
+
+7. JAVOBLAR
+   200 {"ok":true,"test":true,"valid":true}
+   200 {"ok":true,"result":"matched|unmatched|ambiguous","pending_id":12|null}
+   200 {"ok":true,"duplicate":true}
+   400 invalid_json · 401 bad_signature / bad_timestamp / timestamp_skew · 405 method
+   413 body_too_large · 422 invalid_field · 503 disabled / not_configured
+
+8. ADMIN PANEL
+   /admin → 🏦 Kirimlar va to‘lovlar:
+     📡 Ulanish holati · 💳 Kartalar · ⏳ Kutilayotgan kirimlar · 📜 Tarix · ⭐ Stars to‘lovlari
+   Kutilayotgan kirimni qo‘lda qo‘shish formati:
+     user_id card_id summa_tiyinda VALYUTA [reference]
+     Masalan: 123456789 1 15000000 UZS TB-0001

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Bank HMAC test</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#111;--mut:#555;--acc:#2563eb;--ok:#0a7d32;--bad:#b00020;--bd:#ccc}
+@media (prefers-color-scheme:dark){:root{--bg:#111418;--card:#1c2026;--fg:#eee;--mut:#aaa;--acc:#5b8cff;--ok:#4cc77a;--bad:#ff6b7f;--bd:#333}}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:16px;line-height:1.45}
+main{max-width:680px;margin:0 auto}
+.c{background:var(--card);border-radius:12px;padding:14px;margin:12px 0;box-shadow:0 1px 3px #0003}
+label{display:block;font-size:14px;color:var(--mut);margin-top:8px}
+input,textarea,button{width:100%;box-sizing:border-box;font-size:16px;padding:10px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg);margin-top:4px}
+textarea{min-height:170px;font-family:ui-monospace,monospace;font-size:13px}
+button{background:var(--acc);color:#fff;border:0;margin-top:10px}
+pre{white-space:pre-wrap;word-break:break-all;font-size:12px;background:var(--bg);padding:8px;border-radius:8px}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+</style>
+</head>
+<body>
+<main>
+<h2>Bank webhook HMAC test</h2>
+<div class="c">
+  <p>Imzo: <code>HMAC-SHA256(secret, timestamp + "." + raw_body)</code>, hex. Sarlavhalar: <code>X-Bank-Timestamp</code>, <code>X-Bank-Signature</code>.
+  Kalit faqat shu brauzerda hisoblanadi va hech qayerga yuborilmaydi.</p>
+  <label for="secret">bank.hmac_secret</label>
+  <input id="secret" type="password" autocomplete="off">
+  <label for="ts">Timestamp (Unix, soniya)</label>
+  <input id="ts" inputmode="numeric">
+  <label for="body">Raw JSON body</label>
+  <textarea id="body">{"source":"sms_gateway","event_id":"test-0001","test":true,"amount_minor":15000000,"currency":"UZS","card_last4":"1234","reference":null,"occurred_at":"2026-11-18T07:00:00Z"}</textarea>
+  <button id="sign" type="button">Imzolash</button>
+  <button id="send" type="button">Imzolab bank-webhook.php ga yuborish</button>
+</div>
+<div class="c">
+  <label>Imzo (X-Bank-Signature)</label>
+  <pre id="sig">—</pre>
+  <label>curl buyrug‘i</label>
+  <pre id="curl">—</pre>
+  <label>Server javobi</label>
+  <pre id="resp">—</pre>
+</div>
+</main>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  $('ts').value = Math.floor(Date.now()/1000);
+  function hex(buf){ return Array.prototype.map.call(new Uint8Array(buf), function(b){ return ('0'+b.toString(16)).slice(-2); }).join(''); }
+  async function sign(){
+    if (!window.crypto || !crypto.subtle) { $('sig').textContent = 'Brauzer WebCrypto ni qo‘llamaydi (HTTPS kerak).'; return null; }
+    $('ts').value = Math.floor(Date.now()/1000);
+    var enc = new TextEncoder();
+    var key = await crypto.subtle.importKey('raw', enc.encode($('secret').value), {name:'HMAC', hash:'SHA-256'}, false, ['sign']);
+    var s = hex(await crypto.subtle.sign('HMAC', key, enc.encode($('ts').value + '.' + $('body').value)));
+    $('sig').textContent = s;
+    var url = location.href.replace(/hmac-test\.html.*$/, 'bank-webhook.php');
+    $('curl').textContent = "curl -X POST '" + url + "' -H 'Content-Type: application/json' -H 'X-Bank-Timestamp: " + $('ts').value + "' -H 'X-Bank-Signature: " + s + "' --data-binary '" + $('body').value.replace(/'/g, "'\\''") + "'";
+    return {sig:s, url:url};
+  }
+  $('sign').addEventListener('click', function(){ sign().catch(function(e){ $('sig').textContent = String(e); }); });
+  $('send').addEventListener('click', async function(){
+    try {
+      var r = await sign(); if (!r) return;
+      var res = await fetch(r.url, {method:'POST', headers:{'Content-Type':'application/json','X-Bank-Timestamp':$('ts').value,'X-Bank-Signature':r.sig}, body:$('body').value});
+      var t = await res.text();
+      $('resp').className = res.ok ? 'ok' : 'bad';
+      $('resp').textContent = 'HTTP ' + res.status + '\n' + t;
+    } catch (e) { $('resp').className = 'bad'; $('resp').textContent = String(e); }
+  });
+})();
+</script>
+</body>
+</html>

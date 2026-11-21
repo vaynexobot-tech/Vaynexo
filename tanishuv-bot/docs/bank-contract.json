@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tanishuv bot — bank/SMS kirim eventi (POST public/bank-webhook.php)",
+  "description": "Sarlavhalar: Content-Type: application/json; X-Bank-Timestamp: <unix soniya>; X-Bank-Signature: hex(HMAC-SHA256(bank.hmac_secret, timestamp + '.' + raw_body)). Timestamp farqi ko'pi bilan 300 soniya. Body ko'pi bilan 32 KiB. source + event_id juftligi noyob: takroriy event ikki marta hisoblanmaydi.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["source", "event_id", "amount_minor", "currency"],
+  "properties": {
+    "source":       { "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,64}$", "description": "Manba nomi, masalan sms_gateway" },
+    "event_id":     { "type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,128}$", "description": "Manba ichida noyob event ID" },
+    "test":         { "type": "boolean", "default": false, "description": "true bo'lsa faqat imzo va format tekshiriladi, DB ga yozilmaydi" },
+    "amount_minor": { "type": "integer", "minimum": 1, "maximum": 1000000000000000, "description": "Summa eng kichik birlikda (UZS uchun tiyin: 15 000 so'm = 1500000)" },
+    "currency":     { "type": "string", "pattern": "^[A-Z]{3}$", "description": "ISO 4217, masalan UZS" },
+    "card_last4":   { "type": ["string", "null"], "pattern": "^[0-9]{4}$", "description": "Faqat oxirgi 4 raqam. To'liq raqam qabul qilinmaydi" },
+    "reference":    { "type": ["string", "null"], "pattern": "^[A-Za-z0-9_-]{1,64}$", "description": "Bo'lsa aynan reference bo'yicha moslanadi" },
+    "occurred_at":  { "type": ["string", "null"], "description": "ISO 8601 vaqt (UTC tavsiya etiladi)" }
+  },
+  "x-responses": {
+    "200": [
+      { "ok": true, "test": true, "valid": true },
+      { "ok": true, "result": "matched", "pending_id": 12 },
+      { "ok": true, "result": "unmatched", "pending_id": null },
+      { "ok": true, "result": "ambiguous", "pending_id": null },
+      { "ok": true, "duplicate": true, "result": "matched" }
+    ],
+    "400": { "ok": false, "error": "invalid_json" },
+    "401": [ { "ok": false, "error": "bad_signature" }, { "ok": false, "error": "bad_timestamp" }, { "ok": false, "error": "timestamp_skew" } ],
+    "405": { "ok": false, "error": "method" },
+    "413": { "ok": false, "error": "body_too_large" },
+    "422": { "ok": false, "error": "invalid_field", "field": "amount_minor" },
+    "503": [ { "ok": false, "error": "disabled" }, { "ok": false, "error": "not_configured" } ]
+  }
+}

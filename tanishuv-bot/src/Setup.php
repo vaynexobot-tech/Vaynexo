@@ -27,12 +27,12 @@ final class Setup
         return false;
     }
 
-    private static function h(mixed $s): string
+    private static function h($s): string
     {
         return htmlspecialchars((string)$s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
-    private static function page(string $body, int $code = 200): never
+    private static function page(string $body, int $code = 200): void
     {
         http_response_code($code);
         header('Content-Type: text/html; charset=utf-8');

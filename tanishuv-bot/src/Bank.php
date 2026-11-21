@@ -62,7 +62,7 @@ final class Bank
     }
 
     /** @return array|string normallashgan event yoki xato maydon nomi */
-    public static function validate(array $j): array|string
+    public static function validate(array $j)
     {
         $src = $j['source'] ?? null;
         if (!is_string($src) || !preg_match('/^[A-Za-z0-9_.-]{1,64}$/', $src)) {

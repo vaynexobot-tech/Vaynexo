@@ -7,7 +7,14 @@ defined('TB_ROOT') || exit;
 
 final class CurlTransport implements Transport
 {
-    public function __construct(private string $token, private string $base) {}
+    private string $token;
+    private string $base;
+
+    public function __construct(string $token, string $base)
+    {
+        $this->token = $token;
+        $this->base = $base;
+    }
 
     public function call(string $method, array $params, int $timeout = 10): array
     {

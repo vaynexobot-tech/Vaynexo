@@ -14,12 +14,17 @@ final class Ctx
     private int $seq = 0;
     private bool $answered = false;
 
-    public function __construct(
-        public int $uid,
-        public int $updateId,
-        public ?array $msg,
-        public ?array $cb,
-    ) {
+    public int $uid;
+    public int $updateId;
+    public ?array $msg;
+    public ?array $cb;
+
+    public function __construct(int $uid, int $updateId, ?array $msg, ?array $cb)
+    {
+        $this->uid = $uid;
+        $this->updateId = $updateId;
+        $this->msg = $msg;
+        $this->cb = $cb;
         $this->u = Users::lock($uid);
         $this->lang = Lang::norm($this->u['lang'] ?? null);
         if (($this->u['lang'] ?? null) === null) {

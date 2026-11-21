@@ -39,7 +39,7 @@ final class RegCleanup
     }
 
     /** Outbox muvaffaqiyatli yuborgan bot xabari. */
-    public static function sent(int $chatId, mixed $result): void
+    public static function sent(int $chatId, $result): void
     {
         $ids = [];
         if (is_array($result) && isset($result['message_id'])) {

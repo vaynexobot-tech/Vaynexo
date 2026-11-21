@@ -9,7 +9,7 @@ final class Endpoints
 {
     public const TG_MAX_BODY = 1048576; // 1 MiB
 
-    private static function out(int $code, array $body): never
+    private static function out(int $code, array $body): void
     {
         if (!headers_sent()) {
             http_response_code($code);

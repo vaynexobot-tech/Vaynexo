@@ -109,7 +109,7 @@ final class Registration
     /**
      * Matndan yoshni o‘qiydi. null = raqam emas; 'under' = 18 dan kichik; 'range' = admin chegarasidan tashqari.
      */
-    public static function parseAge(?string $text): int|string|null
+    public static function parseAge(?string $text)
     {
         $t = trim((string)$text);
         if (!preg_match('/^\d{1,3}$/', $t)) {

@@ -1,7 +1,7 @@
 TANISHUV BOT v3 — HOSTINGGA (sysdc) O'RNATISH
 =============================================
 
-TALABLAR: PHP 8.1+ (64-bit), kengaytmalar: curl, pdo_mysql, mbstring, json.
+TALABLAR: PHP 7.4+ (8.x tavsiya etiladi, 64-bit), kengaytmalar: curl, pdo_mysql, mbstring, json.
 MySQL 5.7+/8 yoki MariaDB 10.3+. HTTPS (SSL) yoqilgan domen. Cron.
 
 ------------------------------------------------------------

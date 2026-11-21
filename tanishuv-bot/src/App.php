@@ -70,7 +70,7 @@ final class App
         self::$cfg = $cfg + $d;
     }
 
-    public static function cfg(string $key, mixed $default = null): mixed
+    public static function cfg(string $key, $default = null)
     {
         $cur = self::$cfg;
         foreach (explode('.', $key) as $p) {

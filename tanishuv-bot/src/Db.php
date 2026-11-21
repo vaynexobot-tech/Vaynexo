@@ -57,7 +57,7 @@ final class Db
         return $this->q($sql, $p)->fetchAll();
     }
 
-    public function val(string $sql, array $p = []): mixed
+    public function val(string $sql, array $p = [])
     {
         $r = $this->q($sql, $p)->fetchColumn();
         return $r === false ? null : $r;
@@ -110,7 +110,7 @@ final class Db
     }
 
     /** Tranzaksiya; deadlock bo‘lsa 3 martagacha qayta urinadi. */
-    public function tx(callable $fn): mixed
+    public function tx(callable $fn)
     {
         for ($i = 0; ; $i++) {
             $this->begin();

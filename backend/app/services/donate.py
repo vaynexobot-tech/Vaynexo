@@ -52,6 +52,8 @@ async def create_order(session: AsyncSession, user_id: int, package_id: int, pla
     game = await session.get(DonateGame, pkg.game)
     if game is not None and not game.is_active:
         raise NotFound("O'yin")
+    if game is not None and game.provider_id and pkg.provider_id and pkg.provider_id != game.provider_id:
+        raise NotFound("Paket")  # admin boshqa API'ga almashtirgan — eski sahifadagi paket
     fields = (game.fields if game else None) or []
     if pkg.delivery == "voucher" and not fields:
         player_id, zone_id = "", ""

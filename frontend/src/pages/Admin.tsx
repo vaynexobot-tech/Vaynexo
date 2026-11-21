@@ -5,7 +5,8 @@ import { t } from "../i18n";
 import { confirmDialog, openTg } from "../tg";
 import { HERO_BY_ID, HeroAva } from "../mlbb";
 import { BracketView, type BracketT } from "./Bracket";
-import { Chips, Copy, dateTime, Empty, Field, GameTile, Header, Loadable, money, MoneyInput, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
+import { Chips, Copy, dateTime, Empty, Field, GameTile, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
+import { BotAdmin, CatalogTab, Dashboard, MORE, MORE_BY_V, MoreMenu, OrdersTab, useLinkCounts, type Dash } from "./AdminNew";
 
 type Tab = "stats" | "arena" | "analytics" | "audit" | "broadcast" | "promo" | "settings" | "rent" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments" | "kyc" | "partner" | "matches";
 
@@ -48,50 +49,102 @@ function useWide(min = 900) {
   return w;
 }
 
+type Main = "home" | "orders" | "catalog" | "users" | "more";
+const MAINS: { v: Main; icon: string; label: string }[] = [
+  { v: "home", icon: "home", label: "Bosh" }, { v: "orders", icon: "list", label: "Buyurtmalar" }, { v: "catalog", icon: "box", label: "Katalog" },
+  { v: "users", icon: "users", label: "Odamlar" }, { v: "more", icon: "more", label: "Ko'proq" },
+];
+const MAIN_TITLE: Record<Main, string> = { home: "Admin", orders: "Buyurtmalar", catalog: "Katalog", users: "Odamlar", more: "Ko'proq" };
+
+/** Eski bo'lim (navbat/boshqaruv) — «Ko'proq» va bosh sahifa havolalari orqali ochiladi. */
+function Legacy({ tab }: { tab: string }) {
+  switch (tab) {
+    case "settings": return <AppSettings />;
+    case "analytics": return <Analytics />;
+    case "audit": return <AuditLog />;
+    case "broadcast": return <Broadcast />;
+    case "promo": return <Promos />;
+    case "rent": return <RentAdmin />;
+    case "incoming": return <Incoming />;
+    case "withdraw": return <Withdrawals />;
+    case "moderation": return <Moderation />;
+    case "disputes": return <Disputes />;
+    case "donate": return <DonateReview />;
+    case "tg": return <TgAdmin />;
+    case "boost": return <BoostAdmin />;
+    case "packages": return <Packages />;
+    case "tournaments": return <Tournaments />;
+    case "kyc": return <KycAdmin />;
+    case "partner": return <PartnerAdmin />;
+    case "matches": return <MatchesAdmin />;
+    case "arena": return <ArenaStatsAdmin />;
+    case "apis": return <ProvidersAdmin />;
+    default: return <Empty text="Bo'lim topilmadi" />;
+  }
+}
+const secLabel = (v: string) => (v === "apis" ? "API'lar" : MORE_BY_V[v]?.label ?? [...QUEUE, ...MANAGE].find((x) => x.v === v)?.label ?? v);
+
 export default function Admin() {
   const { me } = useApp();
-  const [tab, setTab] = useState<Tab>("stats");
+  const [main, setMain] = useState<Main>("home");
+  const [sec, setSec] = useState<string | null>(null);
   const wide = useWide();
+  const dash = useLoad(() => api.get<Dash>("/admin/dashboard"));
+  useEffect(() => {
+    const id = setInterval(() => dash.reload(), 60_000);
+    return () => clearInterval(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const counts = useLinkCounts(dash.data);
   if (!me?.is_admin) return <><Header title="Admin" /><Empty icon="🔒" text={t("Ruxsat yo'q")} /></>;
-  const sec = [...QUEUE, ...MANAGE].find((x) => x.v === tab);
-  const body = (
+  const go = (to: string) => {
+    if (MAINS.some((m) => m.v === to)) { setMain(to as Main); setSec(null); } else setSec(to);
+    window.scrollTo(0, 0);
+  };
+  const qn = dash.data?.queue.length ?? 0;
+  const body = sec ? (sec === "bot" ? <BotAdmin onChange={dash.reload} /> : <Legacy tab={sec} />) : (
     <>
-      {tab === "stats" && <Stats go={setTab} />}
-      {tab === "settings" && <AppSettings />}
-      {tab === "analytics" && <Analytics />}
-      {tab === "audit" && <AuditLog />}
-      {tab === "broadcast" && <Broadcast />}
-      {tab === "promo" && <Promos />}
-      {tab === "rent" && <RentAdmin />}
-      {tab === "incoming" && <Incoming />}
-      {tab === "withdraw" && <Withdrawals />}
-      {tab === "moderation" && <Moderation />}
-      {tab === "disputes" && <Disputes />}
-      {tab === "donate" && <DonateReview />}
-      {tab === "tg" && <TgAdmin />}
-      {tab === "boost" && <BoostAdmin />}
-      {tab === "users" && <Users />}
-      {tab === "packages" && <Packages />}
-      {tab === "tournaments" && <Tournaments />}
-      {tab === "kyc" && <KycAdmin />}
-      {tab === "partner" && <PartnerAdmin />}
-      {tab === "matches" && <MatchesAdmin />}
-      {tab === "arena" && <ArenaStatsAdmin />}
+      {main === "home" && <Dashboard st={dash} go={go} />}
+      {main === "orders" && <OrdersTab go={go} />}
+      {main === "catalog" && <CatalogTab apis={<ProvidersAdmin />} go={go} />}
+      {main === "users" && <Users />}
+      {main === "more" && <MoreMenu go={go} counts={counts} />}
     </>
+  );
+  const title = sec ? (sec === "bot" ? "Bot holati" : secLabel(sec)) : MAIN_TITLE[main];
+  const botPill = dash.data && (
+    <button className={"badge " + (dash.data.bot.open ? "g" : "r")} style={{ border: 0 }} onClick={() => go("bot")}>
+      <Icon name="lock" size={12} />&nbsp;{dash.data.bot.open ? "Ochiq" : `Yopiq · ${dash.data.bot.guests} mehmon`}
+    </button>
   );
   if (wide) return (
     <div className="adm-web">
       <aside className="adm-side">
         <div className="row" style={{ gap: 10, padding: "4px 6px 12px" }}>
-          <div className="hf" style={{ width: 36, height: 36, borderRadius: 10, background: "var(--y)", color: "#111", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>VX</div>
+          <div className="adm2-logo">VX</div>
           <div><div className="hf bb">VAYNEXO</div><div className="mut xs">{isWebAdmin ? "Web admin panel" : "Admin panel"}</div></div>
         </div>
-        <SideNav tab={tab} go={setTab} />
+        <nav className="col" style={{ gap: 2 }}>
+          {MAINS.filter((m) => m.v !== "more").map((m) => (
+            <button key={m.v} className={"side-item" + (!sec && main === m.v ? " on" : "")} onClick={() => go(m.v)}>
+              <Icon name={m.icon} size={18} /><span className="grow">{m.label}</span>{m.v === "orders" && qn > 0 && <span className="adm-n on">{qn}</span>}
+            </button>
+          ))}
+          {MORE.map((g) => (
+            <div key={g.title} className="col" style={{ gap: 2 }}>
+              <div className="side-h">{g.title}</div>
+              {g.items.map((x) => (
+                <button key={x.v} className={"side-item" + (sec === x.v ? " on" : "")} onClick={() => go(x.v)}>
+                  <Icon name={x.icon} size={18} /><span className="grow ell">{x.label}</span>{counts[x.v] ? <span className="adm-n on">{counts[x.v]}</span> : null}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
       </aside>
       <main className="adm-main">
         <div className="row between" style={{ marginBottom: 12 }}>
-          <div className="hf bb" style={{ fontSize: 22 }}>{sec ? `${sec.icon} ${sec.label}` : "📊 Umumiy ko'rinish"}</div>
-          <span className="mut xs">{me.name}</span>
+          <div><div className="hf bb" style={{ fontSize: 22 }}>{title}</div><div className="mut xs">{me.name}</div></div>
+          <div className="row">{botPill}<button className="btn small ghost" onClick={() => dash.reload()}><Icon name="refresh" size={15} /> Yangilash</button></div>
         </div>
         <div className="adm-body">{body}</div>
       </main>
@@ -99,73 +152,20 @@ export default function Admin() {
   );
   return (
     <>
-      <Header title={sec ? `${sec.icon} ${sec.label}` : t("Admin panel")} right={<span />} />
-      <div className="page">
-        {tab !== "stats" && <button className="btn small ghost" style={{ alignSelf: "flex-start" }} onClick={() => setTab("stats")}>‹ Bo'limlar</button>}
+      <Header title={title} right={!sec && main === "home" ? botPill : <span />} />
+      <div className="page adm2-page">
+        {sec && <button className="btn small ghost" style={{ alignSelf: "flex-start" }} onClick={() => setSec(null)}>‹ {MAIN_TITLE[main]}</button>}
         {body}
       </div>
+      <nav className="adm2-nav">
+        {MAINS.map((m) => (
+          <button key={m.v} className={"adm2-nv" + (!sec && main === m.v ? " on" : "")} onClick={() => go(m.v)}>
+            <Icon name={m.icon} size={21} />{m.label}
+            {m.v === "orders" && qn > 0 && <span className="adm2-badge">{qn}</span>}
+          </button>
+        ))}
+      </nav>
     </>
-  );
-}
-
-function SideNav({ tab, go }: { tab: Tab; go: (t: Tab) => void }) {
-  const st = useLoad(() => api.get<Record<string, number>>("/admin/stats"));
-  useEffect(() => {
-    const id = setInterval(() => st.reload(), 60_000);
-    return () => clearInterval(id);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const s = st.data ?? {};
-  const item = (x: Section) => {
-    const n = (x.count ?? []).reduce((a, k) => a + (s[k] || 0), 0);
-    return (
-      <button key={x.v} className={"side-item" + (tab === x.v ? " on" : "")} onClick={() => go(x.v)}>
-        <span>{x.icon}</span><span className="grow ell">{x.label}</span>{n > 0 && <span className="adm-n on">{n}</span>}
-      </button>
-    );
-  };
-  return (
-    <nav className="col" style={{ gap: 2 }}>
-      <button className={"side-item" + (tab === "stats" ? " on" : "")} onClick={() => go("stats")}><span>📊</span><span className="grow">Umumiy</span></button>
-      <div className="side-h">Navbat</div>
-      {QUEUE.map(item)}
-      <div className="side-h">Boshqaruv</div>
-      {MANAGE.map(item)}
-    </nav>
-  );
-}
-
-function Stats({ go }: { go: (t: Tab) => void }) {
-  const st = useLoad(() => api.get<Record<string, number>>("/admin/stats"));
-  const tile = (x: Section, s: Record<string, number>) => {
-    const n = (x.count ?? []).reduce((a, k) => a + (s[k] || 0), 0);
-    return (
-      <button key={x.v} className={"adm-tile" + (n ? " hot" : "")} onClick={() => go(x.v)}>
-        <span className="adm-ico">{x.icon}</span>
-        <span className="adm-lbl">{x.label}</span>
-        {x.count && <span className={"adm-n" + (n ? " on" : "")}>{n}</span>}
-      </button>
-    );
-  };
-  return (
-    <Loadable state={st}>
-      {(s) => {
-        const total = QUEUE.reduce((a, x) => a + (x.count ?? []).reduce((b, k) => b + (s[k] || 0), 0), 0);
-        return (
-          <>
-            <div className="grid2">
-              <StatCard label="Foydalanuvchilar" value={money(s.users)} sub={`+${s.users_today} bugun`} />
-              <StatCard label="Jami balanslar" value={money(s.balances_total)} sub="so'm (majburiyat)" />
-              <StatCard label="To'ldirish (24 soat)" value={money(s.topups_today)} sub="so'm" />
-              <StatCard label="Donat (24 soat)" value={money(s.donate_today)} sub="so'm" />
-            </div>
-            <div className="row between"><div className="sec-title">Navbat</div><span className={"badge " + (total ? "y" : "g")}>{total ? `${total} ta ish` : "Hammasi bajarilgan ✓"}</span></div>
-            <div className="adm-grid">{QUEUE.map((x) => tile(x, s))}</div>
-            <div className="sec-title">Boshqaruv</div>
-            <div className="adm-grid">{MANAGE.map((x) => tile(x, s))}</div>
-          </>
-        );
-      }}
-    </Loadable>
   );
 }
 

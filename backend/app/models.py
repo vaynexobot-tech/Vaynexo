@@ -194,6 +194,7 @@ class DonateGame(Base):
     synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     image: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)  # admin yuklagan rasm (bazada — server diski o'chib ketadi)
     image_ver: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    brands: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")  # {provayder_id: brend} — har API'dagi nomi
 
 
 class DonatePackage(Base):

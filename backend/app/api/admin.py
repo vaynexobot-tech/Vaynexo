@@ -415,7 +415,7 @@ class PackageIn(BaseModel):
     diamonds: int = Field(0, ge=0)
     bonus: int = Field(0, ge=0)
     price: int = Field(gt=0)
-    provider_sku: str = Field(max_length=64)
+    provider_sku: str = Field(max_length=200)
     is_active: bool = True
     is_hot: bool = False
     sort: int = 0

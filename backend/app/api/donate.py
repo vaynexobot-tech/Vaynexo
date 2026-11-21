@@ -2,7 +2,7 @@ import json
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.api import schemas as S
 from app.api.deps import CurrentUser, SessionDep, get_redis, rate_limit
@@ -85,9 +85,10 @@ async def packages(user: CurrentUser, session: SessionDep, game: str = "ML"):
             return json.loads(cached)
     except Exception:
         pass
-    rows = await session.scalars(
-        select(DonatePackage).where(DonatePackage.game == game, DonatePackage.is_active.is_(True)).order_by(DonatePackage.sort, DonatePackage.price)
-    )
+    q = select(DonatePackage).where(DonatePackage.game == game, DonatePackage.is_active.is_(True))
+    if g.provider_id:  # bir o'yinda bir nechta API bo'lishi mumkin — faqat tanlangani ko'rinadi (+ qo'lda kiritilganlar)
+        q = q.where(or_(DonatePackage.provider_id == g.provider_id, DonatePackage.provider_id.is_(None)))
+    rows = await session.scalars(q.order_by(DonatePackage.sort, DonatePackage.price))
     data = [S.package(p) for p in rows]
     for d in data:
         d.pop("sku", None)

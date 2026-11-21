@@ -147,12 +147,18 @@ async def cron_provider_balance(ctx):
     if hasattr(legacy, "balance"):
         targets.append(("env", legacy))
     async with SessionLocal() as s:
-        for row in await s.scalars(_select(DonateProvider).where(DonateProvider.is_active.is_(True), DonateProvider.kind == "yupay")):
+        for row in await s.scalars(_select(DonateProvider).where(DonateProvider.is_active.is_(True),
+                                                                 DonateProvider.kind.in_(("yupay", "fazercards")), DonateProvider.key_enc != "")):
             targets.append((f"{row.id}:{row.name}", donate_catalog.provider_instance(row)))
     for name, p in targets:
+        bal = await p.balance()
+        if bal is not None and name != "env":  # admin bosh sahifasi uchun
+            async with SessionLocal() as s, s.begin():
+                row = await s.get(DonateProvider, int(name.split(":")[0]))
+                if row is not None:
+                    row.balance_usd = str(bal)
         if time.time() - _low_alert_at.get(name, 0) < 6 * 3600:
             continue
-        bal = await p.balance()
         if bal is not None and float(bal) < settings.donate_low_balance_usd:
             _low_alert_at[name] = time.time()
             out = Outbox()

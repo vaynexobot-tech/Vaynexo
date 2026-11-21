@@ -34,7 +34,8 @@ function DeepLink() {
     if (!p) return;
     const [kind, id] = p.split("_");
     const map: Record<string, string> = { listing: `/listing/${id}`, deal: `/deal/${id}`, chat: `/chat/${id}`, boost: `/boost/${id}`, tour: `/arena/${id}`, arena: `/arena/${id}`, rental: `/rental/${id}` };
-    if (map[kind] && /^\d+$/.test(id)) nav(map[kind], { replace: false }); // yopiq bo'lim bo'lsa Gate bosh sahifaga qaytaradi
+    if (kind === "donate" && /^donate_[A-Za-z0-9-]{1,60}$/.test(p)) nav(`/donate/${p.slice(7)}`); // inline qidiruvdan
+    else if (map[kind] && /^\d+$/.test(id)) nav(map[kind], { replace: false }); // yopiq bo'lim bo'lsa Gate bosh sahifaga qaytaradi
     else if (["admin", "wallet", "booster", "rent", "partner", "arena"].includes(kind) && !id) nav("/" + kind); // kanal tugmalari
   }, [nav]);
   return null;

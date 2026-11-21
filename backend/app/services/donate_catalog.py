@@ -243,7 +243,7 @@ async def sync_provider(session: AsyncSession, row: DonateProvider) -> dict:
         bslug = str(b.get("slug") or "")
         if not bslug:
             continue
-        slug = game_slug(bslug)
+        slug = ((row.config or {}).get("map") or {}).get(bslug) or game_slug(bslug)  # admin bog'lagan: fz-mobile-legends → ML
         g = games.get(slug)
         if g is None:  # admin oldindan qo'ygan joy-egasi (nomi bir xil) — slug'ini almashtiramiz
             ph = next((x for x in games.values() if x.provider_id is None and x.slug not in ("ML", "MC")
@@ -261,17 +261,20 @@ async def sync_provider(session: AsyncSession, row: DonateProvider) -> dict:
             session.add(g)
             games[slug] = g
         first_link = g.provider_id is None
-        g.provider_id, g.brand_slug = row.id, bslug
-        g.logo_url = b.get("logo_url") or g.logo_url
-        g.hero_url = b.get("hero_image_url") or g.hero_url
-        g.category = b.get("category_name") or g.category
-        g.synced_at = datetime.now(timezone.utc)
+        owner = g.provider_id in (None, row.id)  # o'yinda boshqa API tanlangan bo'lsa — faqat paketlar yangilanadi
+        g.brands = {**(g.brands or {}), str(row.id): bslug}
         products = b.get("products") or []
-        if products and not g.fields:
-            g.fields = _fields(next((p for p in products if p.get("required_fields")), products[0]))
+        if owner:
+            g.provider_id, g.brand_slug = row.id, bslug
+            g.logo_url = b.get("logo_url") or g.logo_url
+            g.hero_url = b.get("hero_image_url") or g.hero_url
+            g.category = b.get("category_name") or g.category
+            g.synced_at = datetime.now(timezone.utc)
+            if products and not g.fields:
+                g.fields = _fields(next((p for p in products if p.get("required_fields")), products[0]))
         game_pkgs: list[DonatePackage] = []
         all_voucher = bool(products) and all(not p.get("required_fields") for p in products)
-        if all_voucher:
+        if all_voucher and owner:
             g.fields = []  # faqat kod beriladigan o'yin — ID so'ralmaydi
         for prod in products:
             delivery = "topup" if prod.get("required_fields") else "voucher"  # maydonsiz mahsulot — kod beriladi
@@ -307,7 +310,7 @@ async def sync_provider(session: AsyncSession, row: DonateProvider) -> dict:
             p.is_active = False
     row.synced_at = datetime.now(timezone.utc)
     row.last_ok_at, row.last_error = row.synced_at, None
-    return {"games": len({game_slug(str(b.get('slug'))) for b in brands}), "packages": n_pk, "new_games": new_games}
+    return {"games": len({str(b.get('slug')) for b in brands}), "packages": n_pk, "new_games": new_games}
 
 
 async def sync_all() -> None:

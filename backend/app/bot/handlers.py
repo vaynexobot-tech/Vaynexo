@@ -6,7 +6,8 @@ import re
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import (
-    CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo,
+    CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, InlineQuery, InlineQueryResultArticle, InlineQueryResultsButton,
+    InputTextMessageContent, Message, WebAppInfo,
 )
 from sqlalchemy import func, select
 
@@ -86,6 +87,9 @@ DEEP_PAGES = {"admin": "Admin panel", "listing": "E'lonni ochish", "deal": "Biti
 
 def deep_link_path(arg: str | None) -> tuple[str, str] | None:
     """Kanal/guruh tugmasi: t.me/bot?start=listing_15 → (/listing/15, «E'lonni ochish»)."""
+    d = re.fullmatch(r"donate_([A-Za-z0-9-]{1,60})", arg or "")  # inline qidiruvdan: donate_ML, donate_pubg-mobile
+    if d:
+        return f"/donate/{d.group(1)}", "💎 Donat qilish"
     m = re.fullmatch(r"([a-z-]+)(?:_(\d+))?", arg or "")
     if not m or m.group(1) not in DEEP_PAGES:
         return None
@@ -204,6 +208,38 @@ async def guest_remove(message: Message, command: CommandObject):
     ids.discard(int(arg))
     await launch.set_guests(ids)
     await message.answer(f"🚫 {arg} dan ruxsat olib tashlandi.")
+
+
+@router.inline_query()
+async def inline_search(q: InlineQuery):
+    """Istalgan chatda «@bot 86», «@bot pubg 660» — paketlar va narxlar. Bosilganda chatga e'lon yuboriladi."""
+    from app.services import inline_search as srch
+    from app.services import launch
+
+    if not await launch.allowed(q.from_user.id):
+        await q.answer([], cache_time=60, is_personal=True,
+                       button=InlineQueryResultsButton(text="🚀 VAYNEXO tez kunda ochiladi", start_parameter="inline"))
+        return
+    async with SessionLocal() as s:
+        rows = await srch.search(s, q.query)
+    results = []
+    for r in rows:
+        kb = None
+        if settings.bot_username:
+            kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(
+                text="💎 Sotib olish", url=f"https://t.me/{settings.bot_username}?start=donate_{r['game']}")]])
+        price = notify.fmt(r["price"])
+        how = "🎁 Kod darhol beriladi" if r["voucher"] else "⚡ 1–5 daqiqada ID'ga tushadi"
+        results.append(InlineQueryResultArticle(
+            id=f"p{r['id']}", title=f"{r['name']} · {r['game_name']}", description=f"{price} so'm · {how}",
+            thumbnail_url=r["logo"],
+            input_message_content=InputTextMessageContent(
+                message_text=f"💎 {r['game_name']} — {r['name']}\n💰 Narxi: {price} so'm\n{how}, kafolat bilan\n\nVAYNEXO orqali sotib oling 👇"),
+            reply_markup=kb))
+    button = InlineQueryResultsButton(text="🎮 VAYNEXO ni ochish", start_parameter="inline")
+    if not results:
+        button = InlineQueryResultsButton(text="Topilmadi — barcha o'yinlarni ko'rish", start_parameter="inline")
+    await q.answer(results, cache_time=60, is_personal=False, button=button)
 
 
 @router.message(Command("help"), F.chat.type == "private")

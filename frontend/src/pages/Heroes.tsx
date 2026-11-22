@@ -4,7 +4,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { t } from "../i18n";
 import { HERO_BY_ID, HEROES, HeroAva, HeroPicker, LANES, laneLabel, MlIcon, ROLES, roleLabel } from "../mlbb";
-import { BottomNav, Chips, Empty, Header, Spinner, useLoad } from "../ui";
+import { BottomNav, Chips, Empty, Header, Sheet, Spinner, useLoad } from "../ui";
+import Draft from "./Draft";
 
 interface Rel { id: number; tip: string }
 interface HeroFull { attr: { phy: number; mag: number; alive: number; diff: number }; skills: { name: string; des: string }[]; build: number[]; best: Rel | null; counters: Rel | null; countered: Rel | null }
@@ -29,20 +30,21 @@ const hide = (e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.st
 
 export function Heroes() {
   const nav = useNavigate();
-  const [tab, setTab] = useState<"list" | "tier" | "counter" | "items">(() => (sessionStorage.getItem("vx_heroes_tab") as never) || "list");
+  const [tab, setTab] = useState<"list" | "tier" | "counter" | "draft" | "items">(() => (sessionStorage.getItem("vx_heroes_tab") as never) || "list");
   const pick = (v: typeof tab) => { setTab(v); try { sessionStorage.setItem("vx_heroes_tab", v); } catch { /* yo'q */ } };
   return (
     <>
       <Header title={t("Qahramonlar")} sub={t("{n} ta qahramon · rasmiy ma'lumot", { n: HEROES.length })} />
       <div className="page">
         <div className="tabs5">
-          {([["list", "Ro'yxat"], ["tier", "Tier"], ["counter", "Counter"], ["items", "Buyumlar"]] as const).map(([v, l]) => (
+          {([["list", "Ro'yxat"], ["tier", "Tier"], ["draft", "Draft"], ["counter", "Counter"], ["items", "Buyumlar"]] as const).map(([v, l]) => (
             <button key={v} className={tab === v ? "on" : ""} onClick={() => pick(v)}>{t(l)}</button>
           ))}
         </div>
         {tab === "list" && <HeroList onOpen={(id) => nav(`/heroes/${id}`)} />}
         {tab === "tier" && <TierList onOpen={(id) => nav(`/heroes/${id}`)} />}
         {tab === "counter" && <CounterTool onOpen={(id) => nav(`/heroes/${id}`)} />}
+        {tab === "draft" && <Draft />}
         {tab === "items" && <Items />}
         <div className="mut xs center">{t("Ma'lumot manbasi: mobilelegends.com")} · {t("Statistika")}: <a className="y" href="https://arena.rone.dev" target="_blank" rel="noreferrer">Rone Arena</a></div>
       </div>
@@ -399,34 +401,69 @@ function CounterTool({ onOpen }: { onOpen: (id: number) => void }) {
   );
 }
 
+interface ShopItem { id: number; name: string; type: string; price: number | null; stats: string[]; unique: string | null; passive: string | null; caption: string | null; recipe: string[] }
+let itemsCache: Promise<ShopItem[]> | null = null;
+const loadItems = () => (itemsCache ??= fetch("/mlbb/items.json").then((r) => { if (!r.ok) throw new Error("load"); return r.json(); }).catch((e) => { itemsCache = null; throw e; }));
+const ITEM_TYPES = [
+  { v: "", label: "Hammasi" }, { v: "attack", label: "Hujum" }, { v: "magic", label: "Sehr" }, { v: "defense", label: "Himoya" },
+  { v: "boots", label: "Poyabzal" }, { v: "jungle", label: "O'rmon" }, { v: "roam", label: "Roam" },
+];
+
 function Items() {
-  const { d, err } = useFull();
+  const { d } = useFull();
+  const [list, setList] = useState<ShopItem[] | null>(null);
+  const [err, setErr] = useState(false);
   const [q, setQ] = useState("");
-  const [sel, setSel] = useState<Item | null>(null);
+  const [type, setType] = useState("");
+  const [sel, setSel] = useState<ShopItem | null>(null);
+  useEffect(() => { loadItems().then(setList).catch(() => setErr(true)); }, []);
   if (err) return <div className="r sm">{t("Ma'lumotni yuklab bo'lmadi")}</div>;
-  if (!d) return <Spinner />;
-  const list = Object.values(d.items).filter((x) => !q.trim() || x.name.toLowerCase().includes(q.trim().toLowerCase())).sort((a, b) => a.name.localeCompare(b.name));
-  const users = sel ? Object.entries(d.heroes).filter(([, h]) => h.build.includes(sel.id)).map(([id]) => Number(id)) : [];
+  if (!list) return <Spinner />;
+  const s = q.trim().toLowerCase();
+  // poyabzal/o'rmon/roam variantlari faqat o'z bo'limida (asosiy ro'yxat toza bo'lsin)
+  const variant = (x: ShopItem) => /( - |- |Hunter's )/.test(x.name);
+  const shown = list.filter((x) => (!type ? !variant(x) && !["jungle", "roam"].includes(x.type) : x.type === type) && (!s || x.name.toLowerCase().includes(s)));
+  const byName = Object.fromEntries(list.map((x) => [x.name.toLowerCase(), x]));
+  const users = sel && d ? Object.entries(d.heroes).filter(([, h]) => h.build.includes(sel.id)).map(([id]) => Number(id)) : [];
   return (
     <>
       <input className="input" placeholder={t("Buyum qidirish...")} value={q} onChange={(e) => setQ(e.target.value)} />
-      <div className="item-grid">
-        {list.map((x) => (
-          <button key={x.id} className={"hero-cell" + (sel?.id === x.id ? " on" : "")} onClick={() => setSel(sel?.id === x.id ? null : x)}>
-            <img src={itemImg(x.id)} alt="" onError={hide} style={{ width: 52, height: 52, borderRadius: 12 }} />
-            <span className="ell">{x.name}</span>
-          </button>
-        ))}
-      </div>
-      {sel && (
-        <div className="card col" style={{ borderColor: "rgba(255,214,10,.45)", position: "sticky", bottom: 100 }}>
-          <div className="row"><img src={itemImg(sel.id)} alt="" onError={hide} style={{ width: 44, height: 44, borderRadius: 10 }} /><div className="b grow">{sel.name}</div></div>
-          <div className="mut xs">{sel.des}</div>
-          {users.length > 0 && (
-            <div className="row" style={{ gap: 4, flexWrap: "wrap" }}><span className="xs mut">{t("Kimlar oladi")}:</span>{users.slice(0, 12).map((u) => <HeroAva key={u} id={u} size={26} radius={7} />)}</div>
-          )}
+      <Chips value={type} onChange={setType} options={ITEM_TYPES.map((x) => ({ v: x.v, label: t(x.label) }))} />
+      {shown.length === 0 ? <Empty icon="🗡" text={t("Buyum topilmadi")} /> : (
+        <div className="shop-grid">
+          {shown.map((x) => (
+            <button key={x.id} className="shop-cell" onClick={() => setSel(x)}>
+              <img src={itemImg(x.id)} alt="" loading="lazy" onError={hide} />
+              <span className="ell">{x.name}</span>
+              {x.price ? <b className="y mono">{x.price}</b> : <b className="mut xs">—</b>}
+            </button>
+          ))}
         </div>
       )}
+      <Sheet open={!!sel} onClose={() => setSel(null)}>
+        {sel && (
+          <div className="col">
+            <div className="row">
+              <img src={itemImg(sel.id)} alt="" style={{ width: 72, height: 72, borderRadius: 999 }} onError={hide} />
+              <div className="grow"><div className="bb" style={{ fontSize: 18 }}>{sel.name}</div>
+                <div className="row" style={{ gap: 6, marginTop: 4 }}>{sel.price && <span className="badge y">🪙 {sel.price}</span>}<span className="badge m">{t(ITEM_TYPES.find((x) => x.v === sel.type)?.label ?? sel.type)}</span></div>
+                {sel.caption && <div className="mut xs" style={{ marginTop: 4 }}>{sel.caption}</div>}</div>
+            </div>
+            {sel.stats.length > 0 && <div className="card2 col" style={{ gap: 3 }}>{sel.stats.map((x) => <div key={x} className="sm g b">{x}</div>)}</div>}
+            {sel.unique && <div className="sm"><b>{t("Noyob")}:</b> {sel.unique}</div>}
+            {sel.passive && <div className="sm pre" style={{ whiteSpace: "pre-line" }}>{sel.passive}</div>}
+            {sel.recipe.length > 0 && (
+              <div className="col" style={{ gap: 6 }}><span className="mut xs">{t("Tarkibi")}</span>
+                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>{sel.recipe.map((r, i) => { const c = byName[r.toLowerCase()]; return (
+                  <span key={i} className="row xs" style={{ gap: 5 }}>{c && <img src={itemImg(c.id)} alt="" style={{ width: 28, height: 28, borderRadius: 999 }} onError={hide} />}{r}</span>); })}</div></div>
+            )}
+            {users.length > 0 && (
+              <div className="col" style={{ gap: 6 }}><span className="mut xs">{t("Kimlar oladi")}</span>
+                <div className="row" style={{ gap: 4, flexWrap: "wrap" }}>{users.slice(0, 16).map((u) => <HeroAva key={u} id={u} size={30} radius={8} />)}</div></div>
+            )}
+          </div>
+        )}
+      </Sheet>
     </>
   );
 }

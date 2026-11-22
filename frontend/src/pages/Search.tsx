@@ -1,4 +1,4 @@
-// Arena → Qidiruv: 5v5 bahs, 1v1 duel, rankedga sherik, jamoa (o'yinchi kerak / jamoa kerak / jamoalar).
+// Arena → Qidiruv: rankedga sherik va jamoa (o'yinchi kerak / jamoa kerak / jamoalar).
 import { useState } from "react";
 import { api } from "../api";
 import { t } from "../i18n";
@@ -26,21 +26,19 @@ const INTRO: Record<Kind, { icon: string; title: string; text: string; empty: st
 
 export function Search() {
   const meta = useLoad(() => api.get<Meta>("/arena/search/meta"));
-  const [tab, setTab] = useState<"scrim" | "duel" | "duo" | "team">(() => (sessionStorage.getItem("vx_search_tab") as never) || "duo");
+  const [tab, setTab] = useState<"duo" | "team">(() => (sessionStorage.getItem("vx_search_tab") === "team" ? "team" : "duo"));
   const pick = (v: typeof tab) => { setTab(v); try { sessionStorage.setItem("vx_search_tab", v); } catch { /* yo'q */ } };
   return (
     <>
-      <div className="mut xs">{t("5v5 jamoaviy bahs, 1v1 duel, rankedga sherik va jamoa — rankingizga mos o'yinchilar bilan")}</div>
-      <div className="tabs5">
-        {([["scrim", "5v5"], ["duel", "1v1 Duel"], ["duo", "Sherik"], ["team", "Jamoa"]] as const).map(([v, l]) => (
+      <div className="mut xs">{t("Rankedga sherik yoki jamoa toping — rankingiz va viloyatingizga mos o'yinchilar")}</div>
+      <div className="tabs5 two">
+        {([["duo", "🤝 Sherik"], ["team", "🛡 Jamoa"]] as const).map(([v, l]) => (
           <button key={v} className={tab === v ? "on" : ""} onClick={() => pick(v)}>{t(l)}</button>
         ))}
       </div>
       <Loadable state={meta}>
         {(m) => (
           <>
-            {tab === "scrim" && <><MyTeamCard meta={m} compact /><Posts kind="scrim" meta={m} /></>}
-            {tab === "duel" && <Posts kind="duel" meta={m} />}
             {tab === "duo" && (
               <>
                 <Posts kind="duo" meta={m} extra={<><SignalCard meta={m} onChange={meta.reload} /><RespectCard /></>} />

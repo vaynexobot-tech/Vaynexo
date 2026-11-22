@@ -82,7 +82,7 @@ export function RankPicker({ value, onChange, only }: { value: string; onChange:
 }
 
 /** Qahramon tanlash oynasi: qidiruv + rol bo'yicha filtr, bir nechta tanlash. */
-export function HeroPicker({ open, value, max = 3, onClose, onChange }: { open: boolean; value: number[]; max?: number; onClose: () => void; onChange: (v: number[]) => void }) {
+export function HeroPicker({ open, value, max = 3, onClose, onChange, disabled }: { open: boolean; value: number[]; max?: number; onClose: () => void; onChange: (v: number[]) => void; disabled?: number[] }) {
   const [q, setQ] = useState("");
   const [role, setRole] = useState("");
   const list = useMemo(() => {
@@ -101,7 +101,8 @@ export function HeroPicker({ open, value, max = 3, onClose, onChange }: { open: 
       <Chips value={role} onChange={setRole} options={[{ v: "", label: t("Hammasi") }, ...ROLES.map((r) => ({ v: r.v, label: t(r.label) }))]} />
       <div className="hero-grid">
         {list.map((h) => (
-          <button key={h.id} type="button" className={"hero-cell" + (value.includes(h.id) ? " on" : "")} onClick={() => toggle(h.id)}>
+          <button key={h.id} type="button" className={"hero-cell" + (value.includes(h.id) ? " on" : "")} disabled={disabled?.includes(h.id)}
+            style={disabled?.includes(h.id) ? { opacity: 0.25, filter: "grayscale(1)" } : undefined} onClick={() => toggle(h.id)}>
             <HeroAva id={h.id} size={56} radius={14} />
             <span className="ell">{h.name}</span>
           </button>

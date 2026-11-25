@@ -853,7 +853,7 @@ async def broadcast(body: BroadcastIn, admin: AdminUser, session: SessionDep):
 
 
 # ------------------------------------------------------------------ donat provayderlari (bir nechta API)
-KINDS = {"yupay": "Yupay Merchant API", "fazercards": "FazerCards Reseller API", "http": "Umumiy HTTP API (qo'lda paketlar)"}
+KINDS = {"yupay": "Donat API", "fazercards": "Donat API", "http": "Donat API (qo'lda paketlar)"}  # sayt nomlari ko'rsatilmaydi
 DEFAULT_HOST = {"yupay": "api.yupay.uz", "fazercards": "api.fzr.cards"}
 
 
@@ -869,7 +869,7 @@ def _norm_base(kind: str, url: str) -> str:
 
 class ProviderIn(BaseModel):
     name: str = Field(min_length=2, max_length=64)
-    kind: str = Field("yupay", pattern="^(yupay|fazercards|http)$")
+    kind: str = Field("auto", pattern="^(auto|yupay|fazercards|http)$")
     base_url: str = Field("", max_length=200)
     api_key: str | None = Field(None, max_length=300)  # bo'sh/None — eski kalit saqlanadi
     is_active: bool = True
@@ -878,10 +878,8 @@ class ProviderIn(BaseModel):
 
 
 def _provider_dict(p: DonateProvider) -> dict:
-    from urllib.parse import urlparse
-
     return {"id": p.id, "name": p.name, "kind": p.kind, "kind_label": KINDS.get(p.kind, p.kind),
-            "base_url": p.base_url, "host": urlparse(p.base_url).netloc if p.base_url else DEFAULT_HOST.get(p.kind),
+            "base_url": p.base_url if p.kind == "http" else "", "host": None,
             "key_set": bool(p.key_enc), "is_active": p.is_active, "config": {k: v for k, v in (p.config or {}).items() if not k.endswith("_enc")},
             "webhook_secret_set": bool((p.config or {}).get("webhook_secret_enc")),
             "last_ok_at": S.iso(p.last_ok_at), "last_error": p.last_error, "synced_at": S.iso(p.synced_at),
@@ -906,6 +904,9 @@ async def donate_provider_create(body: ProviderIn, admin: AdminUser, session: Se
     key = (body.api_key or "").strip()
     if not key:
         raise AppError("no_key", "API kalitni kiriting")
+    if body.kind == "auto":  # turi kalit va manzildan aniqlanadi — admin sayt nomini tanlamaydi
+        url = body.base_url.strip()
+        body.kind = "yupay" if key.startswith("ypk_") else ("http" if url and "fzr.cards" not in url else "fazercards")
     if body.kind == "http" and not body.base_url.startswith("https://"):
         raise AppError("bad_url", "Manzil https:// bilan boshlansin")
     async with session.begin():

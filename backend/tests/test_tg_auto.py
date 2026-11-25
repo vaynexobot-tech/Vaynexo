@@ -52,7 +52,7 @@ async def test_premium_auto_delivered(api, ctx, monkeypatch):
     await out.flush()
     async with SessionLocal() as s:
         o = await s.get(TgOrder, oid)
-    assert o.status == "done" and o.admin_note == "avtomatik (Yupay)"
+    assert o.status == "done" and o.admin_note == "avtomatik"
     method, path, body = calls[-1]
     assert b'"merchant_order_id":"VX-T%d"' % oid in body.replace(b" ", b"") and b"zed_uz" in body and b"p3" in body
     assert any(uid == 90 and "bajarildi" in txt for uid, txt, _ in ctx["sent"])

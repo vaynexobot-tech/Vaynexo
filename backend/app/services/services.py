@@ -81,7 +81,7 @@ async def create_tg_order(session: AsyncSession, user: User, data: dict, out: Ou
     auto = await tg_auto.eligible(session, kind, details)
     order.details = {**order.details, "auto": {"attempts": 0}} if auto else order.details
     out.admins(f"⭐️ Yangi TG buyurtma #{order.id}\n{title}\nKimga: {target}\nSumma: {fmt(price)}"
-               + ("\n🤖 Yupay orqali avtomatik bajariladi" if auto else ""),
+               + ("\n🤖 API orqali avtomatik bajariladi" if auto else ""),
                None if auto else webapp_button("Bajarish", "/admin"), topic="tg")
     return order
 

@@ -236,7 +236,7 @@ on("POST", "/admin/topups/:id/reject", (m, b) => { const t = state.topups.find((
 const tgBank = { api_ready: true, logged_in: true, account: "@vaynexo_kassa", connected: true, error: null, bots: ["HUMOcardbot", "CardXabarBot"], seen: { HUMOcardbot: { at: now(), amount: 50000 } }, login_step: null };
 on("GET", "/admin/tg-bank", () => tgBank);
 on("PUT", "/admin/tg-bank/bots", (_m, b) => { tgBank.bots = (b.bots as string[]).map((x) => x.replace(/^@/, "")); return tgBank; });
-on("GET", "/admin/donate/providers", () => ({ providers: [{ id: 1, name: "Yupay", kind: "yupay", kind_label: "Yupay Merchant API", base_url: "", host: "api.yupay.uz", key_set: true, is_active: true, config: {}, last_ok_at: now(), last_error: null, synced_at: now(), balance_usd: "42.10", webhook_url: "https://vaynexo.example/api/yupay/webhook/1" }], legacy_env: false, usd_rate: 12_800, markup: 10 }));
+on("GET", "/admin/donate/providers", () => ({ providers: [{ id: 1, name: "API 1", kind: "yupay", kind_label: "Donat API", base_url: "", host: null, key_set: true, is_active: true, config: {}, last_ok_at: now(), last_error: null, synced_at: now(), balance_usd: "42.10", webhook_url: "https://vaynexo.example/api/yupay/webhook/1" }], legacy_env: false, usd_rate: 12_800, markup: 10 }));
 on("GET", "/admin/donate/games", () => GAMES.map((g, i) => ({ slug: g.slug, name: g.name, logo: null, category: "", is_active: true, featured_slot: g.slot, popular: !g.slot, sort: i, packages: PKGS.filter((p) => p.game === g.slug).length, provider_id: null })));
 on("PUT", "/admin/donate/games/:slug", () => ({ ok: true }));
 on("POST", "/admin/donate/providers/:id/test", () => ({ ok: true, ms: 180, balance_usd: "42.10", title: "VAYNEXO" }));
@@ -491,13 +491,13 @@ on("GET", "/admin/stats", () => ({
 const demoBot = { open: false, guests: [6440744232, 8475521896] };
 on("GET", "/admin/dashboard", () => ({
   today: { sales: 1_870_000, yesterday: 1_670_000, profit: 172_400, orders: 24, new_users: 37, users: 1248 },
-  providers: [{ id: 1, name: "Yupay", kind: "yupay", is_active: true, balance_usd: "142.30", low: false, error: null },
-    { id: 2, name: "FazerCards", kind: "fazercards", is_active: true, balance_usd: "8.20", low: true, error: null }],
+  providers: [{ id: 1, name: "API 1", kind: "yupay", is_active: true, balance_usd: "142.30", low: false, error: null },
+    { id: 2, name: "API 2", kind: "fazercards", is_active: true, balance_usd: "8.20", low: true, error: null }],
   bot: { open: demoBot.open, guests: demoBot.guests.length, inline: true },
   queue: [
     ...state.withdrawals.filter((w: Json) => w.status === "pending").map((w: Json) => ({ kind: "withdraw", id: w.id, title: `Pul yechish · ${w.amount.toLocaleString("ru-RU").replace(/,/g, " ")} so'm`, amount: w.amount, sub: `Sardor · ${w.card.slice(0, 4)} •• ${w.card.slice(-4)}`, copy: w.card, at: w.created_at, actions: [["paid", "To'landi", "ok"], ["reject", "Rad etish", "no"]] })),
     ...state.tg.filter((o: Json) => o.status === "processing").map((o: Json) => ({ kind: "tg", id: o.id, title: `${o.title} → @${o.target_username.replace("@", "")}`, amount: o.price, sub: "aziz_demo · qo'lda bajariladi", at: o.created_at, actions: [["done", "Bajarildi", "ok"], ["refund", "Pulni qaytarish", "no"]] })),
-    { kind: "donate", id: 901, title: "86 almaz · Mobile Legends", amount: 18_100, game: "ML", sub: "ID 84512937 (2051) · aziz_demo", error: "insufficient_deposit: Yupay depoziti yetmadi", at: ago(4), actions: [["retry", "Qayta", "y"], ["done", "Qo'lda bajarildi", "ok"], ["refund", "Qaytarish", "no"]] },
+    { kind: "donate", id: 901, title: "86 almaz · Mobile Legends", amount: 18_100, game: "ML", sub: "ID 84512937 (2051) · aziz_demo", error: "insufficient_deposit: API balansi yetmadi", at: ago(4), actions: [["retry", "Qayta", "y"], ["done", "Qo'lda bajarildi", "ok"], ["refund", "Qaytarish", "no"]] },
   ],
   links: [{ section: "moderation", label: "E'lonlar tekshiruvi", count: state.listings.filter((l: Json) => l.status === "moderation").length || 1 }],
   top_games: [{ game: "ML", name: "Mobile Legends", share: 64 }, { game: "pubg-mobile", name: "PUBG Mobile", share: 18 }, { game: "free-fire", name: "Free Fire", share: 9 }],
@@ -511,9 +511,9 @@ on("POST", "/admin/bot/open", (_m, b) => { demoBot.open = !!b.open; return { ope
 on("GET", "/admin/bot/guests", () => demoBot.guests.map((id) => ({ id, name: id === 6440744232 ? "@aziz_demo" : "—", known: id === 6440744232 })));
 on("POST", "/admin/bot/guests", (_m, b) => { demoBot.guests = b.add === false ? demoBot.guests.filter((x) => x !== b.id) : [...new Set([...demoBot.guests, b.id])]; return { ok: true, count: demoBot.guests.length }; });
 const DEMO_ORDERS = [
-  { kind: "donate", id: 901, ref: "VX-D901", title: "86 almaz · Mobile Legends", game: "ML", price: 18_100, sub: "ID 84512937 (2051) · user 1001", status: "review", label: "Tekshiruv", color: "r", error: "insufficient_deposit: Yupay depoziti yetmadi", provider: "Yupay", at: ago(4), actions: [["retry", "Qayta", "y"], ["done", "Qo'lda bajarildi", "ok"], ["refund", "Qaytarish", "no"]] },
-  { kind: "tg", id: 77, ref: "VX-T77", title: "Premium 1 oy → @dilshod_07", game: null, price: 54_000, sub: "user 1001 · Yupay'da 1 oy yo'q", status: "processing", label: "Qo'lda", color: "r", error: null, provider: null, at: ago(25), actions: [["done", "Bajarildi", "ok"], ["refund", "Qaytarish", "no"]] },
-  { kind: "donate", id: 900, ref: "VX-D900", title: "660 UC · PUBG Mobile", game: "pubg-mobile", price: 124_700, sub: "ID 5123986641 · user 1002", status: "done", label: "Yetkazildi", color: "g", error: null, provider: "FazerCards", at: ago(50), actions: [] },
+  { kind: "donate", id: 901, ref: "VX-D901", title: "86 almaz · Mobile Legends", game: "ML", price: 18_100, sub: "ID 84512937 (2051) · user 1001", status: "review", label: "Tekshiruv", color: "r", error: "insufficient_deposit: API balansi yetmadi", provider: "API 1", at: ago(4), actions: [["retry", "Qayta", "y"], ["done", "Qo'lda bajarildi", "ok"], ["refund", "Qaytarish", "no"]] },
+  { kind: "tg", id: 77, ref: "VX-T77", title: "Premium 1 oy → @dilshod_07", game: null, price: 54_000, sub: "user 1001 · API'da 1 oy yo'q", status: "processing", label: "Qo'lda", color: "r", error: null, provider: null, at: ago(25), actions: [["done", "Bajarildi", "ok"], ["refund", "Qaytarish", "no"]] },
+  { kind: "donate", id: 900, ref: "VX-D900", title: "660 UC · PUBG Mobile", game: "pubg-mobile", price: 124_700, sub: "ID 5123986641 · user 1002", status: "done", label: "Yetkazildi", color: "g", error: null, provider: "API 2", at: ago(50), actions: [] },
 ];
 on("GET", "/admin/orders", (_m, _b, q) => {
   const st = q.get("state") || "attention";
@@ -521,12 +521,12 @@ on("GET", "/admin/orders", (_m, _b, q) => {
   const pick = (o: Json) => (kind === "all" || o.kind === kind) && (q.get("q") ? true : st === "attention" ? ["review", "processing"].includes(o.status) : st === "processing" ? o.status === "processing" : o.status === st);
   return { items: DEMO_ORDERS.filter(pick), counts: { attention: 2, processing: 1 } };
 });
-const CAT = GAMES.map((g: Json, i: number) => ({ slug: g.slug, name: g.name, logo: null, is_active: true, sort: i * 10, featured_slot: g.slot, popular: !g.slot, provider_id: 1, provider: "Yupay",
+const CAT = GAMES.map((g: Json, i: number) => ({ slug: g.slug, name: g.name, logo: null, is_active: true, sort: i * 10, featured_slot: g.slot, popular: !g.slot, provider_id: 1, provider: "API 1",
   packages: PKGS.filter((p) => p.game === g.slug).length || 6 + i, warning: g.slug === "standoff-2" ? "Faqat 1 paket" : null, providers: ["ML", "pubg-mobile"].includes(g.slug) ? 2 : 1,
-  cheaper: g.slug === "ML" ? { provider_id: 2, provider: "FazerCards", pct: -20, linked: true, slug: "ML", pairs: 14 } : g.slug === "pubg-mobile" ? { provider_id: 2, provider: "FazerCards", pct: -14, linked: false, slug: "fz-pubg-mobile-auto", name: "PUBG Mobile (Auto)", pairs: 6 } : null }));
+  cheaper: g.slug === "ML" ? { provider_id: 2, provider: "API 2", pct: -20, linked: true, slug: "ML", pairs: 14 } : g.slug === "pubg-mobile" ? { provider_id: 2, provider: "API 2", pct: -14, linked: false, slug: "fz-pubg-mobile-auto", name: "PUBG Mobile (Auto)", pairs: 6 } : null }));
 on("GET", "/admin/catalog/games", (_m, _b, q) => {
   const st = q.get("state") || "active";
-  const items = st === "hidden" ? [{ ...CAT[0], slug: "fz-mobile-legends-ru", name: "Mobile Legends (RU)", is_active: false, provider: "FazerCards", cheaper: null, providers: 1 }] : st === "cheaper" ? CAT.filter((g) => g.cheaper) : CAT;
+  const items = st === "hidden" ? [{ ...CAT[0], slug: "fz-mobile-legends-ru", name: "Mobile Legends (RU)", is_active: false, provider: "API 2", cheaper: null, providers: 1 }] : st === "cheaper" ? CAT.filter((g) => g.cheaper) : CAT;
   return { items, counts: { active: CAT.length, hidden: 1152, cheaper: 2 }, rate: 12_800, markup: 10 };
 });
 on("PUT", "/admin/catalog/order", () => ({ ok: true }));
@@ -534,9 +534,9 @@ on("GET", "/admin/catalog/games/:slug", (m) => {
   const g = CAT.find((x) => x.slug === decodeURIComponent(m[1])) ?? CAT[0];
   const pk = PKGS.filter((p) => p.game === g.slug).map((p, i) => ({ id: p.id, name: p.name, diamonds: p.diamonds, bonus: p.bonus, price: p.price, cost_usd: (Number(p.price) / 14080).toFixed(2), profit: Math.round(Number(p.price) * 0.09), is_active: i !== 8, is_hot: p.is_hot, source: "api", delivery: "topup", group: p.diamonds ? "amount" : "pass", provider_id: 1 }));
   return { game: g, fields: [], view_provider_id: 1, rate: 12_800, packages: pk,
-    providers: [{ provider_id: 1, provider: "Yupay", current: true, linked: true, pct: 0, slug: g.slug }, ...(g.cheaper ? [{ ...g.cheaper, ref: { name: "86 Diamonds (78 + 8)", cur: "1.28", alt: "1.02" } }] : [])] };
+    providers: [{ provider_id: 1, provider: "API 1", current: true, linked: true, pct: 0, slug: g.slug }, ...(g.cheaper ? [{ ...g.cheaper, ref: { name: "86 Diamonds (78 + 8)", cur: "1.28", alt: "1.02" } }] : [])] };
 });
-on("GET", "/admin/catalog/games/:slug/candidates", () => [{ slug: "fz-mobile-legends-global", name: "Mobile Legends (Global)", provider: "FazerCards" }, { slug: "fz-mobile-legends-ru", name: "Mobile Legends (RU)", provider: "FazerCards" }]);
+on("GET", "/admin/catalog/games/:slug/candidates", () => [{ slug: "fz-mobile-legends-global", name: "Mobile Legends (Global)", provider: "API 2" }, { slug: "fz-mobile-legends-ru", name: "Mobile Legends (RU)", provider: "API 2" }]);
 on("POST", "/admin/catalog/games/:slug/link", () => ({ ok: true }));
 on("POST", "/admin/catalog/games/:slug/provider", () => ({ ok: true }));
 on("PATCH", "/admin/catalog/packages/:id", () => ({ ok: true }));

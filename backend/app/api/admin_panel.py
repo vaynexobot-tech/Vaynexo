@@ -272,7 +272,7 @@ async def orders(admin: AdminUser, session: SessionDep, kind: str = "all", state
                 label, color = "Qo'lda", "r"
             items.append({"kind": "tg", "id": o.id, "ref": f"VX-T{o.id}", "title": f"{o.title} → @{o.target_username.lstrip('@')}",
                           "game": None, "price": o.price, "sub": f"user {o.user_id}" + (f" · {auto.get('why')}" if auto.get("why") else ""),
-                          "status": o.status, "label": label, "color": color, "error": None, "provider": "Yupay" if o.kind in ("premium", "stars") else None,
+                          "status": o.status, "label": label, "color": color, "error": None, "provider": "API" if o.kind in ("premium", "stars") else None,
                           "at": o.created_at.isoformat() if o.created_at else None,
                           "actions": [["done", "Bajarildi", "ok"], ["refund", "Qaytarish", "no"]] if o.status == "processing" else []})
     items.sort(key=lambda x: x["at"] or "", reverse=True)

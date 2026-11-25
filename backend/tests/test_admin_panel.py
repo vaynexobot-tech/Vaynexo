@@ -129,3 +129,18 @@ async def test_bot_open_and_guests(api):
     finally:
         await launch.set_open(True)
         await launch.set_guests(set())
+
+
+async def test_provider_kind_auto_detected_and_names_hidden(api, monkeypatch):
+    """API qo'shishda sayt tanlanmaydi: ypk_ → yupay, aks holda FazerCards; ro'yxatda sayt nomi/manzili ko'rinmaydi."""
+    from app.services import donate_catalog
+
+    async def no_sync(session, row):
+        return {"games": 0, "packages": 0, "new_games": []}
+
+    monkeypatch.setattr(donate_catalog, "sync_provider", no_sync)
+    a = (await api(1).post("/admin/donate/providers", json={"name": "API 1", "api_key": "ypk_test123"})).json()
+    b = (await api(1).post("/admin/donate/providers", json={"name": "API 2", "api_key": "fz_abc"})).json()
+    assert (a["kind"], b["kind"]) == ("yupay", "fazercards")
+    for p in (a, b):
+        assert p["kind_label"] == "Donat API" and p["host"] is None and p["base_url"] == ""

@@ -2,7 +2,7 @@
 // O'yin sahifasi (paketlar, foyda, API taqqoslash/almashtirish) va Ko'proq menyusi. Eski bo'limlar `go(...)` orqali ochiladi.
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "../api";
-import { confirmDialog } from "../tg";
+import { confirmDialog, copyText } from "../tg";
 import { dateTime, Empty, Field, GameTile, Icon, Loadable, money, MoneyInput, Seg, Sheet, Toggle, useAction, useApp, useLoad } from "../ui";
 
 type Act = [string, string, string];
@@ -42,7 +42,7 @@ function ActionBtns({ item, onDone }: { item: { kind: string; id: number; action
           {a[0] === "retry" && <Icon name="refresh" size={15} />}{a[0] === "confirm" || a[0] === "paid" || a[0] === "done" ? <Icon name="check" size={15} /> : null}{a[1]}
         </button>
       ))}
-      {item.copy && <button className="btn small ghost" onClick={() => { navigator.clipboard?.writeText(item.copy!); toast("Karta nusxalandi", "ok"); }}>Karta nusxa</button>}
+      {item.copy && <button className="btn small ghost" onClick={() => { copyText(item.copy!); toast("Karta nusxalandi", "ok"); }}>Karta nusxa</button>}
     </div>
   );
 }

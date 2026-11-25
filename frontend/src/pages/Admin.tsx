@@ -389,9 +389,8 @@ function ProvidersAdmin() {
   const [markup, setMarkup] = useState<number | "">("");
   const [adv, setAdv] = useState(false);
   const { busy, run } = useAction();
-  const kindSeg = [{ v: "yupay", label: "Yupay" }, { v: "fazercards", label: "FazerCards" }, { v: "http", label: "Boshqa API" }];
   const save = () => run(async () => {
-    const body = { name: edit!.name, kind: edit!.kind ?? "yupay", base_url: edit!.base_url ?? "", api_key: edit!.api_key || null, webhook_secret: edit!.webhook_secret || null, is_active: edit!.is_active ?? true, config: edit!.config ?? null };
+    const body = { name: edit!.name, kind: edit!.kind ?? "auto", base_url: edit!.base_url ?? "", api_key: edit!.api_key || null, webhook_secret: edit!.webhook_secret || null, is_active: edit!.is_active ?? true, config: edit!.config ?? null };
     if (edit!.id) await api.put(`/admin/donate/providers/${edit!.id}`, body);
     else await api.post("/admin/donate/providers", body);
     toast("Saqlandi", "ok"); setEdit(null); st.reload();
@@ -405,7 +404,7 @@ function ProvidersAdmin() {
           {d.providers.map((p) => (
             <div key={p.id} className="card col" style={{ borderColor: p.last_error ? "rgba(255,90,110,.45)" : p.last_ok_at ? "rgba(29,233,182,.45)" : "rgba(255,214,10,.45)", opacity: p.is_active ? 1 : 0.6 }}>
               <div className="row between"><span className="b">{p.name}</span><span className={"pill-b " + (p.is_active ? "g" : "m")}>{p.is_active ? "Faol" : "O'chiq"}</span></div>
-              <div className="mut xs">{p.kind_label}{p.host ? ` · ${p.host}` : ""}{p.balance_usd ? ` · depozit $${p.balance_usd}` : ""}</div>
+              <div className="mut xs">{p.kind_label}{p.balance_usd ? ` · balans $${p.balance_usd}` : ""}</div>
               <div className="mut xs">{p.synced_at ? `Katalog: ${dateTime(p.synced_at)}` : "Katalog hali olinmagan"}</div>
               {p.last_error && <div className="r xs">⚠️ {p.last_error}</div>}
               {res[p.id] && <div className="card tight sm pre" style={{ wordBreak: "break-word" }}>{res[p.id]}</div>}
@@ -422,10 +421,10 @@ function ProvidersAdmin() {
                 })}>Katalogni yangilash</button>
                 <button className="btn small ghost" onClick={() => { setEdit({ ...p }); setAdv(false); }}>Tahrirlash</button>
               </div>
-              {p.webhook_url && <details><summary className="mut xs">Vebhuk manzili (ixtiyoriy, provayder kabinetiga)</summary><Copy value={p.webhook_url} /></details>}
+              {p.webhook_url && <details><summary className="mut xs">Vebhuk manzili (ixtiyoriy, API kabinetiga)</summary><Copy value={p.webhook_url} /></details>}
             </div>
           ))}
-          <button className="btn full" onClick={() => { setEdit({ kind: "yupay", is_active: true, name: "Yupay" }); setAdv(false); }}>+ API qo'shish</button>
+          <button className="btn full" onClick={() => { setEdit({ kind: "auto", is_active: true, name: `API ${d.providers.length + 1}` }); setAdv(false); }}>+ API qo'shish</button>
           {d.legacy_env && <div className="mut xs">ℹ️ Render'dagi eski sozlama (DONATE_PROVIDER_KEY) ham ishlayapti: u paketlari uchun. Yangi API'larni shu yerdan qo'shing.</div>}
 
           <div className="card col">
@@ -448,20 +447,19 @@ function ProvidersAdmin() {
               <div className="col">
                 <div className="sec-title">{edit.id ? "API tahrirlash" : "Yangi API"}</div>
                 <Field label="Nomi"><input className="input" value={edit.name ?? ""} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
-                {<Field label="Turi"><Seg value={edit.kind ?? "yupay"} onChange={(v) => setEdit({ ...edit, kind: v })} options={kindSeg} /></Field>}
-                {(edit.kind === "http" || edit.kind === "fazercards") && <Field label={edit.kind === "fazercards" ? "Manzil (ixtiyoriy — bo'sh qoldirsangiz ham bo'ladi)" : "Manzil (https://...)"}><input className="input mono" inputMode="url" autoCapitalize="off" value={edit.base_url ?? ""} onChange={(e) => setEdit({ ...edit, base_url: e.target.value })} placeholder={edit.kind === "fazercards" ? "https://api.fzr.cards/api/v2" : "https://api.example.com/v1"} /></Field>}
-                <Field label={edit.id && edit.key_set ? "API kalit (o'zgartirmaslik uchun bo'sh qoldiring)" : "API kalit"}><input className="input mono" type="password" autoComplete="off" autoCapitalize="off" value={edit.api_key ?? ""} onChange={(e) => setEdit({ ...edit, api_key: e.target.value.trim() })} placeholder={edit.kind === "yupay" ? "ypk_…" : ""} /></Field>
+                <Field label={edit.id && edit.key_set ? "API kalit (o'zgartirmaslik uchun bo'sh qoldiring)" : "API kalit"}><input className="input mono" type="password" autoComplete="off" autoCapitalize="off" value={edit.api_key ?? ""} onChange={(e) => setEdit({ ...edit, api_key: e.target.value.trim() })} placeholder="API kalitni shu yerga qo'ying" /></Field>
                 {edit.kind === "fazercards" && <Field label={edit.webhook_secret_set ? "Vebhuk siri (o'zgartirmaslik uchun bo'sh qoldiring)" : "Vebhuk siri (ixtiyoriy — tezroq yetkazish uchun)"}><input className="input mono" type="password" autoComplete="off" autoCapitalize="off" value={edit.webhook_secret ?? ""} onChange={(e) => setEdit({ ...edit, webhook_secret: e.target.value.trim() })} /></Field>}
                 <div className="row between"><span className="sm">Faol</span><Toggle on={edit.is_active ?? true} onChange={(v) => setEdit({ ...edit, is_active: v })} /></div>
-                {edit.kind === "http" && (
+                <button className="btn small ghost" onClick={() => setAdv(!adv)}>{adv ? "Qo'shimchani yopish" : "Qo'shimcha sozlamalar"}</button>
+                {adv && (
                   <>
-                    <button className="btn small ghost" onClick={() => setAdv(!adv)}>{adv ? "Qo'shimchani yopish" : "Qo'shimcha sozlamalar"}</button>
-                    {adv && (["auth_header", "auth_prefix", "check_path", "create_path", "status_path", "balance_path"] as const).map((k) => (
+                    <Field label="Manzil (ixtiyoriy — odatda bo'sh qoldiriladi)"><input className="input mono" inputMode="url" autoCapitalize="off" value={edit.base_url ?? ""} onChange={(e) => setEdit({ ...edit, base_url: e.target.value })} placeholder="https://..." /></Field>
+                    {edit.kind === "http" && (["auth_header", "auth_prefix", "check_path", "create_path", "status_path", "balance_path"] as const).map((k) => (
                       <Field key={k} label={k}><input className="input mono" value={edit.config?.[k] ?? ""} onChange={(e) => setEdit({ ...edit, config: { ...(edit.config ?? {}), [k]: e.target.value } })} /></Field>
                     ))}
                   </>
                 )}
-                <div className="mut xs">Kalit faqat shu so'rovda yuboriladi, serverda shifrlanadi va keyin ko'rsatilmaydi. Yupay'da kalitning IP ro'yxatini bo'sh qoldiring. FazerCards: yangi o'yinlar yashirin holatda keladi (nomi «fz-…»), «O'yinlar» bo'limidan yoqing.</div>
+                <div className="mut xs">Kalit faqat shu so'rovda yuboriladi, serverda shifrlanadi va keyin ko'rsatilmaydi. API turi kalitdan avtomatik aniqlanadi. Kalitda IP ro'yxati bo'lsa, bo'sh qoldiring. Yangi o'yinlar yashirin holatda keladi — Katalogdan yoqing.</div>
                 <div className="row">
                   <button className="btn grow" disabled={busy || (edit.name ?? "").trim().length < 2 || (!edit.id && !edit.api_key)} onClick={save}>Saqlash</button>
                   {edit.id && <button className="btn danger" disabled={busy} onClick={async () => {
@@ -597,7 +595,7 @@ function TgAdmin() {
             <div className="mut xs pre">{Object.entries(o.details).filter(([k, v]) => v !== "" && v !== false && v != null && !HIDE_TG.includes(k)).map(([k, v]) => `${TG_LABEL[k] ?? k}: ${v === true ? "ha" : v}`).join("\n")}</div>
             {o.status === "processing" && (o.details as { auto?: { manual?: boolean; why?: string } }).auto && (
               <div className={"xs " + ((o.details as { auto?: { manual?: boolean } }).auto?.manual ? "y" : "g")}>
-                {(o.details as { auto?: { manual?: boolean; why?: string } }).auto?.manual ? `⚠️ Qo'lda bajaring: ${(o.details as { auto?: { why?: string } }).auto?.why ?? ""}` : "🤖 Yupay orqali avtomatik bajarilmoqda…"}
+                {(o.details as { auto?: { manual?: boolean; why?: string } }).auto?.manual ? `⚠️ Qo'lda bajaring: ${(o.details as { auto?: { why?: string } }).auto?.why ?? ""}` : "🤖 API orqali avtomatik bajarilmoqda…"}
               </div>
             )}
             {o.status === "processing" && (
@@ -930,8 +928,8 @@ function SkuPicker({ game, onPick, onClose }: { game: string; onPick: (s: YSku) 
   const st = useLoad(() => api.get<YSku[]>(`/admin/donate/yupay/skus?game=${game}`), [game]);
   return (
     <Sheet open onClose={onClose}>
-      <div className="sec-title">Yupay katalogi · {game}</div>
-      <div className="mut xs">Narx — Yupay sizdan oladigan USD narxi. O'z narxingiz shundan yuqori bo'lsin.</div>
+      <div className="sec-title">API katalogi · {game}</div>
+      <div className="mut xs">Narx — API sizdan oladigan USD narxi. O'z narxingiz shundan yuqori bo'lsin.</div>
       <Loadable state={st}>
         {(list) => list.length === 0 ? <Empty icon="📦" text="Bu o'yin uchun nominal topilmadi" /> : list.map((x) => (
           <button key={x.sku_id} className="card tight row between click" style={{ textAlign: "left" }} onClick={() => onPick(x)}>
@@ -1013,7 +1011,7 @@ function Packages() {
             <Field label="Narx (so'm)"><MoneyInput value={edit.price ?? ""} onChange={(v) => setEdit({ ...edit, price: v === "" ? undefined : v })} /></Field>
             <Field label="Provayder SKU (qo'lda rejimda shart emas)">
               <input className="input mono" value={edit.sku ?? ""} onChange={(e) => setEdit({ ...edit, sku: e.target.value })} />
-              <button className="btn small ghost" style={{ marginTop: 6 }} onClick={() => setPick(true)}>Yupay katalogidan tanlash</button>
+              <button className="btn small ghost" style={{ marginTop: 6 }} onClick={() => setPick(true)}>API katalogidan tanlash</button>
             </Field>
             <div className="row between"><span>Faol</span><Toggle on={edit.is_active ?? true} onChange={(v) => setEdit({ ...edit, is_active: v })} /></div>
             <div className="row between"><span>HOT belgisi</span><Toggle on={edit.is_hot ?? false} onChange={(v) => setEdit({ ...edit, is_hot: v })} /></div>

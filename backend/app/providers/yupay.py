@@ -67,9 +67,9 @@ def map_order(data: dict) -> ProviderResult:
     if status == "failed":
         price, back = _dec(data.get("price_usd")), _dec(data.get("refunded_usd"))
         if reason == "fulfillment_failed_refunded" or (price is not None and back is not None and price > 0 and back >= price):
-            return ProviderResult("failed", ref=ref, message=f"yupay: {reason or 'failed'} (to'liq qaytarilgan)")
+            return ProviderResult("failed", ref=ref, message=f"api: {reason or 'failed'} (to'liq qaytarilgan)")
         # qisman qaytarilgan / qo'llab-quvvatlash yopgan — admin ko'rib chiqadi
-        return ProviderResult("unknown", ref=ref, message=f"yupay: {reason or 'failed'} (qaytarish to'liq emas)")
+        return ProviderResult("unknown", ref=ref, message=f"api: {reason or 'failed'} (qaytarish to'liq emas)")
     # paid, fulfilling, fulfillment_delayed va yangi noma'lum holatlar — hali jarayonda
     return ProviderResult("pending", ref=ref, message=str(reason or status))
 
@@ -93,12 +93,12 @@ class YupayProvider:
         if force or self._catalog is None or time.monotonic() - self._catalog_at > CATALOG_TTL:
             r = await self.client.get("/catalog")
             if r.status_code in (401, 403):
-                raise RuntimeError("API kalit noto'g'ri yoki bekor qilingan (Yupay kabinetida yangi kalit yarating)")
+                raise RuntimeError("API kalit noto'g'ri yoki bekor qilingan (API kabinetida yangi kalit yarating)")
             r.raise_for_status()
             try:
                 data = r.json()
             except ValueError:
-                raise RuntimeError(f"Yupay JSON o'rniga sahifa qaytardi ({r.status_code}) — manzilni bo'sh qoldiring") from None
+                raise RuntimeError(f"API JSON o'rniga sahifa qaytardi ({r.status_code}) — manzilni bo'sh qoldiring") from None
             self._catalog = data.get("brands") or []
             self._catalog_at = time.monotonic()
         return self._catalog
@@ -151,7 +151,7 @@ class YupayProvider:
         if r.status_code == 401:
             return {"ok": False, "status": 401, "ms": ms, "error": "Kalit qabul qilinmadi (401): kalit noto'g'ri yoki bekor qilingan"}
         if r.status_code == 403:
-            why = {"ip_not_allowed": "bu server IP'si kalitning ruxsat ro'yxatida yo'q (Yupay kabinet → Sozlamalar → IP ro'yxatini bo'shatib qo'ying)",
+            why = {"ip_not_allowed": "bu server IP'si kalitning ruxsat ro'yxatida yo'q (API kabineti → Sozlamalar → IP ro'yxatini bo'shatib qo'ying)",
                    "merchant_frozen": "hisob muzlatilgan"}.get(code, code or "ruxsat yo'q")
             return {"ok": False, "status": 403, "ms": ms, "error": f"403: {why}"}
         if r.status_code != 200:
@@ -214,7 +214,7 @@ class YupayProvider:
         except (httpx.HTTPError, ValueError) as e:
             return ProviderResult("unknown", message=f"katalog: {e.__class__.__name__}")
         if not found:
-            return ProviderResult("failed", message="unknown_sku: paketning Yupay SKU kodi katalogda yo'q (Admin → Donat paketlari)")
+            return ProviderResult("failed", message="unknown_sku: paketning API SKU kodi katalogda yo'q (Admin → Donat paketlari)")
         product, s = found
         kind = s.get("kind") or "fixed"
         payload = {"merchant_order_id": order_ref, "sku_id": s["sku_id"], "fulfillment_data": self._fulfillment(product, player_id, zone_id)}
@@ -249,15 +249,15 @@ class YupayProvider:
         if r.status_code in (429,) or r.status_code >= 500:
             return ProviderResult("unknown", message=f"http {r.status_code}")
         hints = {
-            "insufficient_deposit": "insufficient_deposit: Yupay depoziti yetmadi — depozitni to'ldiring",
-            "price_changed": "price_changed: Yupay narxi o'zgargan — paket SKU/narxini yangilang",
-            "margin_floor": "margin_floor: narx Yupay ruxsat etgan eng past chegaradan past",
-            "invalid_credentials": "invalid_credentials: Yupay kaliti noto'g'ri",
-            "ip_not_allowed": "ip_not_allowed: server IP'si Yupay ruxsat ro'yxatida yo'q",
-            "merchant_frozen": "merchant_frozen: Yupay hisobi muzlatilgan",
+            "insufficient_deposit": "insufficient_deposit: API depoziti yetmadi — depozitni to'ldiring",
+            "price_changed": "price_changed: API narxi o'zgargan — paket SKU/narxini yangilang",
+            "margin_floor": "margin_floor: narx API ruxsat etgan eng past chegaradan past",
+            "invalid_credentials": "invalid_credentials: API kaliti noto'g'ri",
+            "ip_not_allowed": "ip_not_allowed: server IP'si API ruxsat ro'yxatida yo'q",
+            "merchant_frozen": "merchant_frozen: API hisobi muzlatilgan",
             "item_unavailable": "item_unavailable: bu nominal hozir mavjud emas",
         }
-        return ProviderResult("failed", message=hints.get(code, f"yupay {r.status_code} {code}".strip()))
+        return ProviderResult("failed", message=hints.get(code, f"api {r.status_code} {code}".strip()))
 
     async def status(self, order_ref: str, provider_ref: str | None = None) -> ProviderResult:
         try:

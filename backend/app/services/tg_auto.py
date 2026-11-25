@@ -123,7 +123,7 @@ async def fulfil_step(sessions: async_sessionmaker, order_id: int, mode: str, ou
         username, title = order.target_username, order.title
 
     if order.kind == "stars" and not await _stars_in_range(provider, sku):
-        return await _to_manual(sessions, order_id, "Stars miqdori Yupay chegarasidan tashqarida", out)
+        return await _to_manual(sessions, order_id, "Stars miqdori API chegarasidan tashqarida", out)
 
     ref = order_ref(order_id)
     if mode == "create" and attempts > 1:
@@ -136,23 +136,23 @@ async def fulfil_step(sessions: async_sessionmaker, order_id: int, mode: str, ou
 
     if result.status == "success":
         async with sessions() as session, session.begin():
-            await resolve_tg_order(session, order_id, "done", "avtomatik (Yupay)", out)
+            await resolve_tg_order(session, order_id, "done", "avtomatik", out)
         return None
     if result.status == "failed":
         async with sessions() as session, session.begin():
-            await resolve_tg_order(session, order_id, "refund", f"Yupay: {result.message}"[:300], out)
-        out.admins(f"❗️TG buyurtma #{order_id} avtomatik bajarilmadi, pul qaytarildi.\nSabab: {result.message}", topic="tg")
+            await resolve_tg_order(session, order_id, "refund", "Avtomatik bajarib bo'lmadi. Username to'g'riligini tekshirib, qayta urinib ko'ring", out)
+        out.admins(f"❗️TG buyurtma #{order_id} avtomatik bajarilmadi, pul qaytarildi.\nSabab (API): {result.message}", topic="tg")
         return None
     if result.status == "pending":
         if attempts >= MAX_STATUS_CHECKS:
-            return await _to_manual(sessions, order_id, "Yupay juda uzoq bajaryapti", out)
+            return await _to_manual(sessions, order_id, "API juda uzoq bajaryapti", out)
         return ("check", CHECK_DELAY)
     # unknown
     if mode == "create" and attempts < MAX_CREATE_ATTEMPTS:
         return ("create", RETRY_DELAY * attempts)
     if mode == "check" and attempts < MAX_STATUS_CHECKS:
         return ("check", CHECK_DELAY)
-    return await _to_manual(sessions, order_id, f"Yupay javob bermadi: {result.message}", out)
+    return await _to_manual(sessions, order_id, f"API javob bermadi: {result.message}", out)
 
 
 async def _to_manual(sessions: async_sessionmaker, order_id: int, why: str, out: Outbox) -> None:

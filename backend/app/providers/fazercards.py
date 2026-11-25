@@ -62,9 +62,9 @@ def _why(e: Exception) -> str:
     """Xato sababi odam o'qiydigan ko'rinishda (httpx ba'zan bo'sh matn beradi — masalan, timeout)."""
     m = str(e).strip() or repr(e)
     if "CERTIFICATE" in m.upper() or "SSL" in m.upper():
-        return f"SSL sertifikat xatosi ({m[:120]}) — FazerCards serveri yoki tarmoq muammosi, birozdan keyin qayta urinib ko'ring"
+        return f"SSL sertifikat xatosi ({m[:120]}) — API serveri yoki tarmoq muammosi, birozdan keyin qayta urinib ko'ring"
     if isinstance(e, httpx.TimeoutException):
-        return "javob kelmadi (timeout) — FazerCards sekin yoki bu serverni to'sib qo'ygan"
+        return "javob kelmadi (timeout) — API sekin yoki bu serverni to'sib qo'ygan"
     return f"{e.__class__.__name__}: {m[:140]}"
 
 
@@ -75,7 +75,7 @@ def map_order(order: dict) -> ProviderResult:
     if status in OK_STATUS:
         return ProviderResult("success", ref=ref, artifact=_artifact(order))
     if status in FAIL_STATUS:
-        return ProviderResult("failed", ref=ref, message=f"fazercards: {status}")
+        return ProviderResult("failed", ref=ref, message=f"api: {status}")
     return ProviderResult("pending", ref=ref, message=status)  # processing va yangi noma'lum holatlar — hali jarayonda
 
 
@@ -121,7 +121,7 @@ class FazerCardsProvider:
         if r.status_code in (401, 403):
             code, msg = _err(r)
             if code == "subscription_inactive":
-                raise RuntimeError("FazerCards obunasi faol emas (kabinetda rejani yoqing yoki sinovni boshlang)")
+                raise RuntimeError("API obunasi faol emas (kabinetda rejani yoqing yoki sinovni boshlang)")
             raise RuntimeError("API kalit noto'g'ri, bekor qilingan yoki bu hisobga ruxsat yo'q" + (f" ({msg})" if msg else ""))
         if r.status_code == 429:
             raise RuntimeError("So'rovlar juda ko'p (429) — birozdan keyin urinib ko'ring")
@@ -129,7 +129,7 @@ class FazerCardsProvider:
         try:
             return r.json()
         except ValueError:
-            raise RuntimeError(f"FazerCards JSON o'rniga sahifa qaytardi ({r.status_code})") from None
+            raise RuntimeError(f"API JSON o'rniga sahifa qaytardi ({r.status_code})") from None
 
     async def _category_list(self) -> list[dict]:
         items: list[dict] = []
@@ -180,7 +180,7 @@ class FazerCardsProvider:
                       for f in d.get("fields") or [] if f.get("key")]
             name = str(d.get("name") or c.get("name") or cid)[:80]  # DonateGame.name — 80 belgi
             return {"slug": f"{SLUG_PREFIX}{(slugify(name) or slugify(cid))[:50]}", "name": name, "logo_url": c.get("imageurl") or d.get("imageurl"),
-                    "category_name": "FazerCards",
+                    "category_name": "",
                     "products": [{"name": name, "required_fields": fields or [{"key": "player_id", "label": "Player ID"}], "skus": skus}]}
 
         brands = [b for b in await asyncio.gather(*(one(c) for c in cats)) if b]
@@ -275,7 +275,7 @@ class FazerCardsProvider:
         except (httpx.HTTPError, RuntimeError) as e:
             return ProviderResult("unknown", message=f"katalog: {e.__class__.__name__}")
         if not any(str(o.get("offer_id")) == oid for o in d.get("offers") or []):
-            return ProviderResult("failed", message="unknown_sku: paket FazerCards katalogida yo'q (katalogni yangilang)")
+            return ProviderResult("failed", message="unknown_sku: paket API katalogida yo'q (katalogni yangilang)")
         payload = {"category_id": cid, "offer_id": oid, "fields": self._fill(d.get("fields") or [], player_id, zone_id)}
         try:
             r = await self.client.post("/topups/order", json=payload, headers={"Idempotency-Key": order_ref})
@@ -298,12 +298,12 @@ class FazerCardsProvider:
             return ProviderResult("unknown", message=f"http {r.status_code}")
         code, msg = _err(r)
         hints = {
-            "subscription_inactive": "subscription_inactive: FazerCards obunasi faol emas",
-            "insufficient_balance": "insufficient_balance: FazerCards balansi yetmadi — balansni to'ldiring",
+            "subscription_inactive": "subscription_inactive: API obunasi faol emas",
+            "insufficient_balance": "insufficient_balance: API balansi yetmadi — balansni to'ldiring",
         }
         if r.status_code in (401, 403):
-            return ProviderResult("failed", message=hints.get(code, f"fazercards {r.status_code}: kalit/ruxsat xatosi {code}".strip()))
-        return ProviderResult("failed", message=hints.get(code, f"fazercards {r.status_code} {code} {msg}".strip())[:300])
+            return ProviderResult("failed", message=hints.get(code, f"api {r.status_code}: kalit/ruxsat xatosi {code}".strip()))
+        return ProviderResult("failed", message=hints.get(code, f"api {r.status_code} {code} {msg}".strip())[:300])
 
     async def status(self, order_ref: str, provider_ref: str | None = None) -> ProviderResult:
         ref = provider_ref or self._refs.get(order_ref)

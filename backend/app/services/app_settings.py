@@ -74,7 +74,7 @@ SCHEMA.update({
     "pts_tournament_join": Spec("money", 20, "Ball: turnirda ishtirok", "Arena: ball", 0, 100_000),
     "pts_tournament_win": Spec("money", 100, "Ball: turnirda g'alaba", "Arena: ball", 0, 100_000),
     "pts_prediction": Spec("money", 50, "Ball: to'g'ri prognoz", "Arena: ball", 0, 100_000),
-    "tg_auto": Spec("choice", "on", "Telegram Premium va Stars avtomatik (Yupay orqali)", "Telegram: Premium va Stars",
+    "tg_auto": Spec("choice", "on", "Telegram Premium va Stars avtomatik (API orqali)", "Telegram: Premium va Stars",
                     choices={"on": "Avtomatik", "off": "Qo'lda"}),
     "mlbb_live_stats": Spec("choice", "on", "Tirik MLBB statistikasi (Rone Arena API: g'alaba %, tier, counter)", "Arena: ball",
                             choices={"on": "Yoqilgan", "off": "O'chirilgan"}),

@@ -4,6 +4,10 @@ from typing import Literal, Protocol
 Status = Literal["success", "pending", "failed", "unknown", "manual"]
 
 
+class ProviderAuthError(RuntimeError):
+    """API kalit qabul qilinmadi — qayta urinilmaydi (ba'zi API'lar takroriy xato kalit uchun IP'ni bloklaydi)."""
+
+
 @dataclass
 class ProviderResult:
     """success — almaz tushdi; pending — provayder hali bajaryapti;

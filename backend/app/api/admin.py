@@ -853,7 +853,7 @@ async def broadcast(body: BroadcastIn, admin: AdminUser, session: SessionDep):
 
 
 # ------------------------------------------------------------------ donat provayderlari (bir nechta API)
-KINDS = {"yupay": "Donat API", "fazercards": "Donat API", "http": "Donat API (qo'lda paketlar)"}  # sayt nomlari ko'rsatilmaydi
+KINDS = {"yupay": "Donat API", "fazercards": "Donat API", "uzpinhub": "Donat API", "http": "Donat API (qo'lda paketlar)"}  # sayt nomlari ko'rsatilmaydi
 DEFAULT_HOST = {"yupay": "api.yupay.uz", "fazercards": "api.fzr.cards"}
 
 
@@ -864,12 +864,14 @@ def _norm_base(kind: str, url: str) -> str:
         return u if "/merchant/" in u else ""
     if kind == "fazercards":
         return u if u.startswith("https://") and "/api/" in u else ""
+    if kind == "uzpinhub":
+        return u if u.startswith("https://") and "uzpinhub" in u else ""
     return u
 
 
 class ProviderIn(BaseModel):
     name: str = Field(min_length=2, max_length=64)
-    kind: str = Field("auto", pattern="^(auto|yupay|fazercards|http)$")
+    kind: str = Field("auto", pattern="^(auto|yupay|fazercards|uzpinhub|http)$")
     base_url: str = Field("", max_length=200)
     api_key: str | None = Field(None, max_length=300)  # bo'sh/None — eski kalit saqlanadi
     is_active: bool = True
@@ -906,7 +908,9 @@ async def donate_provider_create(body: ProviderIn, admin: AdminUser, session: Se
         raise AppError("no_key", "API kalitni kiriting")
     if body.kind == "auto":  # turi kalit va manzildan aniqlanadi — admin sayt nomini tanlamaydi
         url = body.base_url.strip()
-        body.kind = "yupay" if key.startswith("ypk_") else ("http" if url and "fzr.cards" not in url else "fazercards")
+        # kalit hech qachon boshqa saytga «sinab ko'rish» uchun yuborilmaydi — faqat kalit ko'rinishi va manzildan
+        body.kind = ("yupay" if key.startswith("ypk_") else "uzpinhub" if "uzpinhub" in url
+                     else "http" if url and "fzr.cards" not in url else "fazercards")
     if body.kind == "http" and not body.base_url.startswith("https://"):
         raise AppError("bad_url", "Manzil https:// bilan boshlansin")
     async with session.begin():

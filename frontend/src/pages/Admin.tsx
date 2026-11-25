@@ -459,7 +459,7 @@ function ProvidersAdmin() {
                     ))}
                   </>
                 )}
-                <div className="mut xs">Kalit faqat shu so'rovda yuboriladi, serverda shifrlanadi va keyin ko'rsatilmaydi. API turi kalitdan avtomatik aniqlanadi. Kalitda IP ro'yxati bo'lsa, bo'sh qoldiring. Yangi o'yinlar yashirin holatda keladi — Katalogdan yoqing.</div>
+                <div className="mut xs">Kalit faqat shu so'rovda yuboriladi, serverda shifrlanadi va keyin ko'rsatilmaydi. API turi kalitdan avtomatik aniqlanadi; API hujjatida manzil berilgan bo'lsa, «Qo'shimcha sozlamalar → Manzil»ga yozing. Kalitda IP ro'yxati bo'lsa, bo'sh qoldiring. Yangi o'yinlar yashirin holatda keladi — Katalogdan yoqing.</div>
                 <div className="row">
                   <button className="btn grow" disabled={busy || (edit.name ?? "").trim().length < 2 || (!edit.id && !edit.api_key)} onClick={save}>Saqlash</button>
                   {edit.id && <button className="btn danger" disabled={busy} onClick={async () => {

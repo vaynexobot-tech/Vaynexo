@@ -236,6 +236,32 @@ async def fazer_webhook(provider_id: int, request: Request, session: SessionDep)
     return {"ok": True}
 
 
+uzpinhub_webhook_router = APIRouter(prefix="/uzpinhub", tags=["uzpinhub"])
+
+
+@uzpinhub_webhook_router.post("/webhook/{provider_id}")
+async def uzpinhub_webhook(provider_id: int, request: Request, session: SessionDep):
+    """Imzo yo'q: tanadagi ma'lumotga ishonilmaydi — faqat mos buyurtma holati API'dan qayta so'raladi."""
+    import re
+
+    row = await session.get(DonateProvider, provider_id)
+    if row is None or row.kind != "uzpinhub":
+        raise NotFound("Provayder")
+    await session.rollback()
+    try:
+        data = json.loads((await request.body())[:5_000])
+    except ValueError:
+        return {"ok": True}
+    oid = str(data.get("order_id") or "") if isinstance(data, dict) else ""
+    if re.fullmatch(r"[0-9a-fA-F-]{8,64}", oid):
+        ids = list(await session.scalars(select(DonateOrder.id).where(
+            DonateOrder.provider_ref == oid, DonateOrder.status == "processing",
+            DonateOrder.package_id.in_(select(DonatePackage.id).where(DonatePackage.provider_id == provider_id)))))
+        for i in ids:
+            await enqueue("fulfil_donate", i, "check")
+    return {"ok": True}
+
+
 @webhook_router.post("/webhook")
 async def yupay_webhook(request: Request):
     """Render'dagi eski sozlama (DONATE_PROVIDER_KEY) uchun."""

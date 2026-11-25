@@ -148,7 +148,7 @@ async def cron_provider_balance(ctx):
         targets.append(("env", legacy))
     async with SessionLocal() as s:
         for row in await s.scalars(_select(DonateProvider).where(DonateProvider.is_active.is_(True),
-                                                                 DonateProvider.kind.in_(("yupay", "fazercards")), DonateProvider.key_enc != "")):
+                                                                 DonateProvider.kind.in_(("yupay", "fazercards", "uzpinhub")), DonateProvider.key_enc != "")):
             targets.append((f"{row.id}:{row.name}", donate_catalog.provider_instance(row)))
     for name, p in targets:
         bal = await p.balance()

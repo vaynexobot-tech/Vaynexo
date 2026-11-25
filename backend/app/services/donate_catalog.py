@@ -58,6 +58,11 @@ def build_provider(row: DonateProvider):
         from app.providers.yupay import YupayProvider
 
         return YupayProvider(key, row.base_url)
+    if row.kind == "uzpinhub":
+        from app.config import settings
+        from app.providers.uzpinhub import UzpinhubProvider
+
+        return UzpinhubProvider(key, row.base_url, callback_url=f"{settings.webapp_url.rstrip('/')}/api/uzpinhub/webhook/{row.id}")
     if row.kind == "fazercards" or (row.kind == "http" and "fzr.cards" in (row.base_url or "")):  # adashib «Boshqa API» tanlangan
         from app.providers.fazercards import FazerCardsProvider
 
@@ -327,8 +332,12 @@ async def sync_all() -> None:
                 await sync_provider(s, r)
         except Exception as e:  # noqa: BLE001
             log.warning("Katalog sinxronlanmadi (%s): %r", row.name, e)
+            from app.providers.base import ProviderAuthError
+
             async with SessionLocal() as s, s.begin():
                 r = await s.get(DonateProvider, row.id)
+                if r and isinstance(e, ProviderAuthError):  # xato kalit bilan qayta-qayta urinmaslik (IP bloklanishi mumkin)
+                    r.is_active = False
                 if r:
                     r.last_error = f"{e.__class__.__name__}: {(str(e) or repr(e))[:200]}"
     await invalidate_packages_cache()

@@ -91,7 +91,7 @@ async def validation_error(request: Request, exc: RequestValidationError):
 
 
 app.include_router(media.public_router)  # /media/db/<fayl> — StaticFiles montajidan oldin
-for r in (admin_panel.router, user.router, wallet.router, wallet.p2p_router, donate.router, donate.webhook_router, donate.fazer_webhook_router, market.router, media.router, services.router, rent.router, admin.router, account.router, ai.router, arena.router, teams.router):
+for r in (admin_panel.router, user.router, wallet.router, wallet.p2p_router, donate.router, donate.webhook_router, donate.fazer_webhook_router, donate.uzpinhub_webhook_router, market.router, media.router, services.router, rent.router, admin.router, account.router, ai.router, arena.router, teams.router):
     app.include_router(r, prefix="/api")
 
 

@@ -7,6 +7,13 @@ import { BottomBar, Empty, Field, GameTile, Header, Loadable, money, som, Spinne
 
 const DEFAULT_FIELDS: DonateGameField[] = [{ key: "player_id", label: "ID", placeholder: "12345678", pattern: "" }];
 
+/** Haqiqiy o'rtacha yetkazish vaqti (server o'lchaydi). Ma'lumot kam bo'lsa — va'da bermaymiz. */
+function etaText(sec?: number | null): string {
+  if (!sec) return t("Bir necha daqiqada");
+  if (sec < 90) return t("Odatda ~{n} soniyada", { n: Math.max(10, Math.round(sec / 5) * 5) });
+  return t("Odatda ~{n} daqiqada", { n: Math.max(2, Math.round(sec / 60)) });
+}
+
 export default function Donate() {
   const slug = useParams().game ?? "ML";
   const info = useLoad(() => api.get<DonateGameCard>(`/donate/games/${encodeURIComponent(slug)}`), [slug]);
@@ -81,7 +88,7 @@ function DonateFlow({ game: g }: { game: DonateGameCard }) {
           <GameTile name={g.name} logo={g.logo || g.hero} slug={g.slug} size={44} radius={12} />
           <div>
             <div className="b">{t("Hisobni to'ldirish")}</div>
-            <div className="mut xs">⚡ {t("5–30 daqiqada")} · 🔒 {t("Kafolatlangan")}</div>
+            <div className="mut xs">⚡ {etaText(g.eta_seconds)} · 🔒 {t("Kafolatlangan")}</div>
           </div>
         </div>
 

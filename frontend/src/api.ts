@@ -128,7 +128,7 @@ export const api = {
 // ---------------------------------------------------------------- turlar
 export type Game = "ML" | "MC";
 export interface DonateGameField { key?: string; label: string; placeholder?: string; pattern?: string }
-export interface DonateGameCard { slug: string; name: string; logo: string | null; hero: string | null; category: string; fields: DonateGameField[]; available: boolean; slot: number | null; voucher?: boolean }
+export interface DonateGameCard { slug: string; name: string; logo: string | null; hero: string | null; category: string; fields: DonateGameField[]; available: boolean; slot: number | null; voucher?: boolean; eta_seconds?: number | null }
 export interface DonateGames { featured: DonateGameCard[]; popular: DonateGameCard[]; all: DonateGameCard[] }
 export interface Me {
   id: number;

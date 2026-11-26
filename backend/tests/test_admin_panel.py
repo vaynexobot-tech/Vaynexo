@@ -150,3 +150,26 @@ async def test_provider_kind_auto_detected_and_names_hidden(api, monkeypatch):
     # noto'g'ri turga tushgan API: tahrirlashda manzil kiritilsa — turi tuzatiladi
     fixed = (await api(1).put(f"/admin/donate/providers/{b['id']}", json={"name": "Uzpin", "kind": "fazercards", "base_url": "https://api.uzpinhub.uz/api/"})).json()
     assert fixed["kind"] == "uzpinhub" and fixed["last_error"] is None
+
+
+async def test_delivery_eta_only_from_real_data(api):
+    """Yetkazish vaqti taxmin emas: kamida 5 ta avtomatik yetkazilgan buyurtma bo'lsagina ko'rsatiladi."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.db import SessionLocal
+    from app.models import DonateOrder, DonatePackage, DonateProvider
+
+    assert (await api(5).get("/donate/games/ML")).json()["eta_seconds"] is None
+    async with SessionLocal() as s, s.begin():
+        prov = DonateProvider(name="API 1", kind="yupay", base_url="", key_enc="x", config={})
+        s.add(prov)
+        await s.flush()
+        pk = DonatePackage(game="ML", name="86", diamonds=86, price=18100, provider_sku="x", provider_id=prov.id, source="api")
+        s.add(pk)
+        await api(5).get("/me")
+        await s.flush()
+        t0 = datetime.now(timezone.utc) - timedelta(hours=1)
+        for sec in (20, 25, 30, 35, 400):  # mediana 30 (bitta kechikkan buyurtma natijani buzmaydi)
+            s.add(DonateOrder(user_id=5, package_id=pk.id, game="ML", title="86", player_id="1", price=1, status="done", attempts=1,
+                              created_at=t0, finished_at=t0 + timedelta(seconds=sec)))
+    assert (await api(5).get("/donate/games/ML")).json()["eta_seconds"] == 30

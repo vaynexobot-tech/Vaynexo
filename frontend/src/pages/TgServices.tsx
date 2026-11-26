@@ -142,7 +142,7 @@ export default function TgServices() {
                   </div>
                 )}
                 {selfAllowed && forSelf && !me?.username && <div className="r sm">{t("Telegram profilingizda username yo'q. «Boshqa odamga» ni tanlab, username'ni qo'lda kiriting.")}</div>}
-                <div className="card tight mut xs">⚡ {t("Yetkazish: odatda 5–30 daqiqa. Bajarilmasa pul to'liq hamyoningizga qaytadi.")}</div>
+                <div className="card tight mut xs">⚡ {t("Yetkazish: odatda bir necha daqiqa. Bajarilmasa pul to'liq hamyoningizga qaytadi.")}</div>
 
                 {history.data && history.data.length > 0 && (
                   <>

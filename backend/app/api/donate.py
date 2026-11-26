@@ -27,6 +27,24 @@ async def invalidate_packages_cache() -> None:
         pass
 
 
+ETA_MIN_SAMPLES = 5  # kamida shuncha yetkazilgan buyurtma bo'lsa — vaqt ko'rsatiladi (aks holda taxmin qilinmaydi)
+
+
+async def delivery_eta(session, slug: str) -> int | None:
+    """Oxirgi 20 ta avtomatik yetkazilgan buyurtmaning mediana vaqti (soniya). Qo'lda bajarilganlar hisobga olinmaydi."""
+    import statistics
+
+    from sqlalchemy import func
+
+    secs = [float(x) for x in await session.scalars(
+        select(func.extract("epoch", DonateOrder.finished_at - DonateOrder.created_at))
+        .join(DonatePackage, DonatePackage.id == DonateOrder.package_id)
+        .where(DonateOrder.game == slug, DonateOrder.status == "done", DonateOrder.finished_at.is_not(None),
+               DonatePackage.provider_id.is_not(None), DonateOrder.attempts > 0)
+        .order_by(DonateOrder.id.desc()).limit(20))]
+    return int(statistics.median(secs)) if len(secs) >= ETA_MIN_SAMPLES else None
+
+
 def game_dict(g: DonateGame, available: bool) -> dict:
     fields = g.fields or ([{"key": "player_id", "label": "User ID", "placeholder": "12345678", "pattern": r"^\d{5,20}$"},
                            {"key": "server_id", "label": "Zone ID", "placeholder": "1234", "pattern": r"^\d{1,10}$"}] if g.slug in ("ML", "MC") else [])
@@ -70,7 +88,7 @@ async def game_info(slug: str, user: CurrentUser, session: SessionDep):
     if g is None or not g.is_active:
         raise NotFound("O'yin")
     _, have = await _games(session)
-    return game_dict(g, g.slug in have)
+    return {**game_dict(g, g.slug in have), "eta_seconds": await delivery_eta(session, g.slug)}
 
 
 @router.get("/packages")

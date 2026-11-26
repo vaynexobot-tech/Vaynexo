@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.errors import AppError, BadState
 from app.models import PaymentCard, User
 from app.security import check_secret, encrypt, hash_secret

@@ -5,7 +5,7 @@ Hamma uchun ochish: admin botda /ochish yozadi (yopish: /yopish). Boshlang'ich h
 
 import time
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.config import settings

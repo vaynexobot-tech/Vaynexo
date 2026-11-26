@@ -405,7 +405,7 @@ async def admin_arena_stats(admin: AdminUser, session: SessionDep):
 
     from sqlalchemy import func
 
-    from app.models import HeroVote, PromoCode, QuizAnswer
+    from app.models import PromoCode, QuizAnswer
     from app.services import mlbb
 
     day, since = mlbb.today(), _now() - timedelta(days=7)

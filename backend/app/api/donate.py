@@ -9,7 +9,6 @@ from app.api.deps import CurrentUser, SessionDep, get_redis, rate_limit
 from app.config import settings
 from app.errors import AppError, NotFound
 from app.models import DonateGame, DonateOrder, DonatePackage, DonateProvider
-from app.providers import get_provider
 from app.queue import enqueue
 
 router = APIRouter(prefix="/donate", tags=["donate"])

@@ -120,7 +120,7 @@ async def fulfil_step(sessions: async_sessionmaker, order_id: int, mode: str, ou
         auto["attempts"] = attempts = int(auto.get("attempts", 0)) + 1
         order.details = {**order.details, "auto": auto}
         provider = donate_catalog.provider_instance(prov_row)
-        username, title = order.target_username, order.title
+        username = order.target_username
 
     if order.kind == "stars" and not await _stars_in_range(provider, sku):
         return await _to_manual(sessions, order_id, "Stars miqdori API chegarasidan tashqarida", out)

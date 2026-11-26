@@ -1,7 +1,7 @@
 """Statistika: kunlik hisobot (guruhga) va admin paneldagi grafik."""
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, literal_column, select

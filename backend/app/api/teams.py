@@ -2,7 +2,6 @@
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, rate_limit
 from app.models import PartnerSignal, Team, TeamPost, User

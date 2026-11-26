@@ -15,7 +15,6 @@ from sqlalchemy import select
 
 from app.bot.handlers import boost_post_kb, boost_post_text, get_share_pct
 from app.bot.instance import get_bot
-from app.config import settings
 from app.db import SessionLocal
 from app.models import BoostOrder, DonateOrder, TgOrder
 from app.queue import LITE, redis_settings

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { VayStrip } from "./Premium";
 import { api, type Tournament } from "../api";
 import { t } from "../i18n";
 import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, Sheet, som, SponsorLine, useAction, useApp, useLoad } from "../ui";
@@ -51,6 +50,7 @@ export function Arena() {
 /** Arena bosh sahifasi: tablar o'rniga katta kartalar. Har kartada jonli ma'lumot, bosilganda alohida sahifa. */
 function ArenaHub({ sum, onOpen }: { sum: Summary | null; onOpen: (v: View) => void }) {
   const nav = useNavigate();
+  const { me } = useApp();
   const ms = useLoad(() => api.get<HubData>("/arena/missions"));
   const lb = useLoad(() => api.get<HubLb>("/arena/leaderboard"));
   const tours = useLoad(() => api.get<Tournament[]>("/tournaments?status=open"));
@@ -60,20 +60,26 @@ function ArenaHub({ sum, onOpen }: { sum: Summary | null; onOpen: (v: View) => v
   const pct = daily.length ? Math.round((done / daily.length) * 100) : 0;
   const nTours = tours.data?.length ?? 0;
   const pred = sum?.prediction;
-  const tiles: { v: View; icon: string; title: string; sub: string; badge?: string; hot?: boolean }[] = [
-    { v: "tours", icon: "🏆", title: "Turnirlar", sub: nTours ? t("{n} ta ochiq turnir", { n: nTours }) : t("Hozircha yo'q"), badge: nTours ? String(nTours) : undefined, hot: nTours > 0 },
-    { v: "games", icon: "🧠", title: "Viktorina", sub: t("Qahramonni top, +ball oling") },
-    { v: "duo", icon: "🤝", title: "Sherik topish", sub: t("Rankedga o'yinchi izlash") },
-    { v: "team", icon: "🛡", title: "Jamoa", sub: t("Jamoa tuzing yoki qo'shiling") },
-    { v: "rating", icon: "📊", title: "Reyting", sub: lb.data?.me.place ? t("Sizning o'rningiz: #{n}", { n: lb.data.me.place }) : t("Sezon jadvali va mukofotlar") },
-    { v: "missions", icon: "✅", title: "Vazifalar", sub: daily.length ? t("{a}/{b} bajarildi", { a: done, b: daily.length }) : t("Kunlik va haftalik"), badge: claimable ? String(claimable) : undefined, hot: claimable > 0 },
+  const vay = me?.vay;
+  type Tile = { key: string; icon: string; title: string; sub: string; badge?: string; hot?: boolean; go: () => void };
+  const tiles: Tile[] = [
+    { key: "tours", icon: "🏆", title: t("Turnirlar"), sub: nTours ? t("{n} ta ochiq turnir", { n: nTours }) : t("Hozircha yo'q"), badge: nTours ? String(nTours) : undefined, hot: nTours > 0, go: () => onOpen("tours") },
+    ...(pred ? [{ key: "pred", icon: "🎯", title: t("Prognoz"), sub: pred.my_pick ? t("Tanlovingiz qabul qilindi") : t("G'olibni toping, +{n} ball", { n: pred.points }), hot: !pred.my_pick, go: () => onOpen("tours") }] : []),
+    { key: "games", icon: "🧠", title: t("Viktorina"), sub: t("Qahramonni top, +ball oling"), go: () => onOpen("games") },
+    { key: "duo", icon: "🤝", title: t("Sherik topish"), sub: t("Rankedga o'yinchi izlash"), go: () => onOpen("duo") },
+    { key: "team", icon: "🛡", title: t("Jamoa"), sub: t("Jamoa tuzing yoki qo'shiling"), go: () => onOpen("team") },
+    { key: "pro", icon: "🎮", title: t("Pro bilan o'yna"), sub: t("O'yin joyi — auksion"), go: () => nav("/pro") },
+    { key: "heroes", icon: "📖", title: t("Qahramonlar"), sub: t("Draft, Buyumlar, counter"), go: () => nav("/heroes") },
+    { key: "rating", icon: "📊", title: t("Reyting"), sub: lb.data?.me.place ? t("Sizning o'rningiz: #{n}", { n: lb.data.me.place }) : t("Sezon jadvali"), go: () => onOpen("rating") },
+    { key: "missions", icon: "✅", title: t("Vazifalar"), sub: daily.length ? t("{a}/{b} bajarildi", { a: done, b: daily.length }) : t("Kunlik va haftalik"), badge: claimable ? String(claimable) : undefined, hot: claimable > 0, go: () => onOpen("missions") },
+    { key: "mlcard", icon: "🎮", title: t("Mening MLBB kartam"), sub: t("Rank, liniya, qahramonlar"), go: () => window.dispatchEvent(new Event("vx:edit-mlcard")) },
+    ...(vay ? [{ key: "vay", icon: vay.icon, title: `${vay.name} · ${money(vay.xp)} VAY`, sub: t("Daraja va keshbek"), go: () => nav("/vay") }] : []),
   ];
   return (
     <>
       <Header title={t("Arena")} sub={t("O'ynang, ball yig'ing, yuting")} back={false} icon="arena" right={<span className="pts-pill">🏅 {money(sum?.points ?? 0)}</span>} />
       <div className="page">
-        <VayStrip />
-        <MlCard />
+        <MlCard bare />
 
         <div className="card arena-today">
           <div className="row between">
@@ -87,39 +93,16 @@ function ArenaHub({ sum, onOpen }: { sum: Summary | null; onOpen: (v: View) => v
           </div>
         </div>
 
-        {pred && (
-          <button className="card row click arena-pred" onClick={() => onOpen("tours")}>
-            <span style={{ fontSize: 26 }}>🎯</span>
-            <div className="grow" style={{ textAlign: "left", minWidth: 0 }}>
-              <div className="b ell">{pred.team_a} vs {pred.team_b}</div>
-              <div className="mut xs">{pred.my_pick ? t("Tanlovingiz qabul qilindi") : t("Bepul prognoz: g'olibni toping, +{n} ball", { n: pred.points })}</div>
-            </div>
-            <Icon name="right" size={18} />
-          </button>
-        )}
-
         <div className="arena-grid">
           {tiles.map((x) => (
-            <button key={x.v} className={"arena-tile" + (x.hot ? " hot" : "")} onClick={() => onOpen(x.v)}>
+            <button key={x.key} className={"arena-tile" + (x.hot ? " hot" : "")} onClick={x.go}>
               {x.badge && <span className="arena-badge">{x.badge}</span>}
               <span className="arena-ico">{x.icon}</span>
-              <span className="arena-t">{t(x.title)}</span>
+              <span className="arena-t">{x.title}</span>
               <span className="arena-s">{x.sub}</span>
             </button>
           ))}
         </div>
-
-        <button className="card row click" style={{ textAlign: "left", borderColor: "rgba(155,107,255,.5)" }} onClick={() => nav("/pro")}>
-          <span style={{ fontSize: 30 }}>🎮</span>
-          <div className="grow"><div className="b">{t("Pro bilan o'yna")}</div><div className="mut xs">{t("Mashhur o'yinchi bilan o'yin joyi — auksion")}</div></div>
-          <Icon name="right" size={18} />
-        </button>
-
-        <button className="card row click" style={{ textAlign: "left", borderColor: "rgba(77,163,255,.35)" }} onClick={() => nav("/heroes")}>
-          <span className="row" style={{ gap: 0 }}>{[109, 4, 9].map((id, k) => <span key={id} style={{ marginLeft: k ? -12 : 0 }}><HeroAva id={id} size={36} radius={18} /></span>)}</span>
-          <div className="grow"><div className="b">📖 {t("Qahramonlar, Draft va Buyumlar")}</div><div className="mut xs">{t("Skill, counter, ban/pick simulyatori")}</div></div>
-          <Icon name="right" size={18} />
-        </button>
       </div>
       <BottomNav />
     </>
@@ -192,7 +175,7 @@ function TourCard({ x, onClick }: { x: Tournament; onClick: () => void }) {
 const REGIONS = ["Toshkent sh.", "Toshkent vil.", "Andijon", "Buxoro", "Farg'ona", "Jizzax", "Xorazm", "Namangan", "Navoiy", "Qashqadaryo", "Qoraqalpog'iston", "Samarqand", "Sirdaryo", "Surxondaryo"];
 interface MlProfile { nick: string; lane: string; rank: string; heroes: number[]; ml_id: string; server: string; verified: boolean; region: string }
 
-function MlCard() {
+function MlCard({ bare = false }: { bare?: boolean }) {
   const st = useLoad(() => api.get<MlProfile>("/arena/profile"));
   const [edit, setEdit] = useState(false);
   useEffect(() => {
@@ -204,7 +187,7 @@ function MlCard() {
   const empty = !p || (!p.rank && !p.lane && !(p.heroes ?? []).length);
   return (
     <>
-      <div className="card click mlcard" onClick={() => setEdit(true)} style={{ borderColor: "rgba(255,214,10,.35)" }}>
+      {!bare && <div className="card click mlcard" onClick={() => setEdit(true)} style={{ borderColor: "rgba(255,214,10,.35)" }}>
         {p?.rank ? <MlIcon kind="rank" k={p.rank} size={52} /> : <span className="rowico" style={{ width: 52, height: 52, borderRadius: 14, fontSize: 22 }}>🎮</span>}
         <div className="grow" style={{ minWidth: 0 }}>
           <div className="row" style={{ gap: 6 }}>
@@ -218,7 +201,7 @@ function MlCard() {
           {(p?.heroes ?? []).map((id) => <HeroAva key={id} id={id} size={38} radius={19} />)}
         </div>
         <span className="mut"><Icon name="right" size={18} /></span>
-      </div>
+      </div>}
       {edit && p && <MlCardSheet p={p} onClose={() => setEdit(false)} onSaved={(x) => { st.setData(x); setEdit(false); }} onLinked={(x) => st.setData(x)} />}
     </>
   );

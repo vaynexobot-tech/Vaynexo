@@ -56,16 +56,15 @@ export default function Partner() {
                 <div className="mut xs">{d.stats.to_official > 0 ? t("«Rasmiy hamkor»gacha {n} ko'rish qoldi", { n: fmtN(d.stats.to_official) }) : t("Siz «Rasmiy hamkor»siz!")}</div>
               </div>
               <div className="sec-title">💸 {t("Ko'proq daromad")}</div>
-              <div className="adm2-list">
-                {[
-                  ["🎥", t("Striminer paneli"), t("Efirda almaz va pul donati qabul qiling"), "/streamer"],
-                  ["🎮", t("Pro bo'lish"), t("O'yin joyingizni auksionda soting"), "/pro/my"],
-                  ["🏪", t("O'z do'koningni och"), t("Mijozlar xarididan 3–6% komissiya"), "/shop"],
-                ].map(([i, a, b, to]) => (
-                  <button key={to} className="adm2-it" onClick={() => nav(to)}>
-                    <span style={{ fontSize: 24, width: 34 }}>{i}</span>
-                    <div className="grow" style={{ textAlign: "left", minWidth: 0 }}><div className="b">{a}</div><div className="mut xs ell">{b}</div></div>
-                    <Icon name="right" size={17} className="mut" />
+              <div className="arena-grid">
+                {([
+                  ["🎬", t("Video yuborish"), t("Ko'rish uchun mukofot"), () => { setTab("send"); window.scrollTo({ top: 600, behavior: "smooth" }); }],
+                  ["🎥", t("Striminer paneli"), t("Efirda almaz va pul donati"), () => nav("/streamer")],
+                  ["🎮", t("Pro bo'lish"), t("O'yin joyini auksionda soting"), () => nav("/pro/my")],
+                  ["🏪", t("O'z do'koningni och"), t("Mijozlardan 3–6% komissiya"), () => nav("/shop")],
+                ] as [string, string, string, () => void][]).map(([i, a, b, go]) => (
+                  <button key={a} className="arena-tile mini" onClick={go}>
+                    <span className="arena-ico">{i}</span><span className="arena-t" style={{ fontSize: 15 }}>{a}</span><span className="arena-s">{b}</span>
                   </button>
                 ))}
               </div>
@@ -92,16 +91,16 @@ export default function Partner() {
 function Rewards({ d }: { d: Overview }) {
   return (
     <>
-      {d.tiers.map((x) => (
-        <div key={x.tier} className={"card row" + (x.done ? " tier-done" : "")}>
-          <span className="hd-ico" style={{ width: 42, height: 42, background: x.done ? "rgba(29,233,182,.15)" : "rgba(255,214,10,.12)", color: x.done ? "var(--g)" : "var(--y)" }}><Icon name={TIER_ICON[x.tier]} /></span>
-          <div className="grow">
+      <div className="arena-grid">
+        {d.tiers.map((x) => (
+          <div key={x.tier} className={"tier-tile" + (x.done ? " done" : "")}>
+            {x.done && <span className="g b xs ok">✓ {t("Olindi")}</span>}
+            <span className="hd-ico" style={{ width: 40, height: 40, background: x.done ? "rgba(29,233,182,.15)" : "rgba(255,214,10,.12)", color: x.done ? "var(--g)" : "var(--y)" }}><Icon name={TIER_ICON[x.tier]} /></span>
             <div className="y mono b sm">{fmtN(x.views)}+ {t("ko'rish")}</div>
-            <div className="b">{t(x.reward)}</div>
+            <div className="b sm">{t(x.reward)}</div>
           </div>
-          {x.done ? <span className="g b sm">✓ {t("Olindi")}</span> : <span className="mut">—</span>}
-        </div>
-      ))}
+        ))}
+      </div>
       <div className="card col" style={{ borderColor: "rgba(255,214,10,.4)" }}>
         <div className="y mono b sm">{fmtN(d.tiers[3]?.views ?? 50000)}+ {t("ko'rishdan yuqori")}</div>
         <div className="b">{t("Shaxsiy shartnoma")}</div>

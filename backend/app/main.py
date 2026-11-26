@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import account, admin, admin_panel, ai, arena, donate, market, media, rent, services, teams, user, wallet
+from app.api import account, admin, admin_panel, ai, arena, donate, market, media, rent, services, shop, teams, user, wallet
 from app.config import settings
 from app.errors import AppError
 
@@ -91,7 +91,7 @@ async def validation_error(request: Request, exc: RequestValidationError):
 
 
 app.include_router(media.public_router)  # /media/db/<fayl> — StaticFiles montajidan oldin
-for r in (admin_panel.router, user.router, wallet.router, wallet.p2p_router, donate.router, donate.webhook_router, donate.fazer_webhook_router, donate.uzpinhub_webhook_router, market.router, media.router, services.router, rent.router, admin.router, account.router, ai.router, arena.router, teams.router):
+for r in (admin_panel.router, user.router, wallet.router, wallet.p2p_router, donate.router, donate.webhook_router, donate.fazer_webhook_router, donate.uzpinhub_webhook_router, market.router, media.router, services.router, rent.router, admin.router, account.router, ai.router, arena.router, teams.router, shop.router):
     app.include_router(r, prefix="/api")
 
 

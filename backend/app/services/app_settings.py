@@ -101,6 +101,15 @@ for _k, (_p, _n, _g, _r) in MISSIONS.items():
 
 # ---------------------------------------------------------------- Hamkor dasturi
 SCHEMA.update({
+    # Do'konlar
+    "shop_on": Spec("choice", "on", "«O'z do'koningni och» bo'limi", "Do'konlar", choices={"on": "Yoqilgan", "off": "O'chiq"}),
+    "shop_pct_1": Spec("percent", 3, "Bronza: komissiya (%)", "Do'konlar", 0, 30),
+    "shop_pct_2": Spec("percent", 4, "Kumush: komissiya (%)", "Do'konlar", 0, 30),
+    "shop_pct_3": Spec("percent", 5, "Oltin: komissiya (%)", "Do'konlar", 0, 30),
+    "shop_pct_4": Spec("percent", 6, "Brilliant: komissiya (%)", "Do'konlar", 0, 30),
+    "shop_th_2": Spec("money", 5_000_000, "Kumush: savdo summasi (so'm)", "Do'konlar", 1, 10_000_000_000),
+    "shop_th_3": Spec("money", 20_000_000, "Oltin: savdo summasi (so'm)", "Do'konlar", 1, 10_000_000_000),
+    "shop_th_4": Spec("money", 50_000_000, "Brilliant: savdo summasi (so'm)", "Do'konlar", 1, 10_000_000_000),
     "partner_min_views": Spec("money", 3_000, "Eng kam ko'rish", "Hamkor dasturi", 0, 100_000_000),
     "partner_count_days": Spec("money", 10, "Ko'rishlar necha kundan keyin hisoblanadi", "Hamkor dasturi", 1, 60),
     "partner_interval_days": Spec("money", 2, "Necha kunda 1 ta video", "Hamkor dasturi", 0, 60),

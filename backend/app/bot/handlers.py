@@ -82,7 +82,7 @@ async def ensure_user(tg_user, ref: int | None = None) -> User:
 
 DEEP_PAGES = {"admin": "Admin panel", "listing": "E'lonni ochish", "deal": "Bitimni ochish", "chat": "Chatni ochish",
               "boost": "Buyurtmani ochish", "rental": "Ijarani ochish", "arena": "Turnirni ochish", "wallet": "Hamyonni ochish",
-              "partner": "Hamkor", "booster": "Booster", "rent": "Ijara", "history": "Tarix", "my-listings": "E'lonlarim"}
+              "partner": "Hamkor", "shop": "Do'kon", "booster": "Booster", "rent": "Ijara", "history": "Tarix", "my-listings": "E'lonlarim"}
 
 
 def deep_link_path(arg: str | None) -> tuple[str, str] | None:
@@ -108,6 +108,21 @@ async def start(message: Message, command: CommandObject):
     if command.args and command.args.startswith("ref_") and command.args[4:].isdigit():
         ref = int(command.args[4:])
     await ensure_user(message.from_user, ref)
+    if command.args and command.args.startswith("shop_"):
+        from sqlalchemy import select
+
+        from app.models import Shop
+        from app.services import shops
+
+        async with SessionLocal() as session, session.begin():
+            u = await session.get(User, message.from_user.id)
+            await shops.attach(session, u, command.args[5:])
+            shop = await session.get(Shop, u.shop_id) if u.shop_id else await session.scalar(select(Shop).where(Shop.slug == shops.clean_slug(command.args[5:])))
+        if shop:
+            await message.answer(f"🏪 {shop.name}\n{shop.tagline}\n\n💎 Donat, Premium va Stars shu yerda — tez va xavfsiz." if shop.tagline
+                                 else f"🏪 {shop.name}\n\n💎 Donat, Premium va Stars shu yerda — tez va xavfsiz.",
+                                 reply_markup=open_app_kb("🏪 Do'konni ochish", "/"))
+            return
     deep = deep_link_path(command.args)
     if deep and not (deep[0] == "/admin" and not is_admin(message.from_user.id)):
         await message.answer("👇 Ochish uchun tugmani bosing", reply_markup=open_app_kb(f"📲 {deep[1]}", deep[0]))

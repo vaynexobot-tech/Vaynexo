@@ -10,7 +10,7 @@ from app.config import settings
 from app.errors import AppError, BadState, Forbidden, NotFound
 from app.models import BoostOrder, TgOrder, Tournament, TournamentEntry, User, Withdrawal
 from app.security import encrypt
-from app.services import catalog, wallet
+from app.services import catalog, shops, wallet
 from app.services.notify import Outbox, fmt, webapp_button
 
 USERNAME_RE = re.compile(r"^@?[A-Za-z][A-Za-z0-9_]{3,31}$")
@@ -97,6 +97,7 @@ async def resolve_tg_order(session: AsyncSession, order_id: int, action: str, no
     if action == "done":
         order.status = "done"
         await wallet.add_ticket(session, order.user_id)
+        await shops.on_sale(session, order.user_id, "tg", order.id, order.price)
         out.user(order.user_id, f"✅ {order.title} bajarildi ({order.target_username}).")
     elif action == "refund":
         order.status = "refunded"

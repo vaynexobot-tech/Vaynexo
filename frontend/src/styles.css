@@ -589,3 +589,10 @@ button.adm2-it:active, .adm2-plain:active { background: rgba(255, 255, 255, 0.03
 .arena-t { font-weight: 800; font-size: 16px; letter-spacing: -.01em; }
 .arena-s { font-size: 12px; color: var(--mut); line-height: 1.3; }
 .arena-badge { position: absolute; top: 10px; right: 10px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--y); color: #111; font-weight: 800; font-size: 12px; display: grid; place-items: center; z-index: 1; }
+
+/* ---------------- Do'konlar ---------------- */
+.shop-levels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.shop-lvl { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); text-align: center; }
+.shop-lvl b { font-size: 16px; }
+.shop-lvl.on { border-color: var(--y); background: linear-gradient(160deg, rgba(255,214,10,.16), var(--card)); }
+.shop-banner { background: linear-gradient(135deg, rgba(29,233,182,.14), var(--card)); border-color: rgba(29,233,182,.35); }

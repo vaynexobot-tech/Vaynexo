@@ -81,7 +81,7 @@ async def add_ticket(session: AsyncSession, user_id: int, n: int = 1) -> None:
 
 
 # ---------------------------------------------------------------- hamyon ID va yechish mumkin bo'lgan summa
-EARN_KINDS = ("deal_payout", "rent_payout", "boost_payout")
+EARN_KINDS = ("deal_payout", "rent_payout", "boost_payout", "shop_commission")
 
 
 def format_wallet_id(w: str | None) -> str | None:

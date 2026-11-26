@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.errors import AppError, BadState, NotFound
 from app.models import DonateGame, DonateOrder, DonatePackage
 from app.providers import get_provider
-from app.services import wallet
+from app.services import shops, wallet
 from app.services.notify import Outbox, fmt, webapp_button
 
 MAX_CREATE_ATTEMPTS = 3
@@ -112,6 +112,7 @@ async def _finish_success(session: AsyncSession, order: DonateOrder, ref: str | 
     order.finished_at = _now()
     order.error = None
     await wallet.add_ticket(session, order.user_id)
+    await shops.on_sale(session, order.user_id, "donate", order.id, order.price)
     if artifact:
         import json
 

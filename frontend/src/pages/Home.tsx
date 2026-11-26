@@ -122,6 +122,20 @@ export default function Home() {
           <button className="btn small ghost" onClick={() => nav("/wallet")}>+ {t("To'ldirish")}</button>
         </div>
 
+        {me?.shop && (
+          <div className="card row shop-banner">
+            <span style={{ fontSize: 26 }}>🏪</span>
+            <div><div className="b">{me.shop.name}</div><div className="mut xs">{me.shop.tagline || t("sizga tavsiya qilgan do'kon")}</div></div>
+          </div>
+        )}
+
+        <div className="card click row between" onClick={() => nav("/shop")}>
+          <div className="row"><span style={{ fontSize: 30 }}>🏪</span>
+            <div><div className="b">{t("O'z do'koningni och")}</div><div className="mut xs">{t("Do'stlaring xarididan komissiya ol")}</div></div>
+          </div>
+          <span className="mono y b">3–6% ›</span>
+        </div>
+
         {f.top && (
           <div className="card click row between" onClick={() => nav("/top")}>
             <div className="row">

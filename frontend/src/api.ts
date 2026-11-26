@@ -150,6 +150,7 @@ export interface Me {
   referral_bonus: number;
   referral_min_topup: number;
   ref_link: string | null;
+  shop?: { name: string; tagline: string } | null;
   ref_invited: number;
   ref_paid: number;
   ref_earned: number;

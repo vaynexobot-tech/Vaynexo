@@ -57,6 +57,7 @@ class User(TimestampMixin, Base):
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
     referrer_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))
     referral_paid: Mapped[bool] = mapped_column(Boolean, default=False)
+    shop_id: Mapped[int | None] = mapped_column(BigInteger, index=True)  # qaysi do'kon orqali kelgan (birinchi marta)
     # Identifikatsiya: none | pending | verified | rejected
     kyc_status: Mapped[str] = mapped_column(String(16), default="none", server_default="none", index=True)
     kyc_note: Mapped[str | None] = mapped_column(String(300))
@@ -731,3 +732,30 @@ class PromoRedemption(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     promo_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("promo_codes.id"), index=True)
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+
+
+# ---------------------------------------------------------------- do'konlar (komissiya)
+class Shop(TimestampMixin, Base):
+    __tablename__ = "shops"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    owner_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), unique=True)
+    slug: Mapped[str] = mapped_column(String(24), unique=True)
+    name: Mapped[str] = mapped_column(String(48))
+    tagline: Mapped[str] = mapped_column(String(120), default="", server_default="")
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+
+class ShopSale(TimestampMixin, Base):
+    __tablename__ = "shop_sales"
+    __table_args__ = (UniqueConstraint("kind", "order_id", name="uq_shop_sale_order"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    shop_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("shops.id"), index=True)
+    buyer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
+    kind: Mapped[str] = mapped_column(String(16))  # donate | tg
+    order_id: Mapped[int] = mapped_column(BigInteger)
+    amount: Mapped[int] = mapped_column(BigInteger)
+    commission: Mapped[int] = mapped_column(BigInteger)
+    pct: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(12), default="paid", server_default="paid")

@@ -115,6 +115,7 @@ export function useAction() {
 // ---------------------------------------------------------------- ikonkalar
 const P: Record<string, ReactNode> = {
   home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />,
+  coin: <><circle cx="12" cy="12" r="9" /><path d="M14.6 9.3c-.5-.8-1.5-1.3-2.6-1.3-1.6 0-2.6.8-2.6 2 0 2.6 5.2 1.3 5.2 4 0 1.2-1.1 2.1-2.6 2.1-1.3 0-2.3-.5-2.8-1.5M12 6.3V8m0 8v1.7" /></>,
   ai: <path d="M12 3l1.8 4.6L18 9.5l-4.2 1.8L12 16l-1.8-4.7L6 9.5l4.2-1.9zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z" />,
   arena: <path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 17.5 21 6V3h-3L6.5 14.5M11 19l-6-6M8 16l-4 4M5 21l-2-2" />,
   settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></>,
@@ -270,7 +271,7 @@ export function BottomNav() {
   }
   const items = [
     { to: "/", icon: "home", label: t("Bosh sahifa") },
-    on("partner") ? { to: "/partner", icon: "play", label: t("Hamkor") } : { to: "/wallet", icon: "wallet", label: t("Hamyon") },
+    on("partner") ? { to: "/partner", icon: "coin", label: t("Daromad") } : { to: "/wallet", icon: "wallet", label: t("Hamyon") },
     on("arena") ? { to: "/arena", icon: "arena", label: t("Arena") } : { to: "/history", icon: "clock", label: t("Tarix") },
     { to: "/settings", icon: "settings", label: t("Sozlamalar") },
   ];

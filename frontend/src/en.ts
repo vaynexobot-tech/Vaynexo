@@ -1482,4 +1482,6 @@ export const en: Record<string, string> = {
   "Tanlov qabul qilindi": "Pick accepted",
   "Jonli statistika hozircha yo'q.": "No live stats yet.",
   "Barcha o'yinlar": "All games",
+  "Daromad": "Earn",
+  "Video, efir, auksion, do'kon — pul ishlang": "Video, stream, auction, shop — earn money",
 };

@@ -1495,4 +1495,6 @@ export const ru: Record<string, string> = {
   "Tanlov qabul qilindi": "Выбор принят",
   "Jonli statistika hozircha yo'q.": "Живой статистики пока нет.",
   "Barcha o'yinlar": "Все игры",
+  "Daromad": "Доход",
+  "Video, efir, auksion, do'kon — pul ishlang": "Видео, стрим, аукцион, магазин — зарабатывайте",
 };

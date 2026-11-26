@@ -33,7 +33,7 @@ export default function Partner() {
   const [tab, setTab] = useState<"rewards" | "code" | "send" | "ideas" | "top" | "rules">("rewards");
   return (
     <>
-      <Header title={t("Hamkor")} sub={t("Video joylang — mukofot oling")} back={false} icon="play" />
+      <Header title={t("Daromad")} sub={t("Video, efir, auksion, do'kon — pul ishlang")} back={false} icon="coin" />
       <div className="page">
         <Loadable state={st}>
           {(d) => (

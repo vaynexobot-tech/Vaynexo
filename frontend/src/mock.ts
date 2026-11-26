@@ -894,6 +894,7 @@ on("POST", "/ai/describe", (_m, b) => ({ title: `${b.rank || "Mythic"} akkaunt �
 // ---------------------------------------------------------------- Premium bo'limlar (demo)
 const LV4 = [["🥉", "Bronza", 3, 0], ["🥈", "Kumush", 4, 5_000_000], ["🥇", "Oltin", 5, 20_000_000], ["💎", "Brilliant", 6, 50_000_000]] as const;
 state.me.plus = false; state.me.vay = { xp: 620, name: "Jangchi", icon: "⚔️", level: 2 };
+const DEMO_QR = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" shape-rendering="crispEdges"><rect width="29" height="29" fill="#fff"/><path fill="#111" d="M2 2h7v7H2zM20 2h7v7h-7zM2 20h7v7H2zM11 2h2v2h-2zM14 5h3v2h-3zM11 9h4v2h-4zM17 11h3v3h-3zM11 14h2v3h-2zM15 16h3v2h-3zM20 14h5v2h-5zM12 20h3v3h-3zM17 21h4v2h-4zM22 19h3v3h-3zM11 25h5v2h-5zM22 25h3v2h-3z"/></svg>`;
 const demo: Json = {
   shop: null as Json, plus: null as Json, savings: [] as Json[], streamer: null as Json, proProfile: null as Json,
   plusAuto: null as Json,
@@ -911,11 +912,12 @@ const savingsView = () => ({ enabled: true, bonus_pct: 3, min_days: 14, items: d
 const shopView = () => {
   const sh = demo.shop;
   const lv = { level: 1, key: "bronze", name: "Bronza", icon: "🥉", pct: 3, from: 0, next: { name: "Kumush", icon: "🥈", pct: 4, need: 3_800_000, at: 5_000_000 } };
-  return { enabled: true, levels: LV4.map(([icon, name, pct, from]) => ({ icon, name, pct, from })), shop: sh ? { ...sh, active: true, link: `https://t.me/VaynexoBot?start=shop_${sh.slug}` } : null,
+  return { enabled: true, levels: LV4.map(([icon, name, pct, from]) => ({ icon, name, pct, from })), shop: sh ? { ...sh, active: true, link: `https://t.me/VaynexoBot?start=shop_${sh.slug}`, qr: "data:image/svg+xml;utf8," + encodeURIComponent(DEMO_QR) } : null,
     ...(sh ? { level: lv, sales_total: 1_200_000, rank: 3, stats: { customers: 14, buyers: 6, orders: 9, earned: 36_000, week: { orders: 3, earned: 11_000 }, today: { orders: 1, earned: 4_000 } } } : {}) };
 };
 on("GET", "/shop/my", () => shopView());
 on("POST", "/shop", (_m, b) => { demo.shop = { slug: b.slug, name: b.name, tagline: b.tagline }; return shopView(); });
+on("POST", "/shop/card", () => ({ ok: true }));
 on("PUT", "/shop", (_m, b) => { Object.assign(demo.shop, { name: b.name ?? demo.shop.name, tagline: b.tagline ?? demo.shop.tagline }); return shopView(); });
 on("GET", "/shop/top", () => ({ items: [
   { place: 1, name: "Sardor Gaming", slug: "sardor", icon: "🥇", level: "Oltin", orders: 61, sales: 24_300_000 },

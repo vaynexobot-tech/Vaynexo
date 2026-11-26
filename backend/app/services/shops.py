@@ -93,7 +93,7 @@ async def sales_total(session: AsyncSession, shop_id: int) -> int:
     return int(await session.scalar(select(func.coalesce(func.sum(ShopSale.amount), 0)).where(ShopSale.shop_id == shop_id, ShopSale.status == "paid")) or 0)
 
 
-async def on_sale(session: AsyncSession, buyer_id: int, kind: str, order_id: int, amount: int) -> ShopSale | None:
+async def on_sale(session: AsyncSession, buyer_id: int, kind: str, order_id: int, amount: int, out=None) -> ShopSale | None:
     """Buyurtma bajarilganda chaqiriladi: biriktirilgan do'kon egasiga komissiya. Qayta chaqirsa ham ikki marta bermaydi."""
     buyer = await session.get(User, buyer_id)
     if buyer is None or not buyer.shop_id or amount <= 0:
@@ -110,6 +110,16 @@ async def on_sale(session: AsyncSession, buyer_id: int, kind: str, order_id: int
     await session.flush()
     if commission > 0:
         await wallet.credit(session, shop.owner_id, commission, "shop_commission", f"shop_sale:{kind}:{order_id}", ref_type="shop", ref_id=shop.id)
+        if out is not None:
+            from app.services.notify import fmt, webapp_button
+
+            name = (buyer.first_name or "Mijoz")[:24]
+            total = await sales_total(session, shop.id)
+            new = await level_info(session, total)
+            msg = f"🏪 {shop.name}: {name} {fmt(amount)} lik xarid qildi!\n💰 Sizga +{fmt(commission)} ({info['pct']}%) hamyonga tushdi."
+            if new["level"] > info["level"]:
+                msg += f"\n\n🎉 Yangi daraja: {new['icon']} {new['name']}! Endi komissiya {new['pct']}%."
+            out.user(shop.owner_id, msg, webapp_button("Do'kon paneli", "/shop"))
     return sale
 
 
@@ -132,7 +142,8 @@ async def overview(session: AsyncSession, user: User, bot_username: str) -> dict
     return {
         "enabled": await enabled(session), "levels": await levels_table(session),
         "shop": {"slug": shop.slug, "name": shop.name, "tagline": shop.tagline, "active": shop.active,
-                 "link": f"https://t.me/{bot_username}?start=shop_{shop.slug}" if bot_username else None},
+                 "link": shop_link(bot_username, shop.slug) if bot_username else None,
+                 "qr": qr_svg_uri(shop_link(bot_username, shop.slug)) if bot_username else None},
         "level": info, "sales_total": total,
         "stats": {"customers": customers, "buyers": buyers, "orders": int(orders), "earned": int(earned),
                   "week": {"orders": int(o_week), "earned": int(e_week)}, "today": {"orders": int(o_day), "earned": int(e_day)}},
@@ -158,3 +169,82 @@ async def top(session: AsyncSession, days: int = 30, limit: int = 10) -> list[di
         info = await level_info(session, await sales_total(session, shop.id))
         out.append({"place": i + 1, "name": shop.name, "slug": shop.slug, "icon": info["icon"], "level": info["name"], "orders": int(n), "sales": int(s or 0)})
     return out
+
+
+# ---------------------------------------------------------------- QR va reklama rasmi
+def shop_link(bot_username: str, slug: str) -> str:
+    return f"https://t.me/{bot_username}?start=shop_{slug}"
+
+
+def qr_svg_uri(link: str) -> str:
+    """Panelda ko'rsatish uchun QR (data URI, SVG)."""
+    import segno
+    from urllib.parse import quote
+
+    svg = segno.make(link, error="m").svg_inline(scale=6, border=2, dark="#111111", light="#ffffff")
+    return "data:image/svg+xml;utf8," + quote(svg)
+
+
+def _latin(text: str) -> str:
+    """Rasm shrifti faqat lotin harflarini biladi: tire, tutuq belgisi va emoji'lar tozalanadi."""
+    mapped = text.replace("—", "-").replace("–", "-").replace("·", "-").replace("ʻ", "'").replace("ʼ", "'").replace("’", "'").replace("‘", "'")
+    return "".join(ch for ch in mapped if ord(ch) < 0x250).strip()
+
+
+def promo_card_png(name: str, tagline: str, link: str, level_name: str = "", pct: int = 0) -> bytes:
+    """Kanal/guruhga qo'yish uchun reklama rasmi: do'kon nomi, tavsif, QR va havola (1080x1350)."""
+    import io
+
+    import segno
+    from PIL import Image, ImageDraw, ImageFont
+
+    name, tagline = _latin(name) or "VAYNEXO", _latin(tagline)
+    W, H = 1080, 1350
+    img = Image.new("RGB", (W, H), "#0d0e13")
+    d = ImageDraw.Draw(img)
+    for y in range(H):  # yuqoridan pastga yumshoq gradient
+        k = y / H
+        d.line([(0, y), (W, y)], fill=(int(13 + 22 * (1 - k)), int(14 + 26 * (1 - k)), int(19 + 40 * (1 - k))))
+    d.rounded_rectangle([60, 60, W - 60, H - 60], radius=48, outline="#ffd60a", width=4)
+    f = lambda s: ImageFont.load_default(size=s)  # noqa: E731
+
+    def center(text: str, y: int, size: int, fill: str, maxw: int = W - 200) -> int:
+        font = f(size)
+        while d.textlength(text, font=font) > maxw and size > 24:
+            size -= 4
+            font = f(size)
+        d.text(((W - d.textlength(text, font=font)) / 2, y), text, font=font, fill=fill)
+        return y + size + 24
+
+    y = center("VAYNEXO", 120, 40, "#ffd60a")
+    y = center("🏪 DONAT DO'KONI".replace("🏪 ", ""), y + 10, 34, "#9aa0b4")
+    y = center(name, y + 50, 96, "#ffffff")
+    if tagline:
+        words, lines, cur = tagline.split(), [], ""
+        for w in words:
+            t = (cur + " " + w).strip()
+            if d.textlength(t, font=f(40)) > W - 260 and cur:
+                lines.append(cur)
+                cur = w
+            else:
+                cur = t
+        lines.append(cur)
+        for ln in lines[:3]:
+            y = center(ln, y, 40, "#c9cde0")
+    qr = segno.make(link, error="m")
+    n = qr.symbol_size(border=0)[0]
+    cell = 12
+    pad = 28
+    side = n * cell + pad * 2
+    qx, qy = (W - side) // 2, max(y + 40, 600)
+    d.rounded_rectangle([qx, qy, qx + side, qy + side], radius=28, fill="#ffffff")
+    for r, row in enumerate(qr.matrix):
+        for c, v in enumerate(row):
+            if v:
+                d.rectangle([qx + pad + c * cell, qy + pad + r * cell, qx + pad + (c + 1) * cell - 1, qy + pad + (r + 1) * cell - 1], fill="#111111")
+    y = qy + side + 40
+    y = center("Skanerlang yoki havolani bosing", y, 38, "#ffffff")
+    center(link.replace("https://", ""), y, 34, "#ffd60a")
+    out = io.BytesIO()
+    img.save(out, "PNG", optimize=True)
+    return out.getvalue()

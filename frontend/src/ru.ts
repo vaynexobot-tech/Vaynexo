@@ -1397,4 +1397,7 @@ export const ru: Record<string, string> = {
   "Efirda almaz va pul donati": "Донаты алмазами и деньгами",
   "O'yin joyini auksionda soting": "Продавайте место в игре на аукционе",
   "Mijozlardan 3–6% komissiya": "3–6% комиссии с клиентов",
+  "QR-kod: kanal, stream yoki do'koningiz rasmiga qo'ying. Skanerlagan odam sizning mijozingiz bo'ladi.": "QR-код: разместите в канале, на стриме или картинке магазина. Кто отсканирует — станет вашим клиентом.",
+  "Reklama rasmi botga yuborildi": "Рекламная картинка отправлена в бот",
+  "Reklama rasmini botga yubor": "Отправить рекламную картинку в бот",
 };

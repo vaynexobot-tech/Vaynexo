@@ -8,7 +8,7 @@ interface Level { level: number; name: string; icon: string; pct: number; from: 
 interface Overview {
   enabled: boolean;
   levels: { name: string; icon: string; pct: number; from: number }[];
-  shop: { slug: string; name: string; tagline: string; active: boolean; link: string | null } | null;
+  shop: { slug: string; name: string; tagline: string; active: boolean; link: string | null; qr?: string | null } | null;
   level?: Level;
   sales_total?: number;
   rank?: number;
@@ -90,6 +90,7 @@ function MyShop({ d, reload }: { d: Overview; reload: () => void }) {
   const share = () => link && openTg(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(`${s.name} — ${s.tagline || t("Donat, Premium va Stars")}`)}`);
   const span = lv.next ? lv.next.at - lv.from : 1;
   const pct = lv.next ? Math.min(100, Math.max(0, Math.round(((d.sales_total! - lv.from) / span) * 100))) : 100;
+  const { toast } = useApp();
   const [edit, setEdit] = useState(false);
   const [name, setName] = useState(s.name);
   const [tag, setTag] = useState(s.tagline);
@@ -112,6 +113,13 @@ function MyShop({ d, reload }: { d: Overview; reload: () => void }) {
         <div className="mut xs">{t("Do'kon havolangiz")}</div>
         {link ? <Copy value={link} /> : <div className="mut sm">{t("Havola tez orada paydo bo'ladi")}</div>}
         <button className="btn full" disabled={!link} onClick={share}>{t("Telegramda ulashish")}</button>
+        {s.qr && (
+          <div className="row" style={{ alignItems: "center", gap: 14 }}>
+            <img src={s.qr} alt="QR" style={{ width: 120, height: 120, borderRadius: 12, background: "#fff", flexShrink: 0 }} />
+            <div className="mut xs">{t("QR-kod: kanal, stream yoki do'koningiz rasmiga qo'ying. Skanerlagan odam sizning mijozingiz bo'ladi.")}</div>
+          </div>
+        )}
+        <button className="btn ghost full" disabled={busy} onClick={() => run(async () => { await api.post("/shop/card"); toast(t("Reklama rasmi botga yuborildi"), "ok"); })}>🖼 {t("Reklama rasmini botga yubor")}</button>
       </div>
 
       <div className="grid3 center">

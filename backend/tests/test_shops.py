@@ -77,3 +77,44 @@ async def test_disabled_shop_gives_no_commission(api, monkeypatch):
     monkeypatch.setattr(app_settings, "get_value", off)
     async with SessionLocal() as s, s.begin():
         assert await shops.on_sale(s, 20, "donate", 1, 100_000) is None
+
+
+async def test_owner_gets_sale_message_and_level_up(api):
+    from app.services.notify import Outbox
+
+    await _open_shop(api)
+    await set_balance(20, 0)
+    async with SessionLocal() as s, s.begin():
+        await shops.attach(s, await s.get(User, 20), "kanalim")
+    out = Outbox()
+    async with SessionLocal() as s, s.begin():
+        await shops.on_sale(s, 20, "donate", 1, 36_000, out)
+    uid, text, _ = out.items[0]
+    assert uid == 10 and "+1 080" in text and "3%" in text and "Yangi daraja" not in text
+    out = Outbox()
+    async with SessionLocal() as s, s.begin():
+        await shops.on_sale(s, 20, "donate", 2, 5_000_000, out)
+    assert "Yangi daraja" in out.items[0][1] and "Kumush" in out.items[0][1]
+
+
+async def test_qr_and_promo_card(api, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "bot_username", "vaynexobot")
+    j = await _open_shop(api)
+    assert j["shop"]["link"] == "https://t.me/vaynexobot?start=shop_kanalim"
+    assert j["shop"]["qr"].startswith("data:image/svg+xml")
+    png = shops.promo_card_png("Kanalim do'koni", "Eng arzon almaz — kanal obunachilariga", j["shop"]["link"])
+    assert png[:8] == b"\x89PNG\r\n\x1a\n" and len(png) > 5_000
+    sent = []
+
+    class FakeBot:
+        async def send_photo(self, chat_id, photo, caption=None):
+            sent.append((chat_id, caption))
+
+    import app.bot.instance as inst
+
+    monkeypatch.setattr(inst, "get_bot", lambda: FakeBot())
+    r = await api(10).post("/shop/card")
+    assert r.status_code == 200 and sent[0][0] == 10 and "start=shop_kanalim" in sent[0][1]
+    assert (await api(11).post("/shop/card")).status_code == 404  # do'koni yo'q

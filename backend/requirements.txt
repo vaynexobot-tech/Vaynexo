@@ -13,3 +13,4 @@ python-multipart==0.0.20
 httpx==0.28.1
 anthropic==2.8.0
 telethon==1.45.0
+segno==1.6.1

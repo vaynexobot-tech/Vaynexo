@@ -97,7 +97,7 @@ async def resolve_tg_order(session: AsyncSession, order_id: int, action: str, no
     if action == "done":
         order.status = "done"
         await wallet.add_ticket(session, order.user_id)
-        await shops.on_sale(session, order.user_id, "tg", order.id, order.price)
+        await shops.on_sale(session, order.user_id, "tg", order.id, order.price, out)
         from app.services import plus
 
         await plus.on_purchase(session, order.user_id, "tg", order.id, order.price)

@@ -18,7 +18,7 @@ from decimal import Decimal, InvalidOperation
 
 import httpx
 
-from app.providers.base import ProviderResult
+from app.providers.base import ProviderAuthError, ProviderResult
 
 log = logging.getLogger(__name__)
 
@@ -122,7 +122,7 @@ class FazerCardsProvider:
             code, msg = _err(r)
             if code == "subscription_inactive":
                 raise RuntimeError("API obunasi faol emas (kabinetda rejani yoqing yoki sinovni boshlang)")
-            raise RuntimeError("API kalit noto'g'ri, bekor qilingan yoki bu hisobga ruxsat yo'q" + (f" ({msg})" if msg else ""))
+            raise ProviderAuthError("API kalit noto'g'ri, bekor qilingan yoki bu hisobga ruxsat yo'q" + (f" ({msg})" if msg else ""))
         if r.status_code == 429:
             raise RuntimeError("So'rovlar juda ko'p (429) — birozdan keyin urinib ko'ring")
         r.raise_for_status()

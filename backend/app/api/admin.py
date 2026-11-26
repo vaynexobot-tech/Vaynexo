@@ -890,6 +890,17 @@ def _provider_dict(p: DonateProvider) -> dict:
                             if p.kind in ("yupay", "fazercards") else None)}
 
 
+def _kind_from(key: str, url: str) -> str | None:
+    """Kalit hech qachon boshqa saytga «sinab ko'rish» uchun yuborilmaydi — tur faqat kalit ko'rinishi va manzildan."""
+    if key.startswith("ypk_") or "yupay" in url:
+        return "yupay"
+    if "uzpinhub" in url:
+        return "uzpinhub"
+    if "fzr.cards" in url or "fazercards" in url:
+        return "fazercards"
+    return "http" if url.startswith("https://") else None
+
+
 @router.get("/donate/providers")
 async def donate_providers(admin: AdminUser, session: SessionDep):
     rows = list(await session.scalars(select(DonateProvider).order_by(DonateProvider.id)))
@@ -907,10 +918,10 @@ async def donate_provider_create(body: ProviderIn, admin: AdminUser, session: Se
     if not key:
         raise AppError("no_key", "API kalitni kiriting")
     if body.kind == "auto":  # turi kalit va manzildan aniqlanadi — admin sayt nomini tanlamaydi
-        url = body.base_url.strip()
-        # kalit hech qachon boshqa saytga «sinab ko'rish» uchun yuborilmaydi — faqat kalit ko'rinishi va manzildan
-        body.kind = ("yupay" if key.startswith("ypk_") else "uzpinhub" if "uzpinhub" in url
-                     else "http" if url and "fzr.cards" not in url else "fazercards")
+        body.kind = _kind_from(key, body.base_url.strip())
+        if body.kind is None:
+            raise AppError("need_url", "API manzilini kiriting (API hujjatining boshida yozilgan, https://... bilan boshlanadi). "
+                                       "Manzilsiz kalit qaysi saytniki ekanini aniqlab bo'lmaydi")
     if body.kind == "http" and not body.base_url.startswith("https://"):
         raise AppError("bad_url", "Manzil https:// bilan boshlansin")
     async with session.begin():
@@ -947,8 +958,11 @@ async def donate_provider_update(pid: int, body: ProviderIn, admin: AdminUser, s
         p = await session.get(DonateProvider, pid)
         if p is None:
             raise NotFound("Provayder")
-        if p.kind == "http" and body.kind in ("yupay", "fazercards"):
-            p.kind = body.kind  # turni tuzatish (masalan, FazerCards adashib «Boshqa API» deb qo'shilgan)
+        if p.kind == "http" and body.kind in ("yupay", "fazercards", "uzpinhub"):
+            p.kind = body.kind
+        by_url = _kind_from("", body.base_url.strip()) if body.base_url.strip() else None
+        if by_url in ("uzpinhub", "fazercards", "yupay") and by_url != p.kind:
+            p.kind, p.last_error = by_url, None  # turi manzildan tuzatildi  # turni tuzatish (masalan, FazerCards adashib «Boshqa API» deb qo'shilgan)
         p.name, p.base_url, p.is_active = body.name.strip(), _norm_base(p.kind, body.base_url), body.is_active
         old = {k: v for k, v in (p.config or {}).items() if k.endswith("_enc")}  # shifrlangan sirlar UI'dan kelmaydi — saqlab qolamiz
         if body.config is not None or (body.webhook_secret or "").strip():

@@ -450,16 +450,16 @@ function ProvidersAdmin() {
                 <Field label={edit.id && edit.key_set ? "API kalit (o'zgartirmaslik uchun bo'sh qoldiring)" : "API kalit"}><input className="input mono" type="password" autoComplete="off" autoCapitalize="off" value={edit.api_key ?? ""} onChange={(e) => setEdit({ ...edit, api_key: e.target.value.trim() })} placeholder="API kalitni shu yerga qo'ying" /></Field>
                 {edit.kind === "fazercards" && <Field label={edit.webhook_secret_set ? "Vebhuk siri (o'zgartirmaslik uchun bo'sh qoldiring)" : "Vebhuk siri (ixtiyoriy — tezroq yetkazish uchun)"}><input className="input mono" type="password" autoComplete="off" autoCapitalize="off" value={edit.webhook_secret ?? ""} onChange={(e) => setEdit({ ...edit, webhook_secret: e.target.value.trim() })} /></Field>}
                 <div className="row between"><span className="sm">Faol</span><Toggle on={edit.is_active ?? true} onChange={(v) => setEdit({ ...edit, is_active: v })} /></div>
-                <button className="btn small ghost" onClick={() => setAdv(!adv)}>{adv ? "Qo'shimchani yopish" : "Qo'shimcha sozlamalar"}</button>
+                <Field label="API manzili (hujjat boshida yozilgan; ypk_ bilan boshlanadigan kalitga shart emas)"><input className="input mono" inputMode="url" autoCapitalize="off" value={edit.base_url ?? ""} onChange={(e) => setEdit({ ...edit, base_url: e.target.value.trim() })} placeholder="https://..." /></Field>
+                {edit.kind === "http" && <button className="btn small ghost" onClick={() => setAdv(!adv)}>{adv ? "Qo'shimchani yopish" : "Qo'shimcha sozlamalar"}</button>}
                 {adv && (
                   <>
-                    <Field label="Manzil (ixtiyoriy — odatda bo'sh qoldiriladi)"><input className="input mono" inputMode="url" autoCapitalize="off" value={edit.base_url ?? ""} onChange={(e) => setEdit({ ...edit, base_url: e.target.value })} placeholder="https://..." /></Field>
                     {edit.kind === "http" && (["auth_header", "auth_prefix", "check_path", "create_path", "status_path", "balance_path"] as const).map((k) => (
                       <Field key={k} label={k}><input className="input mono" value={edit.config?.[k] ?? ""} onChange={(e) => setEdit({ ...edit, config: { ...(edit.config ?? {}), [k]: e.target.value } })} /></Field>
                     ))}
                   </>
                 )}
-                <div className="mut xs">Kalit faqat shu so'rovda yuboriladi, serverda shifrlanadi va keyin ko'rsatilmaydi. API turi kalitdan avtomatik aniqlanadi; API hujjatida manzil berilgan bo'lsa, «Qo'shimcha sozlamalar → Manzil»ga yozing. Kalitda IP ro'yxati bo'lsa, bo'sh qoldiring. Yangi o'yinlar yashirin holatda keladi — Katalogdan yoqing.</div>
+                <div className="mut xs">Kalit faqat shu so'rovda yuboriladi, serverda shifrlanadi va keyin ko'rsatilmaydi. API turi kalit va manzildan avtomatik aniqlanadi. Kalitda IP ro'yxati bo'lsa, bo'sh qoldiring. Yangi o'yinlar yashirin holatda keladi — Katalogdan yoqing.</div>
                 <div className="row">
                   <button className="btn grow" disabled={busy || (edit.name ?? "").trim().length < 2 || (!edit.id && !edit.api_key)} onClick={save}>Saqlash</button>
                   {edit.id && <button className="btn danger" disabled={busy} onClick={async () => {

@@ -140,7 +140,13 @@ async def test_provider_kind_auto_detected_and_names_hidden(api, monkeypatch):
 
     monkeypatch.setattr(donate_catalog, "sync_provider", no_sync)
     a = (await api(1).post("/admin/donate/providers", json={"name": "API 1", "api_key": "ypk_test123"})).json()
-    b = (await api(1).post("/admin/donate/providers", json={"name": "API 2", "api_key": "fz_abc"})).json()
+    b = (await api(1).post("/admin/donate/providers", json={"name": "API 2", "api_key": "fz_abc", "base_url": "https://api.fzr.cards/api/v2"})).json()
     assert (a["kind"], b["kind"]) == ("yupay", "fazercards")
     for p in (a, b):
         assert p["kind_label"] == "Donat API" and p["host"] is None and p["base_url"] == ""
+    # manzilsiz noma'lum kalit — taxmin qilinmaydi (kalit boshqa saytga yuborilmasin)
+    r = await api(1).post("/admin/donate/providers", json={"name": "Uzpin", "api_key": "secret123"})
+    assert r.status_code == 400 and r.json()["error"] == "need_url"
+    # noto'g'ri turga tushgan API: tahrirlashda manzil kiritilsa — turi tuzatiladi
+    fixed = (await api(1).put(f"/admin/donate/providers/{b['id']}", json={"name": "Uzpin", "kind": "fazercards", "base_url": "https://api.uzpinhub.uz/api/"})).json()
+    assert fixed["kind"] == "uzpinhub" and fixed["last_error"] is None

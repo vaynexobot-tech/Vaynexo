@@ -891,6 +891,87 @@ on("POST", "/ai/ask", (_m, b) => {
 });
 on("POST", "/ai/describe", (_m, b) => ({ title: `${b.rank || "Mythic"} akkaunt · ${b.skins || 0} skin`, description: `${b.rank || "Mythic"} rankdagi akkaunt, ${b.skins || 0} ta skin va ${b.heroes || 0} ta qahramon. Akkaunt toza, faqat bitta egada bo'lgan.`, left: --aiLeft }));
 
+// ---------------------------------------------------------------- Premium bo'limlar (demo)
+const LV4 = [["🥉", "Bronza", 3, 0], ["🥈", "Kumush", 4, 5_000_000], ["🥇", "Oltin", 5, 20_000_000], ["💎", "Brilliant", 6, 50_000_000]] as const;
+state.me.plus = false; state.me.vay = { xp: 620, name: "Jangchi", icon: "⚔️", level: 2 };
+const demo: Json = {
+  shop: null as Json, plus: null as Json, savings: [] as Json[], streamer: null as Json, proProfile: null as Json,
+  plusAuto: null as Json,
+  slots: [
+    { id: 1, title: "Men bilan 1 ta ranked o'yin (Mythic)", details: "Ovozli chat, efirda ko'rsataman", play_at: new Date(Date.now() + 2 * 86400000).toISOString(), ends_at: new Date(Date.now() + 5 * 3600000).toISOString(), min_bid: 50_000, step: 5_000, price: 85_000, bids: 6, status: "open", next_bid: 90_000, pro: { id: 3001, name: "Aziz Pro", rank: "Mythical Immortal 180★", bio: "MPL UZ ishtirokchisi, Gold lane", link: "https://t.me/azizpro" }, mine: false, winner: false, leading: false },
+    { id: 2, title: "Duo: Mythic Glory yo'lida", details: "", play_at: new Date(Date.now() + 3 * 86400000).toISOString(), ends_at: new Date(Date.now() + 26 * 3600000).toISOString(), min_bid: 30_000, step: 5_000, price: 0, bids: 0, status: "open", next_bid: 30_000, pro: { id: 3002, name: "Dilshod TV", rank: "Mythic Glory", bio: "Striminer, 12K obunachi", link: "" }, mine: false, winner: false, leading: false },
+  ] as Json[],
+};
+const plusView = () => {
+  const p = demo.plus;
+  return { enabled: true, price: 39_000, cashback: 3, active: !!p, until: p?.until ?? null, days_left: p ? 30 : 0, months: p ? 1 : 0, auto_renew: true, cashback_total: p ? 1_110 : 0,
+    auto: demo.plusAuto };
+};
+const savingsView = () => ({ enabled: true, bonus_pct: 3, min_days: 14, items: demo.savings, total_saved: demo.savings.filter((x: Json) => x.status === "active").reduce((a: number, x: Json) => a + x.saved, 0) });
+const shopView = () => {
+  const sh = demo.shop;
+  const lv = { level: 1, key: "bronze", name: "Bronza", icon: "🥉", pct: 3, from: 0, next: { name: "Kumush", icon: "🥈", pct: 4, need: 3_800_000, at: 5_000_000 } };
+  return { enabled: true, levels: LV4.map(([icon, name, pct, from]) => ({ icon, name, pct, from })), shop: sh ? { ...sh, active: true, link: `https://t.me/VaynexoBot?start=shop_${sh.slug}` } : null,
+    ...(sh ? { level: lv, sales_total: 1_200_000, rank: 3, stats: { customers: 14, buyers: 6, orders: 9, earned: 36_000, week: { orders: 3, earned: 11_000 }, today: { orders: 1, earned: 4_000 } } } : {}) };
+};
+on("GET", "/shop/my", () => shopView());
+on("POST", "/shop", (_m, b) => { demo.shop = { slug: b.slug, name: b.name, tagline: b.tagline }; return shopView(); });
+on("PUT", "/shop", (_m, b) => { Object.assign(demo.shop, { name: b.name ?? demo.shop.name, tagline: b.tagline ?? demo.shop.tagline }); return shopView(); });
+on("GET", "/shop/top", () => ({ items: [
+  { place: 1, name: "Sardor Gaming", slug: "sardor", icon: "🥇", level: "Oltin", orders: 61, sales: 24_300_000 },
+  { place: 2, name: "ML Uz Kanal", slug: "mluz", icon: "🥈", level: "Kumush", orders: 33, sales: 9_800_000 },
+  { place: 3, name: "Dilshod TV", slug: "dilshod", icon: "🥉", level: "Bronza", orders: 14, sales: 3_100_000 }] }));
+on("GET", "/vay", () => ({ enabled: true, xp: 620, per: 1000, level: 2, name: "Jangchi", icon: "⚔️", cashback: 1, from: 500,
+  next: { name: "Usta", icon: "🎖", need: 2_380, at: 3_000, cashback: 1 },
+  levels: [["Rekrut", "🪖", 0, 0], ["Jangchi", "⚔️", 500, 1], ["Usta", "🎖", 3_000, 1], ["Legenda", "👑", 10_000, 2]].map(([name, icon, from, cashback]) => ({ name, icon, from, cashback })) }));
+on("GET", "/plus", () => plusView());
+on("POST", "/plus/buy", () => { money(-39_000, "plus"); demo.plus = { until: new Date(Date.now() + 30 * 86400000).toISOString() }; state.me.plus = true; return plusView(); });
+on("PUT", "/plus", (_m, b) => {
+  if (b.clear_auto) demo.plusAuto = null;
+  else if (b.package_id) { const pk = PKGS.find((x) => x.id === b.package_id)! as Json; demo.plusAuto = { package_id: pk.id, title: pk.name, price: pk.price, game: pk.game, player_id: b.player_id, zone_id: b.zone_id, next_at: now() }; }
+  return plusView();
+});
+on("GET", "/savings", () => savingsView());
+on("POST", "/savings", (_m, b) => {
+  const pk = PKGS.find((x) => x.id === b.package_id)! as Json;
+  const first = Math.min(b.first || 0, pk.price);
+  if (first) money(-first, "saving_in");
+  demo.savings.unshift({ id: nid(), title: pk.name, package_id: pk.id, target: pk.price, saved: first, weekly: b.weekly || 0, status: "active", pct: Math.round((first * 100) / pk.price),
+    next_at: null, buy_at: b.buy_at, bonus_pct: 3, bonus_ready: false, bonus_amount: 0, bonus_in_days: null, bonus: 0, order_id: null });
+  return savingsView();
+});
+on("POST", "/savings/:id/deposit", (m, b) => {
+  const x = demo.savings.find((y: Json) => y.id === Number(m[1])); const add = Math.min(b.amount, x.target - x.saved);
+  money(-add, "saving_in"); x.saved += add; x.pct = Math.round((x.saved * 100) / x.target); return savingsView();
+});
+on("POST", "/savings/:id/cancel", (m) => { const x = demo.savings.find((y: Json) => y.id === Number(m[1])); money(x.saved, "saving_out"); x.status = "cancelled"; return savingsView(); });
+on("POST", "/savings/:id/buy", (m) => { const x = demo.savings.find((y: Json) => y.id === Number(m[1])); x.status = "done"; return { order_id: 41, ...savingsView() }; });
+on("GET", "/signals", () => ({ double: !!demo.signal }));
+on("PUT", "/signals/:kind", (_m, b) => { demo.signal = b.on; return { double: b.on }; });
+const streamerView = () => ({ enabled: true, fee: 10, min_money: 5_000, streamer: demo.streamer ? { ...demo.streamer, link: `https://t.me/VaynexoBot?start=stream_${demo.streamer.slug}`,
+  widget: "https://vaynexo.example/api/stream/w/DEMO-TOKEN", total_count: 5, total_packs: 90_000, total_money: 27_000, today: { money: 9_000, count: 2 },
+  items: [{ id: 3, name: "Jasur", kind: "money", title: "10 000 so'm", amount: 10_000, payout: 9_000, message: "Zo'r o'yin! 🔥", at: ago(20), hidden: false },
+    { id: 2, name: "Anonim", kind: "pack", title: "86 almaz", amount: 18_500, payout: 0, message: "", at: ago(240), hidden: false }] } : null });
+on("GET", "/stream/me", () => streamerView());
+on("POST", "/stream/me", (_m, b) => { demo.streamer = { slug: b.slug || demo.streamer?.slug, name: b.name, about: b.about, player_id: b.player_id, zone_id: b.zone_id }; return streamerView(); });
+on("POST", "/stream/me/test", () => ({ ok: true }));
+on("POST", "/stream/me/rotate", () => streamerView());
+on("POST", "/stream/me/hide/:id", () => ({ ok: true }));
+on("GET", "/stream/s/:slug", (m) => ({ slug: m[1], name: m[1] === "aziz_live" ? "Aziz Live" : "Striminer", about: "Har kuni 20:00 da Mythic rank", count: 5, enabled: true, min_money: 5_000,
+  top: [{ name: "Jasur", total: 38_000 }, { name: "Sardor", total: 20_000 }],
+  recent: [{ id: 3, name: "Jasur", kind: "money", title: "10 000 so'm", amount: 10_000, message: "Zo'r o'yin! 🔥", at: ago(20) }] }));
+on("POST", "/stream/s/:slug/donate", (_m, b) => { if (b.kind === "money") money(-b.amount, "stream_donate"); else money(-(PKGS.find((x) => x.id === b.package_id)?.price ?? 0), "stream_donate"); return { ok: true, order_id: null }; });
+const slotView = (x: Json) => ({ ...x, history: [{ amount: x.price || x.min_bid, at: ago(30), me: x.leading }].filter(() => x.bids > 0) });
+on("GET", "/pro", () => ({ items: demo.slots.filter((x: Json) => x.status === "open") }));
+on("GET", "/pro/my", () => ({ enabled: true, fee: 15, min_bid: 20_000, earned: 0, profile: demo.proProfile, own: [], won: demo.slots.filter((x: Json) => x.winner) }));
+on("POST", "/pro/apply", (_m, b) => { demo.proProfile = { ...b, status: "pending", note: "" }; return { enabled: true, fee: 15, min_bid: 20_000, earned: 0, profile: demo.proProfile, own: [], won: [] }; });
+on("GET", "/pro/:id", (m) => slotView(demo.slots.find((x: Json) => x.id === Number(m[1]))));
+on("POST", "/pro/:id/bid", (m, b) => {
+  const x = demo.slots.find((y: Json) => y.id === Number(m[1]));
+  if (b.amount < x.next_bid) throw new MockError("low_bid", `Stavka kamida ${fmt(x.next_bid)}`);
+  money(-b.amount, "pro_bid"); x.price = b.amount; x.bids += 1; x.next_bid = b.amount + x.step; x.leading = true; return slotView(x);
+});
+
 export async function mockRequest(method: string, url: string, body: unknown): Promise<unknown> {
   await new Promise((r) => setTimeout(r, 180)); // tarmoq kechikishi taqlidi
   const [path, qs] = url.split("?");

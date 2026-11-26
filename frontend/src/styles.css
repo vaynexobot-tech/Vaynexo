@@ -573,3 +573,19 @@ button.adm2-it:active, .adm2-plain:active { background: rgba(255, 255, 255, 0.03
 .draft-bar { display: flex; height: 30px; border-radius: 10px; overflow: hidden; font-weight: 800; font-size: 13px; }
 .draft-bar i { display: flex; align-items: center; justify-content: center; font-style: normal; color: #fff; transition: width .3s; }
 .draft-bar i.blue { background: #2f7de0; } .draft-bar i.red { background: #d8465a; }
+
+/* ---------------- Arena hub ---------------- */
+.arena-today { background: linear-gradient(135deg, rgba(255,214,10,.10), rgba(255,214,10,.02) 60%), var(--card); border-color: rgba(255,214,10,.3); gap: 10px; }
+.progress.big { height: 10px; border-radius: 5px; background: rgba(255,255,255,.08); overflow: hidden; }
+.progress.big i { display: block; height: 100%; background: linear-gradient(90deg, var(--y), #ffb300); border-radius: 5px; transition: width .4s; }
+.arena-pred { gap: 12px; border-color: rgba(29,233,182,.35); }
+.arena-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.arena-tile { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px 14px 14px; text-align: left; color: inherit;
+  border-radius: 20px; border: 1px solid var(--line); background: linear-gradient(160deg, #20223a, var(--card)); min-height: 124px; overflow: hidden; }
+.arena-tile::after { content: ""; position: absolute; right: -22px; bottom: -22px; width: 84px; height: 84px; border-radius: 50%; background: rgba(255,255,255,.04); }
+.arena-tile.hot { border-color: rgba(255,214,10,.5); background: linear-gradient(160deg, rgba(255,214,10,.14), var(--card)); }
+.arena-tile:active { transform: scale(.98); }
+.arena-ico { font-size: 30px; line-height: 1; margin-bottom: 6px; }
+.arena-t { font-weight: 800; font-size: 16px; letter-spacing: -.01em; }
+.arena-s { font-size: 12px; color: var(--mut); line-height: 1.3; }
+.arena-badge { position: absolute; top: 10px; right: 10px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--y); color: #111; font-weight: 800; font-size: 12px; display: grid; place-items: center; z-index: 1; }

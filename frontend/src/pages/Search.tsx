@@ -24,31 +24,14 @@ const INTRO: Record<Kind, { icon: string; title: string; text: string; empty: st
   player: { icon: "user", title: "Jamoa qidirayotgan o'yinchilar", text: "Jamoasiz o'yinchilar. Jamoangizga o'yinchi kerak bo'lsa, sardor sifatida taklif yuboring.", empty: "Rankingizga mos e'lon yo'q", act: "Taklif yuborish" },
 };
 
-export function Search() {
+export function Search({ mode }: { mode: "duo" | "team" }) {
   const meta = useLoad(() => api.get<Meta>("/arena/search/meta"));
-  const [tab, setTab] = useState<"duo" | "team">(() => (sessionStorage.getItem("vx_search_tab") === "team" ? "team" : "duo"));
-  const pick = (v: typeof tab) => { setTab(v); try { sessionStorage.setItem("vx_search_tab", v); } catch { /* yo'q */ } };
   return (
-    <>
-      <div className="mut xs">{t("Rankedga sherik yoki jamoa toping — rankingiz va viloyatingizga mos o'yinchilar")}</div>
-      <div className="tabs5 two">
-        {([["duo", "🤝 Sherik"], ["team", "🛡 Jamoa"]] as const).map(([v, l]) => (
-          <button key={v} className={tab === v ? "on" : ""} onClick={() => pick(v)}>{t(l)}</button>
-        ))}
-      </div>
-      <Loadable state={meta}>
-        {(m) => (
-          <>
-            {tab === "duo" && (
-              <>
-                <Posts kind="duo" meta={m} extra={<><SignalCard meta={m} onChange={meta.reload} /><RespectCard /></>} />
-              </>
-            )}
-            {tab === "team" && <TeamTab meta={m} />}
-          </>
-        )}
-      </Loadable>
-    </>
+    <Loadable state={meta}>
+      {(m) => mode === "duo"
+        ? <Posts kind="duo" meta={m} extra={<><SignalCard meta={m} onChange={meta.reload} /><RespectCard /></>} />
+        : <TeamTab meta={m} />}
+    </Loadable>
   );
 }
 

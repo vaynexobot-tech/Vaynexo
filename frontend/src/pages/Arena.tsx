@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, type Tournament } from "../api";
 import { t } from "../i18n";
 import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, Sheet, som, useAction, useApp, useLoad } from "../ui";
@@ -14,26 +14,104 @@ interface Summary {
   points_rules: Record<string, number>;
 }
 
+type View = "tours" | "games" | "duo" | "team" | "rating" | "missions";
+const VIEW_TITLE: Record<View, string> = {
+  tours: "Turnirlar", games: "Viktorina va ovoz", duo: "Rankedga sherik", team: "Jamoa", rating: "Reyting", missions: "Vazifalar",
+};
+
+interface HubMission { progress: number; goal: number; claimed: boolean }
+interface HubData { daily: HubMission[]; weekly: HubMission[] }
+interface HubLb { season: { number: number; days_left: number }; me: { place: number | null; points: number }; week: number }
+
 export function Arena() {
-  const [tab, setTab] = useState<"tours" | "games" | "team" | "rating" | "missions">(() => (sessionStorage.getItem("vx_arena_tab") as never) || "tours");
+  const [sp, setSp] = useSearchParams();
+  const view = (sp.get("v") as View | null) && VIEW_TITLE[sp.get("v") as View] ? (sp.get("v") as View) : null;
   const sum = useLoad(() => api.get<Summary>("/arena/summary"));
-  const pick = (v: typeof tab) => { setTab(v); try { sessionStorage.setItem("vx_arena_tab", v); } catch { /* yo'q */ } };
+  const open = (v: View) => setSp({ v });
+  if (view) {
+    return (
+      <>
+        <Header title={t(VIEW_TITLE[view])} sub={t("Arena")} icon="arena" right={<span className="pts-pill">🏅 {money(sum.data?.points ?? 0)}</span>} />
+        <div className="page">
+          {view === "tours" && <Tours sum={sum.data} reload={sum.reload} />}
+          {view === "games" && <Games onPoints={sum.reload} />}
+          {view === "duo" && <Search mode="duo" />}
+          {view === "team" && <Search mode="team" />}
+          {view === "rating" && <Rating rules={sum.data?.points_rules} />}
+          {view === "missions" && <Missions onChange={sum.reload} />}
+        </div>
+        <BottomNav />
+      </>
+    );
+  }
+  return <ArenaHub sum={sum.data} onOpen={open} />;
+}
+
+/** Arena bosh sahifasi: tablar o'rniga katta kartalar. Har kartada jonli ma'lumot, bosilganda alohida sahifa. */
+function ArenaHub({ sum, onOpen }: { sum: Summary | null; onOpen: (v: View) => void }) {
+  const nav = useNavigate();
+  const ms = useLoad(() => api.get<HubData>("/arena/missions"));
+  const lb = useLoad(() => api.get<HubLb>("/arena/leaderboard"));
+  const tours = useLoad(() => api.get<Tournament[]>("/tournaments?status=open"));
+  const daily = ms.data?.daily ?? [];
+  const done = daily.filter((m) => m.progress >= m.goal).length;
+  const claimable = daily.filter((m) => m.progress >= m.goal && !m.claimed).length;
+  const pct = daily.length ? Math.round((done / daily.length) * 100) : 0;
+  const nTours = tours.data?.length ?? 0;
+  const pred = sum?.prediction;
+  const tiles: { v: View; icon: string; title: string; sub: string; badge?: string; hot?: boolean }[] = [
+    { v: "tours", icon: "🏆", title: "Turnirlar", sub: nTours ? t("{n} ta ochiq turnir", { n: nTours }) : t("Hozircha yo'q"), badge: nTours ? String(nTours) : undefined, hot: nTours > 0 },
+    { v: "games", icon: "🧠", title: "Viktorina", sub: t("Qahramonni top, +ball oling") },
+    { v: "duo", icon: "🤝", title: "Sherik topish", sub: t("Rankedga o'yinchi izlash") },
+    { v: "team", icon: "🛡", title: "Jamoa", sub: t("Jamoa tuzing yoki qo'shiling") },
+    { v: "rating", icon: "📊", title: "Reyting", sub: lb.data?.me.place ? t("Sizning o'rningiz: #{n}", { n: lb.data.me.place }) : t("Sezon jadvali va mukofotlar") },
+    { v: "missions", icon: "✅", title: "Vazifalar", sub: daily.length ? t("{a}/{b} bajarildi", { a: done, b: daily.length }) : t("Kunlik va haftalik"), badge: claimable ? String(claimable) : undefined, hot: claimable > 0 },
+  ];
   return (
     <>
-      <Header title={t("Arena")} sub={t("Turnir, viktorina, jamoa, reyting")} back={false} icon="arena"
-        right={<span className="pts-pill">🏅 {money(sum.data?.points ?? 0)}</span>} />
+      <Header title={t("Arena")} sub={t("O'ynang, ball yig'ing, yuting")} back={false} icon="arena" right={<span className="pts-pill">🏅 {money(sum?.points ?? 0)}</span>} />
       <div className="page">
         <MlCard />
-        <div className="tabs5">
-          {([["tours", "Turnirlar"], ["games", "O'yinlar"], ["team", "Qidiruv"], ["rating", "Reyting"], ["missions", "Vazifalar"]] as const).map(([v, l]) => (
-            <button key={v} className={tab === v ? "on" : ""} onClick={() => pick(v)}>{t(l)}</button>
+
+        <div className="card arena-today">
+          <div className="row between">
+            <span className="b">⚡ {t("Bugungi vazifalar")}</span>
+            {lb.data && <span className="pill-y">{t("{n}-SEZON", { n: lb.data.season.number })} · {t("{d} kun", { d: lb.data.season.days_left })}</span>}
+          </div>
+          <div className="progress big"><i style={{ width: pct + "%" }} /></div>
+          <div className="row between">
+            <span className="mut xs">{daily.length ? t("{a} / {b} bajarildi", { a: done, b: daily.length }) : t("Vazifalar yuklanmoqda…")}</span>
+            <button className="btn small" onClick={() => onOpen("missions")}>{claimable ? t("Mukofotni olish") : t("Ochish")}</button>
+          </div>
+        </div>
+
+        {pred && (
+          <button className="card row click arena-pred" onClick={() => onOpen("tours")}>
+            <span style={{ fontSize: 26 }}>🎯</span>
+            <div className="grow" style={{ textAlign: "left", minWidth: 0 }}>
+              <div className="b ell">{pred.team_a} vs {pred.team_b}</div>
+              <div className="mut xs">{pred.my_pick ? t("Tanlovingiz qabul qilindi") : t("Bepul prognoz: g'olibni toping, +{n} ball", { n: pred.points })}</div>
+            </div>
+            <Icon name="right" size={18} />
+          </button>
+        )}
+
+        <div className="arena-grid">
+          {tiles.map((x) => (
+            <button key={x.v} className={"arena-tile" + (x.hot ? " hot" : "")} onClick={() => onOpen(x.v)}>
+              {x.badge && <span className="arena-badge">{x.badge}</span>}
+              <span className="arena-ico">{x.icon}</span>
+              <span className="arena-t">{t(x.title)}</span>
+              <span className="arena-s">{x.sub}</span>
+            </button>
           ))}
         </div>
-        {tab === "tours" && <Tours sum={sum.data} reload={sum.reload} />}
-        {tab === "games" && <Games onPoints={sum.reload} />}
-        {tab === "team" && <Search />}
-        {tab === "rating" && <Rating rules={sum.data?.points_rules} />}
-        {tab === "missions" && <Missions onChange={sum.reload} />}
+
+        <button className="card row click" style={{ textAlign: "left", borderColor: "rgba(77,163,255,.35)" }} onClick={() => nav("/heroes")}>
+          <span className="row" style={{ gap: 0 }}>{[109, 4, 9].map((id, k) => <span key={id} style={{ marginLeft: k ? -12 : 0 }}><HeroAva id={id} size={36} radius={18} /></span>)}</span>
+          <div className="grow"><div className="b">📖 {t("Qahramonlar, Draft va Buyumlar")}</div><div className="mut xs">{t("Skill, counter, ban/pick simulyatori")}</div></div>
+          <Icon name="right" size={18} />
+        </button>
       </div>
       <BottomNav />
     </>
@@ -196,14 +274,9 @@ function Games({ onPoints }: { onPoints: () => void }) {
   const nav = useNavigate();
   return (
     <>
-      <button className="card row click" style={{ textAlign: "left", borderColor: "rgba(29,233,182,.4)" }} onClick={() => nav("/heroes")}>
-        <span className="row" style={{ gap: 0 }}>{[109, 4, 9].map((id, i) => <span key={id} style={{ marginLeft: i ? -12 : 0 }}><HeroAva id={id} size={36} radius={18} /></span>)}</span>
-        <div className="grow"><div className="b">📖 {t("Qahramonlar ensiklopediyasi")}</div><div className="mut xs">{t("Skillar, buyumlar, counter-pick — rasmiy ma'lumot")}</div></div>
-        <Icon name="right" size={18} />
-      </button>
-      <Risers onOpen={(id) => nav(`/heroes/${id}`)} />
       <Quiz onPoints={onPoints} />
       <HeroVoteCard onPoints={onPoints} />
+      <Risers onOpen={(id) => nav(`/heroes/${id}`)} />
     </>
   );
 }

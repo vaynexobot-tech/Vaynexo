@@ -82,6 +82,8 @@ export function Settings() {
             right={<><span className="mut sm">{LANGS.find((l) => l.v === me.lang)?.label}</span>{chev}</>} onClick={() => setLangOpen(true)} />
           <Row icon="gift" title={t("Do'stlarni taklif qilish")}
             right={<><span className="pill-b g">+ bonus</span>{chev}</>} onClick={() => nav("/referral")} />
+          <Row icon="gift" title={t("Mening do'konim")}
+            right={<><span className="pill-b y">3–6%</span>{chev}</>} onClick={() => nav("/shop")} />
           <Row icon="bell" title={t("Bildirishnomalar")}
             right={<Toggle on={notifOn} onChange={(v) => patch({ notify_chat: v, notify_tour: v })} />} />
           <Row icon="card" title={t("To'lov usullari")} onClick={() => nav("/payment-methods")} />

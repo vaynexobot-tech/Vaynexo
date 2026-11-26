@@ -180,13 +180,27 @@ async def cron_donate_sync(ctx):
     await out.flush()
 
 
+async def cron_habit(ctx):
+    """Meta bashorat: hafta boshi surati va o'tgan haftani yopish (tashqi statistika — soatiga bir marta)."""
+    from app.services import habit
+
+    out = Outbox()
+    async with SessionLocal() as session, session.begin():
+        await habit.ensure_week(session)
+    async with SessionLocal() as session, session.begin():
+        await habit.settle(session, out)
+    await out.flush()
+
+
 async def cron_premium(ctx):
     """VAYNEXO Plus (uzaytirish, haftalik avto-xarid), jamg'arma (avto-yig'ish, xarid), Pro auksionlarini yopish."""
     from app.services import plus, pro, savings
 
     out = Outbox()
     orders: list[int] = []
-    for name, fn in (("plus", plus.tick), ("savings", savings.tick), ("pro", pro.tick)):
+    from app.services import duel, split
+
+    for name, fn in (("plus", plus.tick), ("savings", savings.tick), ("pro", pro.tick), ("split", split.tick), ("duel", duel.tick)):
         try:
             orders += (await fn(SessionLocal, out)) or []
         except Exception:
@@ -240,6 +254,7 @@ class WorkerSettings:
         cron(cron_auto_release, minute=set(range(0, 60, 5)), second=10),
         cron(cron_rescue_donates, minute=set(range(1, 60, 2)), second=20),
         cron(cron_premium, second=45),
+        cron(cron_habit, minute={5}, second=15),
     ]
     redis_settings = None if LITE else redis_settings()
     on_startup = startup

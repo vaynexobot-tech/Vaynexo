@@ -114,6 +114,8 @@ async def lite_cron_loop() -> None:
             jobs.append(worker.cron_donate_sync)
         if tick % 5 == 0:
             jobs.append(worker.cron_auto_release)
+        if tick % 60 == 5:
+            jobs.append(worker.cron_habit)
         if tick % 2 == 0:
             jobs.append(worker.cron_rescue_donates)
         for job in jobs:

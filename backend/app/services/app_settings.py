@@ -127,6 +127,17 @@ SCHEMA.update({
     "pro_on": Spec("choice", "on", "Pro bilan o'yna (auksion)", "Pro bilan o'yna", choices={"on": "Yoqilgan", "off": "O'chiq"}),
     "pro_fee": Spec("percent", 15, "Auksiondan platforma ulushi (%)", "Pro bilan o'yna", 0, 50),
     "pro_min_bid": Spec("money", 20_000, "Eng kam boshlang'ich narx (so'm)", "Pro bilan o'yna", 1_000, 100_000_000),
+    # Birgalikda to'laymiz / Orzu ro'yxati
+    "split_on": Spec("choice", "on", "Birgalikda to'laymiz va Orzu ro'yxati", "Birgalikda to'lov", choices={"on": "Yoqilgan", "off": "O'chiq"}),
+    "split_hours": Spec("money", 24, "Yig'ish muddati (soat). Tugasa pul hammaga qaytadi", "Birgalikda to'lov", 1, 168),
+    "split_min": Spec("money", 1_000, "Eng kam ulush (so'm)", "Birgalikda to'lov", 1_000, 1_000_000),
+    # Draft Jang
+    "duel_on": Spec("choice", "on", "Draft Jang", "Draft Jang", choices={"on": "Yoqilgan", "off": "O'chiq"}),
+    "duel_win_points": Spec("money", 20, "G'olibga Arena ball", "Draft Jang", 0, 1000),
+    "duel_lose_points": Spec("money", 5, "Qatnashgan uchun Arena ball", "Draft Jang", 0, 1000),
+    # Kunlik check-in va Meta bashorat
+    "checkin_points": Spec("money", 5, "Kunlik check-in: har kun ball", "Kunlik seriya", 0, 1000),
+    "meta_points": Spec("money", 50, "Meta bashorat: to'g'ri topganga ball", "Kunlik seriya", 0, 1000),
     # VAY ball
     "vay_on": Spec("choice", "on", "VAY ball tizimi", "VAY ball", choices={"on": "Yoqilgan", "off": "O'chiq"}),
     "vay_per": Spec("money", 1_000, "Har necha so'm xaridga 1 VAY", "VAY ball", 100, 1_000_000),

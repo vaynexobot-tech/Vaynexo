@@ -58,6 +58,9 @@ class User(TimestampMixin, Base):
     referrer_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))
     referral_paid: Mapped[bool] = mapped_column(Boolean, default=False)
     shop_id: Mapped[int | None] = mapped_column(BigInteger, index=True)  # qaysi do'kon orqali kelgan (birinchi marta)
+    draft_elo: Mapped[int] = mapped_column(Integer, default=1000, server_default="1000")
+    streak_days: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    streak_last: Mapped[str | None] = mapped_column(String(8))  # oxirgi check-in kuni (YYYYMMDD)
     vay_xp: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")  # VAY ball: umr bo'yi yig'ilgan (sarflanmaydi)
     seller_strikes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # muddatda ma'lumot bermagan bitimlar
     # Identifikatsiya: none | pending | verified | rejected
@@ -908,3 +911,72 @@ class ProBid(TimestampMixin, Base):
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
     amount: Mapped[int] = mapped_column(BigInteger)
     status: Mapped[str] = mapped_column(String(12), default="active", server_default="active")  # active|outbid|won|refunded
+
+
+# ---------------------------------------------------------------- Birgalikda to'laymiz / Orzu ro'yxati
+class Split(TimestampMixin, Base):
+    __tablename__ = "splits"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    code: Mapped[str] = mapped_column(String(12), unique=True)
+    creator_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    mode: Mapped[str] = mapped_column(String(8))  # split (birga to'laymiz) | wish (orzu: do'stlar sovg'a qiladi)
+    title: Mapped[str] = mapped_column(String(120))
+    package_id: Mapped[int] = mapped_column(BigInteger)
+    player_id: Mapped[str] = mapped_column(String(64), default="")
+    zone_id: Mapped[str] = mapped_column(String(64), default="")
+    target: Mapped[int] = mapped_column(BigInteger)
+    collected: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    message: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    status: Mapped[str] = mapped_column(String(12), default="open", server_default="open", index=True)  # open|done|expired|cancelled
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    order_id: Mapped[int | None] = mapped_column(BigInteger)
+
+
+class SplitPart(TimestampMixin, Base):
+    __tablename__ = "split_parts"
+    __table_args__ = (UniqueConstraint("split_id", "user_id", name="uq_split_part"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    split_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("splits.id"), index=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    amount: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+
+
+# ---------------------------------------------------------------- Draft Jang
+class DraftDuel(TimestampMixin, Base):
+    __tablename__ = "draft_duels"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    code: Mapped[str] = mapped_column(String(12), unique=True)
+    a_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    b_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    status: Mapped[str] = mapped_column(String(12), default="waiting", server_default="waiting", index=True)  # waiting|picking|done|expired|cancelled
+    a_picks: Mapped[dict | None] = mapped_column(JSONB)
+    b_picks: Mapped[dict | None] = mapped_column(JSONB)
+    a_score: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    b_score: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    winner_id: Mapped[int | None] = mapped_column(BigInteger)
+    a_delta: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    b_delta: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    detail: Mapped[dict | None] = mapped_column(JSONB)  # ball tafsilotlari
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+# ---------------------------------------------------------------- Meta bashorat
+class MetaWeek(TimestampMixin, Base):
+    __tablename__ = "meta_weeks"
+
+    week: Mapped[str] = mapped_column(String(10), primary_key=True)
+    snapshot: Mapped[dict] = mapped_column(JSONB, default=dict)  # {hero_id: win_rate} hafta boshida
+    result: Mapped[dict | None] = mapped_column(JSONB)  # {winner: hero_id, delta: {...}}
+
+
+class MetaPick(TimestampMixin, Base):
+    __tablename__ = "meta_picks"
+    __table_args__ = (UniqueConstraint("user_id", "week", name="uq_meta_pick"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    week: Mapped[str] = mapped_column(String(10), index=True)
+    hero_id: Mapped[int] = mapped_column(Integer)

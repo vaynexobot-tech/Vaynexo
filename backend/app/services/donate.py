@@ -45,7 +45,7 @@ def _safe_match(pattern: str, value: str) -> bool:
         return True  # noto'g'ri namuna bo'lsa tekshiruv o'tkazib yuboriladi (provayder o'zi tekshiradi)
 
 
-async def create_order(session: AsyncSession, user_id: int, package_id: int, player_id: str, zone_id: str) -> DonateOrder:
+async def create_order(session: AsyncSession, user_id: int, package_id: int, player_id: str, zone_id: str, prepaid: bool = False) -> DonateOrder:
     pkg = await session.get(DonatePackage, package_id)
     if pkg is None or not pkg.is_active:
         raise NotFound("Paket")
@@ -78,7 +78,8 @@ async def create_order(session: AsyncSession, user_id: int, package_id: int, pla
     )
     session.add(order)
     await session.flush()
-    await wallet.debit(session, user_id, pkg.price, "donate", f"donate:{order.id}", ref_type="donate", ref_id=order.id)
+    if not prepaid:  # birgalikda to'lov: pul allaqachon yig'ilgan
+        await wallet.debit(session, user_id, pkg.price, "donate", f"donate:{order.id}", ref_type="donate", ref_id=order.id)
     return order
 
 

@@ -974,6 +974,49 @@ on("POST", "/pro/:id/bid", (m, b) => {
   money(-b.amount, "pro_bid"); x.price = b.amount; x.bids += 1; x.next_bid = b.amount + x.step; x.leading = true; return slotView(x);
 });
 
+// ---------------------------------------------------------------- Birgalikda, Draft Jang, seriya, meta (demo)
+const HEROES_DEMO = [[109, "Aamon", "assassin", "jungle"], [4, "Alucard", "fighter", "exp"], [9, "Akai", "tank", "roam"], [5, "Alice", "mage", "mid"], [8, "Bruno", "marksman", "gold"]] as const;
+demo.splits = [{ code: "demo1234", mode: "wish", title: "706 almaz", message: "Tug'ilgan kunim! 🎂", status: "open", target: 145_000, collected: 62_000,
+  expires_at: new Date(Date.now() + 15 * 3600000).toISOString(), order_id: null, creator: { id: ME, name: "Aziz" }, mine: 0, is_creator: true,
+  parts: [{ name: "Jasur", amount: 40_000 }, { name: "Sardor", amount: 22_000 }], game_id: "84512937", link: "https://t.me/VaynexoBot?start=split_demo1234", min: 1_000 }] as Json[];
+const splitRow = (x: Json) => ({ code: x.code, mode: x.mode, title: x.title, status: x.status, target: x.target, collected: x.collected, expires_at: x.expires_at });
+on("GET", "/split/my", () => ({ enabled: true, made: demo.splits.map(splitRow), joined: [] }));
+on("POST", "/split", (_m, b) => {
+  const pk = PKGS.find((x) => x.id === b.package_id)! as Json;
+  const x = { code: "c" + nid(), mode: b.mode, title: pk.name, message: b.message, status: "open", target: pk.price, collected: 0, expires_at: new Date(Date.now() + 24 * 3600000).toISOString(),
+    order_id: null, creator: { id: ME, name: "Aziz" }, mine: 0, is_creator: true, parts: [], game_id: b.player_id, link: "https://t.me/VaynexoBot?start=split_demo", min: 1_000 };
+  demo.splits.unshift(x); return x;
+});
+on("GET", "/split/:code", (m) => demo.splits.find((x: Json) => x.code === m[1]) ?? demo.splits[0]);
+on("POST", "/split/:code/pay", (m, b) => {
+  const x = demo.splits.find((y: Json) => y.code === m[1]) ?? demo.splits[0]; const a = Math.min(b.amount, x.target - x.collected);
+  money(-a, "split_in"); x.collected += a; x.mine += a; x.parts.unshift({ name: "Aziz", amount: a }); x.remaining = x.target - x.collected;
+  if (x.collected >= x.target) x.status = "done"; return x;
+});
+on("POST", "/split/:code/cancel", (m) => { const x = demo.splits.find((y: Json) => y.code === m[1]); x.status = "cancelled"; return x; });
+Object.values(demo.splits).forEach((x: Json) => { x.remaining = x.target - x.collected; });
+const slotsD = [["gold", "Gold"], ["exp", "EXP"], ["mid", "Mid"], ["jungle", "Jungle"], ["roam", "Roam"]].map(([key, label]) => ({ key, label }));
+const heroD = (id: number) => { const h = HEROES_DEMO.find((x) => x[0] === id) ?? HEROES_DEMO[0]; return { id: h[0], name: h[1], role: h[2], lane: h[3] }; };
+demo.duel = { status: "picking", my: null as Json };
+on("GET", "/duel/top", () => ({ items: [{ place: 1, name: "Sardor", elo: 1048, id: 2001 }, { place: 2, name: "Jasur", elo: 1021, id: 2002 }, { place: 3, name: "Aziz", elo: 1012, id: ME }], me: { elo: 1012 } }));
+on("POST", "/duel", () => ({ code: "demo5678" }));
+on("GET", "/duel/:code", () => ({ code: "demo5678", status: demo.duel.status, side: "a", opponent: { id: 2001, name: "Sardor", elo: 1048 }, me: { id: ME, name: "Aziz", elo: 1012 },
+  expires_at: new Date(Date.now() + 40 * 3600000).toISOString(), link: "https://t.me/VaynexoBot?start=duel_demo5678", slots: slotsD,
+  my_picks: demo.duel.my ? Object.fromEntries(Object.entries(demo.duel.my).map(([k, v]) => [k, heroD(v as number)])) : null,
+  their_picks: demo.duel.status === "done" ? Object.fromEntries(slotsD.map((s, i) => [s.key, heroD(HEROES_DEMO[(i + 1) % 5][0])])) : null, opponent_ready: true,
+  result: demo.duel.status === "done" ? { a_score: 78, b_score: 64, winner_id: ME, a_delta: 12, b_delta: -12, a: { id: ME, name: "Aziz" }, b: { id: 2001, name: "Sardor" },
+    detail: { a: { lane: 32, front: 12, marksman: 12, mage: 12, mixed: 10 }, b: { lane: 24, front: 12, marksman: 12, mixed: 10, spread: 6 }, live_counters: false } } : null }));
+on("POST", "/duel/:code/join", () => ({ code: "demo5678", status: "picking" }));
+on("POST", "/duel/:code/picks", (_m, b) => { demo.duel.my = b.picks; demo.duel.status = "done"; return { ok: true }; });
+demo.habit = { streak: 3, done: false };
+on("GET", "/habit", () => ({ streak: demo.habit.streak, done_today: demo.habit.done, points: 5, hero: { id: 109, name: "Aamon", role: "assassin", lane: "jungle" }, next: { days: 7, points: 30, left: 7 - demo.habit.streak } }));
+on("POST", "/habit/checkin", () => { demo.habit.streak += 1; demo.habit.done = true; state.me.points = (state.me.points ?? 0) + 5; return { earned: 5, bonus: 0 }; });
+demo.meta = { pick: null as number | null };
+on("GET", "/meta", () => ({ week: "2026W48", available: true, points: 50, my_pick: demo.meta.pick, candidates: HEROES_DEMO.map((h) => ({ id: h[0], name: h[1], role: h[2], win: 50 })),
+  last: { winner: { id: 5, name: "Alice", delta: 2.4 }, my_hero: 109, correct: false } }));
+on("POST", "/meta/pick", (_m, b) => { demo.meta.pick = b.hero_id; return { ok: true }; });
+on("POST", "/arena/card", () => ({ ok: true }));
+
 export async function mockRequest(method: string, url: string, body: unknown): Promise<unknown> {
   await new Promise((r) => setTimeout(r, 180)); // tarmoq kechikishi taqlidi
   const [path, qs] = url.split("?");

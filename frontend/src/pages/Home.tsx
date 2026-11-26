@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PremiumTiles, VayStrip } from "./Premium";
+import { PremiumTiles } from "./Premium";
 import { api, type DonateGameCard, type DonateGames, type Tournament } from "../api";
 import { t } from "../i18n";
 import { tgPhoto } from "../tg";
@@ -124,8 +124,6 @@ export default function Home() {
           <button className="btn small ghost" onClick={() => nav("/wallet")}>+ {t("To'ldirish")}</button>
         </div>
 
-        <VayStrip />
-
         {me?.shop && (
           <div className="card row shop-banner">
             <span style={{ fontSize: 26 }}>🏪</span>
@@ -134,39 +132,6 @@ export default function Home() {
         )}
 
         <PremiumTiles />
-
-        <div className="card click row between" onClick={() => nav("/shop")}>
-          <div className="row"><span style={{ fontSize: 30 }}>🏪</span>
-            <div><div className="b">{t("O'z do'koningni och")}</div><div className="mut xs">{t("Do'stlaring xarididan komissiya ol")}</div></div>
-          </div>
-          <span className="mono y b">3–6% ›</span>
-        </div>
-
-        {f.top && (
-          <div className="card click row between" onClick={() => nav("/top")}>
-            <div className="row">
-              <Art name="top" size={44} />
-              <div>
-                <div className="b">{t("Top xaridorlar")}</div>
-                <div className="mut xs">{t("Botda eng ko'p xarid qilganlar reytingi")}</div>
-              </div>
-            </div>
-            <span className="mono y b">Top 100 ›</span>
-          </div>
-        )}
-
-        {f.market && (
-          <div className="card click row between" onClick={() => nav("/sell")}>
-            <div className="row">
-              <Art name="sell" size={44} />
-              <div>
-                <div className="b">{t("E'lon berish")}</div>
-                <div className="mut xs">{t("Account sotish uchun e'lon joylang")}</div>
-              </div>
-            </div>
-            <span className="y"><Icon name="right" /></span>
-          </div>
-        )}
 
       </div>
       <BottomNav />

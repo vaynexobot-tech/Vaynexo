@@ -76,9 +76,10 @@ async def isolate(monkeypatch):
     async def fake_enqueue(job, *args, **kw):
         jobs.append((job, *args))
 
+    from app.api import extra as extra_api
     from app.api import premium as premium_api
 
-    for mod in (donate_api, services_api, admin_api, premium_api):
+    for mod in (donate_api, services_api, admin_api, premium_api, extra_api):
         monkeypatch.setattr(mod, "enqueue", fake_enqueue)
     yield {"sent": sent, "jobs": jobs}
     await deps.get_redis().aclose()

@@ -4,11 +4,11 @@ import { api, type Pkg } from "../api";
 import { t } from "../i18n";
 import { confirmDialog, openTg } from "../tg";
 import {
-  BottomNav, Copy, dateTime, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Toggle, useAction, useApp, useLoad,
+  BottomNav, Copy, dateTime, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Toggle, useAction, useApp, useFeature, useLoad,
 } from "../ui";
 
 // ================================================================ umumiy
-function PkgPicker({ value, onChange }: { value: number | null; onChange: (p: Pkg) => void }) {
+export function PkgPicker({ value, onChange }: { value: number | null; onChange: (p: Pkg) => void }) {
   const pkgs = useLoad(() => api.get<Pkg[]>("/donate/packages?game=ML"));
   return (
     <Loadable state={pkgs}>
@@ -26,7 +26,7 @@ function PkgPicker({ value, onChange }: { value: number | null; onChange: (p: Pk
   );
 }
 
-function IdFields({ uid, zid, setUid, setZid }: { uid: string; zid: string; setUid: (v: string) => void; setZid: (v: string) => void }) {
+export function IdFields({ uid, zid, setUid, setZid }: { uid: string; zid: string; setUid: (v: string) => void; setZid: (v: string) => void }) {
   return (
     <div className="row" style={{ alignItems: "flex-end" }}>
       <div className="grow"><Field label="MLBB User ID"><input className="input mono" inputMode="numeric" placeholder="12345678" value={uid} onChange={(e) => setUid(e.target.value.replace(/\D/g, "").slice(0, 20))} /></Field></div>
@@ -54,13 +54,19 @@ function useTick(ms = 1000) {
 export function PremiumTiles() {
   const nav = useNavigate();
   const { me } = useApp();
+  const top = useFeature("top"), market = useFeature("market");
   const tiles = [
+    ...(me?.vay ? [{ to: "/vay", icon: me.vay.icon, title: `${me.vay.name} · ${money(me.vay.xp)} VAY`, sub: t("Daraja va keshbek") }] : []),
     { to: "/plus", icon: "💎", title: "VAYNEXO Plus", sub: me?.plus ? t("Faol · keshbek") : t("Har xariddan keshbek") },
     { to: "/savings", icon: "🏦", title: t("Skin jamg'armasi"), sub: t("Oz-ozdan yig'ib, bonus bilan ol") },
+    { to: "/together", icon: "🤝", title: t("Birgalikda"), sub: t("Do'stlar bilan to'lov va orzular") },
+    { to: "/shop", icon: "🏪", title: t("O'z do'koningni och"), sub: t("Mijozlardan 3–6% komissiya") },
+    ...(top ? [{ to: "/top", icon: "🏆", title: t("Top xaridorlar"), sub: t("Top 100 reyting") }] : []),
+    ...(market ? [{ to: "/sell", icon: "🛒", title: t("E'lon berish"), sub: t("Account sotish") }] : []),
   ];
   return (
     <>
-      <div className="sec-title">✨ {t("Premium")}</div>
+      <div className="sec-title">✨ {t("Imkoniyatlar")}</div>
       <div className="arena-grid">
         {tiles.map((x) => (
           <button key={x.to} className={"arena-tile" + (x.to === "/plus" ? " hot" : "")} style={{ minHeight: 104 }} onClick={() => nav(x.to)}>

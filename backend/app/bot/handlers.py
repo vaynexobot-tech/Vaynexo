@@ -87,6 +87,9 @@ DEEP_PAGES = {"admin": "Admin panel", "listing": "E'lonni ochish", "deal": "Biti
 
 def deep_link_path(arg: str | None) -> tuple[str, str] | None:
     """Kanal/guruh tugmasi: t.me/bot?start=listing_15 → (/listing/15, «E'lonni ochish»)."""
+    sd = re.fullmatch(r"(split|duel)_([a-z0-9]{6,12})", arg or "")
+    if sd:
+        return f"/{sd.group(1)}/{sd.group(2)}", "🤝 Birgalikda to'lov" if sd.group(1) == "split" else "⚔️ Draft Jang"
     st = re.fullmatch(r"stream_([a-z0-9_]{3,24})", arg or "")
     if st:
         return f"/s/{st.group(1)}", "🎁 Donat yuborish"

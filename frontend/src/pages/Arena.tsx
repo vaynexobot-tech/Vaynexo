@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { HabitCard } from "./Extra";
 import { api, type Tournament } from "../api";
 import { t } from "../i18n";
 import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, Sheet, som, SponsorLine, useAction, useApp, useLoad } from "../ui";
@@ -68,6 +69,8 @@ function ArenaHub({ sum, onOpen }: { sum: Summary | null; onOpen: (v: View) => v
     { key: "games", icon: "🧠", title: t("Viktorina"), sub: t("Qahramonni top, +ball oling"), go: () => onOpen("games") },
     { key: "duo", icon: "🤝", title: t("Sherik topish"), sub: t("Rankedga o'yinchi izlash"), go: () => onOpen("duo") },
     { key: "team", icon: "🛡", title: t("Jamoa"), sub: t("Jamoa tuzing yoki qo'shiling"), go: () => onOpen("team") },
+    { key: "duel", icon: "⚔️", title: "Draft Jang", sub: t("Draft ELO reytingi"), go: () => nav("/duel") },
+    { key: "meta", icon: "🔮", title: t("Meta bashorat"), sub: t("Kim ko'tariladi? +ball"), go: () => nav("/meta") },
     { key: "pro", icon: "🎮", title: t("Pro bilan o'yna"), sub: t("O'yin joyi — auksion"), go: () => nav("/pro") },
     { key: "heroes", icon: "📖", title: t("Qahramonlar"), sub: t("Draft, Buyumlar, counter"), go: () => nav("/heroes") },
     { key: "rating", icon: "📊", title: t("Reyting"), sub: lb.data?.me.place ? t("Sizning o'rningiz: #{n}", { n: lb.data.me.place }) : t("Sezon jadvali"), go: () => onOpen("rating") },
@@ -80,6 +83,7 @@ function ArenaHub({ sum, onOpen }: { sum: Summary | null; onOpen: (v: View) => v
       <Header title={t("Arena")} sub={t("O'ynang, ball yig'ing, yuting")} back={false} icon="arena" right={<span className="pts-pill">🏅 {money(sum?.points ?? 0)}</span>} />
       <div className="page">
         <MlCard bare />
+        <HabitCard />
 
         <div className="card arena-today">
           <div className="row between">
@@ -253,6 +257,11 @@ function MlCardSheet({ p, onClose, onSaved, onLinked }: { p: MlProfile; onClose:
           onSaved(await api.put<MlProfile>("/arena/profile", f));
           toast(t("Saqlandi"), "ok");
         })}>{t("Saqlash")}</button>
+        <button className="btn ghost full" disabled={busy} onClick={() => run(async () => {
+          await api.put<MlProfile>("/arena/profile", f);
+          await api.post("/arena/card");
+          toast(t("Karta rasmi botga yuborildi"), "ok");
+        })}>🪪 {t("Kartani ulashish (rasm)")}</button>
       </div>
     </Sheet>
   );

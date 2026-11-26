@@ -56,6 +56,13 @@ export default function Partner() {
                   <button key={v} className={tab === v ? "on" : ""} onClick={() => setTab(v)}>{t(l)}</button>
                 ))}
               </div>
+              {tab === "rewards" && (
+                <div className="grid3 center">
+                  <div className="card tight"><div className="bb mono">{d.stats.sent}</div><div className="mut xs">{t("yuborilgan")}</div></div>
+                  <div className="card tight"><div className="bb mono">{fmtN(d.stats.views)}</div><div className="mut xs">{t("jami ko'rish")}</div></div>
+                  <div className="card tight"><div className="bb mono">{d.stats.pending}</div><div className="mut xs">{t("tekshiruvda")}</div></div>
+                </div>
+              )}
               {tab === "rewards" && <Rewards d={d} />}
               {tab === "code" && <Code d={d} onDone={st.reload} />}
               {tab === "ideas" && <Ideas d={d} />}

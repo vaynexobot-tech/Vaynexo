@@ -6,6 +6,7 @@ import { setLang, t } from "./i18n";
 import Admin from "./pages/Admin";
 import Partner from "./pages/Partner";
 import Shop from "./pages/Shop";
+import { DuelHub, DuelPage, MetaPage, SplitPage, TogetherPage } from "./pages/Extra";
 import { VayPage, PlusPage, ProList, ProMy, ProSlotPage, SavingsPage, StreamerPanel, StreamPage } from "./pages/Premium";
 import { Arena, TournamentPage, Top } from "./pages/Arena";
 import { Boost, BoostOrderPage, BoostOrders } from "./pages/Boost";
@@ -39,7 +40,7 @@ function DeepLink() {
     const map: Record<string, string> = { listing: `/listing/${id}`, deal: `/deal/${id}`, chat: `/chat/${id}`, boost: `/boost/${id}`, tour: `/arena/${id}`, arena: `/arena/${id}`, rental: `/rental/${id}` };
     if (kind === "donate" && /^donate_[A-Za-z0-9-]{1,60}$/.test(p)) nav(`/donate/${p.slice(7)}`); // inline qidiruvdan
     else if (map[kind] && /^\d+$/.test(id)) nav(map[kind], { replace: false }); // yopiq bo'lim bo'lsa Gate bosh sahifaga qaytaradi
-    else if (["admin", "wallet", "booster", "rent", "partner", "arena", "shop", "plus", "vay", "savings", "pro", "streamer"].includes(kind) && !id) nav("/" + kind); // kanal tugmalari
+    else if (["admin", "wallet", "booster", "rent", "partner", "arena", "shop", "plus", "vay", "together", "split", "duel", "meta", "savings", "pro", "streamer"].includes(kind) && !id) nav("/" + kind); // kanal tugmalari
   }, [nav]);
   return null;
 }
@@ -114,6 +115,11 @@ function App() {
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/soon" element={<TradeSoon />} />
           <Route path="/shop" element={<Shop />} />
+          <Route path="/together" element={<TogetherPage />} />
+          <Route path="/split/:code" element={<SplitPage />} />
+          <Route path="/duel" element={<DuelHub />} />
+          <Route path="/duel/:code" element={<DuelPage />} />
+          <Route path="/meta" element={<MetaPage />} />
           <Route path="/vay" element={<VayPage />} />
           <Route path="/plus" element={<PlusPage />} />
           <Route path="/savings" element={<SavingsPage />} />

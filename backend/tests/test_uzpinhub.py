@@ -46,6 +46,7 @@ def router(**over):
 def make(handler) -> UzpinhubProvider:
     p = UzpinhubProvider("k", callback_url="https://bot.example/api/uzpinhub/webhook/9")
     p.client = httpx.AsyncClient(base_url=DEFAULT_URL + "/", transport=httpx.MockTransport(handler), headers={"X-API-Key": "k"})
+    p.public = httpx.AsyncClient(base_url=DEFAULT_URL + "/", transport=httpx.MockTransport(handler))
     return p
 
 
@@ -152,3 +153,20 @@ async def test_admin_detects_kind_by_url_and_webhook(api, monkeypatch):
     r = await api(1).post(f"/uzpinhub/webhook/{p['id']}", json={"order_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "status": "completed"})
     assert r.status_code == 200 and sent and sent[0][0] == "fulfil_donate" and sent[0][2] == "check"
     assert (await api(1).post("/uzpinhub/webhook/99999", json={"order_id": "o-9"})).status_code == 404
+
+
+async def test_public_catalog_sent_without_key_and_403_explained():
+    h = router()
+    p = make(h)
+    await p.catalog(force=True)
+    assert all("x-api-key" not in c[3] for c in h.calls)  # ochiq katalog so'rovlarida kalit yo'q
+
+    def blocked(req):
+        return httpx.Response(403, text="Forbidden")
+
+    p2 = make(blocked)
+    r = await p2.ping()
+    p3 = make(blocked)
+    with pytest.raises(RuntimeError, match="IP"):
+        await p3.catalog(force=True)
+    assert r["ok"] is False

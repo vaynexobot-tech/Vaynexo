@@ -76,6 +76,8 @@ class UzpinhubProvider:
     def __init__(self, api_key: str, base_url: str = "", callback_url: str = "", timeout: float = 25.0):
         self.client = httpx.AsyncClient(base_url=api_url(base_url) + "/", timeout=timeout,
                                         headers={"X-API-Key": api_key, "Accept": "application/json"})
+        # Ochiq katalog so'rovlari kalitsiz (kalit faqat himoyalangan yo'llarga ketadi)
+        self.public = httpx.AsyncClient(base_url=api_url(base_url) + "/", timeout=timeout, headers={"Accept": "application/json"})
         self.callback_url = callback_url
         self.auth_failed = False
         self._catalog: list[dict] | None = None
@@ -89,7 +91,7 @@ class UzpinhubProvider:
             raise ProviderAuthError("API kalit noto'g'ri — IP bloklanmasligi uchun so'rovlar to'xtatildi (kalitni yangilang)")
         for attempt in range(3):
             try:
-                r = await self.client.get(path, params={k: v for k, v in params.items() if v is not None})
+                r = await (self.client if auth else self.public).get(path, params={k: v for k, v in params.items() if v is not None})
                 break
             except httpx.TransportError:
                 if attempt == 2:
@@ -98,6 +100,9 @@ class UzpinhubProvider:
         if r.status_code == 401:
             self.auth_failed = True
             raise ProviderAuthError("API kalit noto'g'ri (401) — IP bloklanmasligi uchun so'rovlar to'xtatildi")
+        if r.status_code == 403:
+            raise RuntimeError("API so'rovni rad etdi (403): bu server IP'si to'silgan bo'lishi mumkin — API egasiga yozib, "
+                               f"IP'ni ruxsat ro'yxatiga qo'shishni so'rang. Javob: {r.text[:120]!r}")
         if r.status_code == 429:
             raise RuntimeError("So'rovlar juda ko'p (429)")
         r.raise_for_status()
@@ -213,7 +218,7 @@ class UzpinhubProvider:
         if not gid:
             return ""
         try:
-            r = await self.client.post("order/topup/check_game_ids", json={"game_id": gid, "player_id": player_id, "server_id": zone_id or ""})
+            r = await self.public.post("order/topup/check_game_ids", json={"game_id": gid, "player_id": player_id, "server_id": zone_id or ""})
         except httpx.HTTPError:
             return ""
         if r.status_code == 200:

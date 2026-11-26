@@ -11,6 +11,7 @@ export default function Home() {
   const { me, toast } = useApp();
   const [q, setQ] = useState("");
   const games = useLoad(() => api.get<DonateGames>("/donate/games"));
+  const [showAll, setShowAll] = useState(false);
   const arena = useFeature("arena");
   const home = useLoad(() => (arena ? api.get<{ tournament: Tournament | null }>("/home") : Promise.resolve({ tournament: null })), [arena]);
   const tour = home.data?.tournament;
@@ -105,8 +106,13 @@ export default function Home() {
 
               {d.popular.length > 0 && (
                 <>
-                  <div className="sec-title">{t("Mashhur o'yinlar")}</div>
-                  <div className="game-grid">{d.popular.map((g) => <MiniGame key={g.slug} g={g} onOpen={open} />)}</div>
+                  <div className="row between" style={{ marginTop: 6 }}>
+                    <div className="sec-title" style={{ margin: 0 }}>{showAll ? t("Barcha o'yinlar") : t("Mashhur o'yinlar")}</div>
+                    {d.all.length > d.popular.length && (
+                      <button className="btn small ghost" onClick={() => setShowAll(!showAll)}>{showAll ? t("Yopish") : `${t("Barchasi")} · ${d.all.length} ›`}</button>
+                    )}
+                  </div>
+                  <div className="game-grid">{(showAll ? d.all : d.popular).map((g) => <MiniGame key={g.slug} g={g} onOpen={open} />)}</div>
                 </>
               )}
             </>

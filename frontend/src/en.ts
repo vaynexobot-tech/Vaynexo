@@ -1481,4 +1481,5 @@ export const en: Record<string, string> = {
   "{n} ni tanlaysizmi? Hafta davomida o'zgartirib bo'lmaydi.": "Pick {n}? You can't change it this week.",
   "Tanlov qabul qilindi": "Pick accepted",
   "Jonli statistika hozircha yo'q.": "No live stats yet.",
+  "Barcha o'yinlar": "All games",
 };

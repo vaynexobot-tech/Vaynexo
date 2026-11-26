@@ -1494,4 +1494,5 @@ export const ru: Record<string, string> = {
   "{n} ni tanlaysizmi? Hafta davomida o'zgartirib bo'lmaydi.": "Выбрать {n}? В течение недели изменить нельзя.",
   "Tanlov qabul qilindi": "Выбор принят",
   "Jonli statistika hozircha yo'q.": "Живой статистики пока нет.",
+  "Barcha o'yinlar": "Все игры",
 };

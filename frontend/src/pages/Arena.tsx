@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { HabitCard } from "./Extra";
 import { api, type Tournament } from "../api";
 import { t } from "../i18n";
 import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, Sheet, som, SponsorLine, useAction, useApp, useLoad } from "../ui";
@@ -83,7 +82,6 @@ function ArenaHub({ sum, onOpen }: { sum: Summary | null; onOpen: (v: View) => v
       <Header title={t("Arena")} sub={t("O'ynang, ball yig'ing, yuting")} back={false} icon="arena" right={<span className="pts-pill">🏅 {money(sum?.points ?? 0)}</span>} />
       <div className="page">
         <MlCard bare />
-        <HabitCard />
 
         <div className="card arena-today">
           <div className="row between">

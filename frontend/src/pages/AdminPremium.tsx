@@ -349,3 +349,74 @@ export function KycAdminFull() {
     </>
   );
 }
+
+// ================================================================ API taqsimoti
+interface RouteOpt { provider_id: number; name: string; packages: number; active: boolean }
+interface RouteGame { slug: string; name: string; provider_id: number | null; provider: string | null; options: RouteOpt[] }
+interface RouteData { providers: { id: number; name: string; active: boolean; kind: string }[]; sections: { title: string; games: RouteGame[] }[] }
+
+export function ApiRoutingAdmin() {
+  const st = useLoad(() => api.get<RouteData>("/admin/catalog/routing"));
+  const { busy, run } = useAction();
+  const { toast } = useApp();
+  const [bulk, setBulk] = useState<{ section: string | null; provider: number | null }>({ section: null, provider: null });
+  const [q, setQ] = useState("");
+  const pick = (slug: string, pid: number) => run(async () => { await api.post(`/admin/catalog/games/${slug}/provider`, { provider_id: pid }); toast("O'zgartirildi", "ok"); st.reload(); });
+  return (
+    <Loadable state={st}>
+      {(d) => (
+        <>
+          <div className="mut xs">Har bo'lim (o'yin, Telegram Premium/Stars) qaysi API orqali sotilishini shu yerda tanlaysiz. Faqat shu bo'limda paketi bor API'lar ko'rinadi. Yangi API qo'shish: Katalog → API'lar.</div>
+          <div className="card col">
+            <div className="b">⚡️ Ommaviy o'tkazish</div>
+            <Field label="Bo'lim">
+              <select className="input" value={bulk.section ?? ""} onChange={(e) => setBulk({ ...bulk, section: e.target.value || null })}>
+                <option value="">Hamma bo'limlar</option>
+                {d.sections.map((s) => <option key={s.title} value={s.title}>{s.title} ({s.games.length})</option>)}
+              </select>
+            </Field>
+            <Field label="API">
+              <select className="input" value={bulk.provider ?? ""} onChange={(e) => setBulk({ ...bulk, provider: e.target.value ? Number(e.target.value) : null })}>
+                <option value="">Tanlang</option>
+                {d.providers.map((p) => <option key={p.id} value={p.id}>{p.name}{p.active ? "" : " (o'chiq)"}</option>)}
+              </select>
+            </Field>
+            <button className="btn full" disabled={busy || !bulk.provider} onClick={async () => {
+              if (!(await confirmDialog(`${bulk.section ?? "Hamma bo'limlar"} → ${d.providers.find((p) => p.id === bulk.provider)?.name}. Davom etilsinmi?`))) return;
+              run(async () => {
+                const r = await api.post<{ changed: number; skipped: number }>("/admin/catalog/routing/bulk", { provider_id: bulk.provider, section: bulk.section });
+                toast(`O'tkazildi: ${r.changed}${r.skipped ? ` · paketi yo'q: ${r.skipped}` : ""}`, "ok"); st.reload();
+              });
+            }}>O'tkazish</button>
+            <div className="mut xs">Shu API'da paketi bo'lmagan o'yinlar o'zgarmaydi.</div>
+          </div>
+          <input className="input" placeholder="O'yin qidirish" value={q} onChange={(e) => setQ(e.target.value)} />
+          {d.sections.map((s) => {
+            const games = s.games.filter((g) => !q || g.name.toLowerCase().includes(q.toLowerCase()));
+            if (games.length === 0) return null;
+            return (
+              <div key={s.title} className="col" style={{ gap: 8 }}>
+                <div className="sec-title" style={{ margin: "6px 0 0" }}>{s.title} <span className="mut xs">· {games.length}</span></div>
+                {games.map((g) => (
+                  <div key={g.slug} className="card tight col" style={{ gap: 6 }}>
+                    <div className="row between"><b className="ell">{g.name}</b><span className="mut xs">{g.provider ?? "qo'lda"}</span></div>
+                    {g.options.length === 0 ? <div className="mut xs">API paketi yo'q — faqat qo'lda paketlar</div> : (
+                      <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+                        {g.options.map((o) => (
+                          <button key={o.provider_id} className={"btn small " + (o.provider_id === g.provider_id ? "" : "ghost")} disabled={busy || o.provider_id === g.provider_id}
+                            onClick={() => pick(g.slug, o.provider_id)}>
+                            {o.provider_id === g.provider_id ? "✓ " : ""}{o.name} · {o.packages}{o.active ? "" : " ⚠️"}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </>
+      )}
+    </Loadable>
+  );
+}

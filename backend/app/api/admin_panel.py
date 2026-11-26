@@ -454,6 +454,65 @@ async def catalog_switch(slug: str, body: ProvIn, admin: AdminUser, session: Ses
     return {"ok": True}
 
 
+# ---------------------------------------------------------------- API taqsimoti: qaysi bo'lim qaysi API orqali
+def _section(g: DonateGame) -> str:
+    if g.slug.startswith("telegram-"):
+        return "Telegram (Premium, Stars)"
+    return (g.category or "Boshqa").strip() or "Boshqa"
+
+
+@router.get("/catalog/routing")
+async def catalog_routing(admin: AdminUser, session: SessionDep):
+    """Har bo'lim (o'yin / Telegram xizmati) uchun: hozirgi API va tanlash mumkin bo'lgan API'lar (paketi borlari)."""
+    provs = list(await session.scalars(select(DonateProvider).order_by(DonateProvider.id)))
+    pmap = {p.id: p for p in provs}
+    games = list(await session.scalars(select(DonateGame).where(DonateGame.is_active.is_(True)).order_by(DonateGame.sort, DonateGame.name)))
+    cnt = {(g, p): n for g, p, n in (await session.execute(
+        select(DonatePackage.game, DonatePackage.provider_id, func.count()).where(
+            DonatePackage.is_active.is_(True), DonatePackage.provider_id.is_not(None), DonatePackage.game.in_([g.slug for g in games] or [""]))
+        .group_by(DonatePackage.game, DonatePackage.provider_id))).all()}
+    sections: dict[str, list] = {}
+    for g in games:
+        opts = [{"provider_id": pid, "name": pmap[pid].name, "packages": cnt.get((g.slug, pid), 0), "active": pmap[pid].is_active}
+                for pid in sorted({int(k) for k in (g.brands or {}) if str(k).isdigit()} | ({g.provider_id} if g.provider_id else set()))
+                if pid in pmap and cnt.get((g.slug, pid), 0) > 0]
+        sections.setdefault(_section(g), []).append({"slug": g.slug, "name": g.name, "provider_id": g.provider_id,
+                                                     "provider": pmap[g.provider_id].name if g.provider_id in pmap else None, "options": opts})
+    order = sorted(sections, key=lambda s: (not s.startswith("Telegram"), s))
+    return {"providers": [{"id": p.id, "name": p.name, "active": p.is_active, "kind": p.kind} for p in provs],
+            "sections": [{"title": s, "games": sections[s]} for s in order]}
+
+
+class BulkRouteIn(BaseModel):
+    provider_id: int
+    section: str | None = Field(None, max_length=120)  # bo'sh — hamma bo'limlar
+
+
+@router.post("/catalog/routing/bulk")
+async def catalog_routing_bulk(body: BulkRouteIn, admin: AdminUser, session: SessionDep):
+    """Tanlangan bo'limdagi (yoki hammadagi) o'yinlarni shu API'ga o'tkazadi — faqat shu API'da paketi bor o'yinlar."""
+    changed = skipped = 0
+    async with session.begin():
+        if await session.get(DonateProvider, body.provider_id) is None:
+            raise NotFound("API")
+        games = list(await session.scalars(select(DonateGame).where(DonateGame.is_active.is_(True)).with_for_update()))
+        has = set(await session.scalars(select(DonatePackage.game).where(
+            DonatePackage.provider_id == body.provider_id, DonatePackage.is_active.is_(True)).distinct()))
+        for g in games:
+            if body.section and _section(g) != body.section:
+                continue
+            brand = (g.brands or {}).get(str(body.provider_id))
+            if g.provider_id == body.provider_id:
+                continue
+            if not brand or g.slug not in has:
+                skipped += 1
+                continue
+            g.provider_id, g.brand_slug = body.provider_id, brand
+            changed += 1
+    await invalidate_packages_cache()
+    return {"changed": changed, "skipped": skipped}
+
+
 class LinkIn(BaseModel):
     from_slug: str = Field(max_length=64)
 

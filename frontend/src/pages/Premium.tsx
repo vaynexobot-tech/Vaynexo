@@ -4,7 +4,7 @@ import { api, type Pkg } from "../api";
 import { t } from "../i18n";
 import { confirmDialog, openTg } from "../tg";
 import {
-  BottomNav, Copy, dateTime, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Toggle, useAction, useApp, useFeature, useLoad,
+  BottomNav, Copy, dateTime, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Toggle, useAction, useApp, useFeature, useLoad, useSection,
 } from "../ui";
 
 // ================================================================ umumiy
@@ -55,15 +55,17 @@ export function PremiumTiles() {
   const nav = useNavigate();
   const { me } = useApp();
   const top = useFeature("top"), market = useFeature("market");
+  const on = { vay: useSection("vay"), plus: useSection("plus"), savings: useSection("savings"), split: useSection("split"), shop: useSection("shop") };
   const tiles = [
-    ...(me?.vay ? [{ to: "/vay", icon: me.vay.icon, title: `${me.vay.name} · ${money(me.vay.xp)} VAY`, sub: t("Daraja va keshbek") }] : []),
-    { to: "/plus", icon: "💎", title: "VAYNEXO Plus", sub: me?.plus ? t("Faol · keshbek") : t("Har xariddan keshbek") },
-    { to: "/savings", icon: "🏦", title: t("Skin jamg'armasi"), sub: t("Oz-ozdan yig'ib, bonus bilan ol") },
-    { to: "/together", icon: "🤝", title: t("Birgalikda"), sub: t("Do'stlar bilan to'lov va orzular") },
-    { to: "/shop", icon: "🏪", title: t("O'z do'koningni och"), sub: t("Mijozlardan 3–6% komissiya") },
+    ...(me?.vay && on.vay ? [{ to: "/vay", icon: me.vay.icon, title: `${me.vay.name} · ${money(me.vay.xp)} VAY`, sub: t("Daraja va keshbek") }] : []),
+    ...(on.plus ? [{ to: "/plus", icon: "💎", title: "VAYNEXO Plus", sub: me?.plus ? t("Faol · keshbek") : t("Har xariddan keshbek") }] : []),
+    ...(on.savings ? [{ to: "/savings", icon: "🏦", title: t("Skin jamg'armasi"), sub: t("Oz-ozdan yig'ib, bonus bilan ol") }] : []),
+    ...(on.split ? [{ to: "/together", icon: "🤝", title: t("Birgalikda"), sub: t("Do'stlar bilan to'lov va orzular") }] : []),
+    ...(on.shop ? [{ to: "/shop", icon: "🏪", title: t("O'z do'koningni och"), sub: t("Mijozlardan 3–6% komissiya") }] : []),
     ...(top ? [{ to: "/top", icon: "🏆", title: t("Top xaridorlar"), sub: t("Top 100 reyting") }] : []),
     ...(market ? [{ to: "/sell", icon: "🛒", title: t("E'lon berish"), sub: t("Account sotish") }] : []),
   ];
+  if (tiles.length === 0) return null;
   return (
     <>
       <div className="sec-title">✨ {t("Imkoniyatlar")}</div>

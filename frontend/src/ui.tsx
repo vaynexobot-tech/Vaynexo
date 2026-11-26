@@ -508,3 +508,9 @@ export function SponsorLine({ s }: { s?: { name: string; logo: string; url: stri
     </div>
   );
 }
+
+/** Premium bo'lim admin tomonidan yopilmaganmi (Sozlamalar → bo'limlar). */
+export function useSection(k: "shop" | "plus" | "savings" | "stream" | "pro" | "split" | "duel" | "vay"): boolean {
+  const { me } = useApp();
+  return me?.sections?.[k] !== false;
+}

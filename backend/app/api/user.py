@@ -47,6 +47,7 @@ async def me(user: CurrentUser, session: SessionDep):
         "commission_percent": await app_settings.get_value(session, "garant_fee_percent"),
         "wallet_id": wallet_svc.format_wallet_id(wid),
         "features": await app_settings.features(session),
+        "sections": {k: (await app_settings.get_value(session, f"{k}_on")) == "on" for k in ("shop", "plus", "savings", "stream", "pro", "split", "duel", "vay")},
         "shop": await _my_shop(session, user),
         "plus": await _plus_active(session, user.id),
         "vay": await _vay_brief(session, user),

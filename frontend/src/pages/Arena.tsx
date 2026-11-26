@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, type Tournament } from "../api";
 import { t } from "../i18n";
-import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, Sheet, som, SponsorLine, useAction, useApp, useLoad } from "../ui";
+import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, Sheet, som, SponsorLine, useAction, useApp, useLoad, useSection } from "../ui";
 import { Risers } from "./Heroes";
 import { Search } from "./Search";
 import { BracketView, type BracketT } from "./Bracket";
@@ -61,6 +61,7 @@ function ArenaHub({ sum, onOpen }: { sum: Summary | null; onOpen: (v: View) => v
   const nTours = tours.data?.length ?? 0;
   const pred = sum?.prediction;
   const vay = me?.vay;
+  const secDuel = useSection("duel"), secPro = useSection("pro"), secVay = useSection("vay");
   type Tile = { key: string; icon: string; title: string; sub: string; badge?: string; hot?: boolean; go: () => void };
   const tiles: Tile[] = [
     { key: "tours", icon: "🏆", title: t("Turnirlar"), sub: nTours ? t("{n} ta ochiq turnir", { n: nTours }) : t("Hozircha yo'q"), badge: nTours ? String(nTours) : undefined, hot: nTours > 0, go: () => onOpen("tours") },
@@ -68,14 +69,14 @@ function ArenaHub({ sum, onOpen }: { sum: Summary | null; onOpen: (v: View) => v
     { key: "games", icon: "🧠", title: t("Viktorina"), sub: t("Qahramonni top, +ball oling"), go: () => onOpen("games") },
     { key: "duo", icon: "🤝", title: t("Sherik topish"), sub: t("Rankedga o'yinchi izlash"), go: () => onOpen("duo") },
     { key: "team", icon: "🛡", title: t("Jamoa"), sub: t("Jamoa tuzing yoki qo'shiling"), go: () => onOpen("team") },
-    { key: "duel", icon: "⚔️", title: "Draft Jang", sub: t("Draft ELO reytingi"), go: () => nav("/duel") },
+    ...(secDuel ? [{ key: "duel", icon: "⚔️", title: "Draft Jang", sub: t("Draft ELO reytingi"), go: () => nav("/duel") }] : []),
     { key: "meta", icon: "🔮", title: t("Meta bashorat"), sub: t("Kim ko'tariladi? +ball"), go: () => nav("/meta") },
-    { key: "pro", icon: "🎮", title: t("Pro bilan o'yna"), sub: t("O'yin joyi — auksion"), go: () => nav("/pro") },
+    ...(secPro ? [{ key: "pro", icon: "🎮", title: t("Pro bilan o'yna"), sub: t("O'yin joyi — auksion"), go: () => nav("/pro") }] : []),
     { key: "heroes", icon: "📖", title: t("Qahramonlar"), sub: t("Draft, Buyumlar, counter"), go: () => nav("/heroes") },
     { key: "rating", icon: "📊", title: t("Reyting"), sub: lb.data?.me.place ? t("Sizning o'rningiz: #{n}", { n: lb.data.me.place }) : t("Sezon jadvali"), go: () => onOpen("rating") },
     { key: "missions", icon: "✅", title: t("Vazifalar"), sub: daily.length ? t("{a}/{b} bajarildi", { a: done, b: daily.length }) : t("Kunlik va haftalik"), badge: claimable ? String(claimable) : undefined, hot: claimable > 0, go: () => onOpen("missions") },
     { key: "mlcard", icon: "🎮", title: t("Mening MLBB kartam"), sub: t("Rank, liniya, qahramonlar"), go: () => window.dispatchEvent(new Event("vx:edit-mlcard")) },
-    ...(vay ? [{ key: "vay", icon: vay.icon, title: `${vay.name} · ${money(vay.xp)} VAY`, sub: t("Daraja va keshbek"), go: () => nav("/vay") }] : []),
+    ...(vay && secVay ? [{ key: "vay", icon: vay.icon, title: `${vay.name} · ${money(vay.xp)} VAY`, sub: t("Daraja va keshbek"), go: () => nav("/vay") }] : []),
   ];
   return (
     <>

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, ApiError, setPinToken, type Me, type PayCard } from "../api";
 import { LANGS, t, type Lang } from "../i18n";
 import { bioClear, bioManager, bioRead, bioSave, confirmDialog, copyText, haptic, openExternal, tgPhoto } from "../tg";
-import { Art, BottomBar, BottomNav, errorText, Field, Header, Icon, Loadable, money, Row, Sheet, Toggle, useAction, useApp, useLoad } from "../ui";
+import { Art, BottomBar, BottomNav, errorText, Field, Header, Icon, Loadable, money, Row, Sheet, Toggle, useAction, useApp, useLoad, useSection } from "../ui";
 
 const KYC_PILL: Record<Me["kyc_status"], [string, string]> = {
   none: ["Tasdiqlanmagan", "y"],
@@ -14,6 +14,7 @@ const KYC_PILL: Record<Me["kyc_status"], [string, string]> = {
 
 // ---------------------------------------------------------------- Sozlamalar
 export function Settings() {
+  const secShop = useSection("shop");
   const nav = useNavigate();
   const { me, setMe, fail } = useApp();
   const [langOpen, setLangOpen] = useState(false);
@@ -82,8 +83,8 @@ export function Settings() {
             right={<><span className="mut sm">{LANGS.find((l) => l.v === me.lang)?.label}</span>{chev}</>} onClick={() => setLangOpen(true)} />
           <Row icon="gift" title={t("Do'stlarni taklif qilish")}
             right={<><span className="pill-b g">+ bonus</span>{chev}</>} onClick={() => nav("/referral")} />
-          <Row icon="gift" title={t("Mening do'konim")}
-            right={<><span className="pill-b y">3–6%</span>{chev}</>} onClick={() => nav("/shop")} />
+          {secShop && <Row icon="gift" title={t("Mening do'konim")}
+            right={<><span className="pill-b y">3–6%</span>{chev}</>} onClick={() => nav("/shop")} />}
           <Row icon="bell" title={t("Bildirishnomalar")}
             right={<Toggle on={notifOn} onChange={(v) => patch({ notify_chat: v, notify_tour: v })} />} />
           <Row icon="card" title={t("To'lov usullari")} onClick={() => nav("/payment-methods")} />

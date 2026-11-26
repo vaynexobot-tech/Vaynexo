@@ -7,7 +7,7 @@ import { HERO_BY_ID, HeroAva } from "../mlbb";
 import { BracketView, type BracketT } from "./Bracket";
 import { Chips, Copy, dateTime, Empty, Field, GameTile, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
 import { ProAdmin, SignalAdmin } from "./Premium";
-import { KycAdminFull, PremiumAdmin } from "./AdminPremium";
+import { ApiRoutingAdmin, KycAdminFull, PremiumAdmin } from "./AdminPremium";
 import { BotAdmin, CatalogTab, SectionsAdmin, Dashboard, MORE, MORE_BY_V, MoreMenu, OrdersTab, useLinkCounts, type Dash } from "./AdminNew";
 
 type Tab = "stats" | "arena" | "analytics" | "audit" | "broadcast" | "promo" | "settings" | "rent" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments" | "kyc" | "partner" | "matches";
@@ -103,7 +103,7 @@ export default function Admin() {
     window.scrollTo(0, 0);
   };
   const qn = dash.data?.queue.length ?? 0;
-  const body = sec ? (sec === "bot" ? <BotAdmin onChange={dash.reload} /> : sec === "sections" ? <SectionsAdmin /> : sec === "signals" ? <SignalAdmin /> : sec === "pro" ? <ProAdmin /> : sec === "premium" ? <PremiumAdmin /> : sec === "kyc" ? <KycAdminFull /> : <Legacy tab={sec} />) : (
+  const body = sec ? (sec === "bot" ? <BotAdmin onChange={dash.reload} /> : sec === "sections" ? <SectionsAdmin /> : sec === "signals" ? <SignalAdmin /> : sec === "pro" ? <ProAdmin /> : sec === "premium" ? <PremiumAdmin /> : sec === "routing" ? <ApiRoutingAdmin /> : sec === "kyc" ? <KycAdminFull /> : <Legacy tab={sec} />) : (
     <>
       {main === "home" && <Dashboard st={dash} go={go} />}
       {main === "orders" && <OrdersTab go={go} />}

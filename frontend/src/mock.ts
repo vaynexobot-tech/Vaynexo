@@ -41,6 +41,14 @@ const state: Json = {
     vip_credit_days: 0, tournament_passes: 1, boost_coupon_percent: 0, badge: null, wallet_id: "VX 4821 7730",
   },
   settings: {
+    shop_on: "on",
+    plus_on: "on",
+    savings_on: "on",
+    split_on: "on",
+    stream_on: "on",
+    pro_on: "on",
+    duel_on: "on",
+    vay_on: "on",
     text_start: "Assalomu alaykum! 👋\n\nVAYNEXO — o'yinchilar uchun raqamli bozor.", text_soon: "🚀 Tez kunda ochilamiz!",
     text_home_title: "Donat, akkaunt va xizmatlar — bir joyda", text_home_sub: "Har bir xarid garant bilan himoyalangan", text_notice: "", text_support: "vaynexo_support",
     referral_bonus: 1234, referral_min_topup: 10_000, vip_price_per_day: 5_000, rent_deposit_type: "percent", rent_deposit_percent: 100,
@@ -543,6 +551,14 @@ on("POST", "/admin/catalog/games/:slug/link", () => ({ ok: true }));
 on("POST", "/admin/catalog/games/:slug/provider", () => ({ ok: true }));
 on("PATCH", "/admin/catalog/packages/:id", () => ({ ok: true }));
 const SPEC: [string, string, string, string, number, number, Json?][] = [
+  ["shop_on", "choice", "Do'konlar bo'limi", "Do'konlar", 0, 0, [{ v: "on", label: "Yoqilgan" }, { v: "off", label: "O'chiq" }]],
+  ["plus_on", "choice", "VAYNEXO Plus", "VAYNEXO Plus", 0, 0, [{ v: "on", label: "Yoqilgan" }, { v: "off", label: "O'chiq" }]],
+  ["savings_on", "choice", "Skin jamg'armasi", "Skin jamg'armasi", 0, 0, [{ v: "on", label: "Yoqilgan" }, { v: "off", label: "O'chiq" }]],
+  ["split_on", "choice", "Birgalikda to'lov", "Birgalikda to'lov", 0, 0, [{ v: "on", label: "Yoqilgan" }, { v: "off", label: "O'chiq" }]],
+  ["stream_on", "choice", "Efirda donat", "Striminerlar", 0, 0, [{ v: "on", label: "Yoqilgan" }, { v: "off", label: "O'chiq" }]],
+  ["pro_on", "choice", "Pro bilan o'yna", "Pro bilan o'yna", 0, 0, [{ v: "on", label: "Yoqilgan" }, { v: "off", label: "O'chiq" }]],
+  ["duel_on", "choice", "Draft Jang", "Draft Jang", 0, 0, [{ v: "on", label: "Yoqilgan" }, { v: "off", label: "O'chiq" }]],
+  ["vay_on", "choice", "VAY ball", "VAY ball", 0, 0, [{ v: "on", label: "Yoqilgan" }, { v: "off", label: "O'chiq" }]],
   ["text_start", "text", "Bot /start salomi", "Matnlar", 0, 2000],
   ["text_soon", "text", "Bot yopiq paytdagi xabar", "Matnlar", 0, 1000],
   ["text_home_title", "text", "Bosh sahifa: sarlavha", "Matnlar", 0, 80],
@@ -581,6 +597,7 @@ on("PUT", "/admin/settings", (_m, b) => {
   if (typeof b.value === "number" && !(b.value >= 0)) throw new MockError("bad_setting", "Qiymat 0 dan kam bo'lmasin");
   state.settings[b.key] = b.value;
   if (String(b.key).startsWith("feature_")) state.me.features[String(b.key).slice(8)] = b.value === "on";
+  if (String(b.key).endsWith("_on") && state.me.sections) state.me.sections[String(b.key).slice(0, -3)] = b.value === "on";
   if (String(b.key).startsWith("text_") && state.me.texts) state.me.texts[String(b.key).slice(5)] = b.value;
   return settingsRows();
 });
@@ -902,7 +919,7 @@ on("POST", "/ai/describe", (_m, b) => ({ title: `${b.rank || "Mythic"} akkaunt �
 
 // ---------------------------------------------------------------- Premium bo'limlar (demo)
 const LV4 = [["🥉", "Bronza", 3, 0], ["🥈", "Kumush", 4, 5_000_000], ["🥇", "Oltin", 5, 20_000_000], ["💎", "Brilliant", 6, 50_000_000]] as const;
-state.me.plus = false; state.me.texts = { home_title: "", home_sub: "", notice: "", support: "vaynexo_support" }; state.me.vay = { xp: 620, name: "Jangchi", icon: "⚔️", level: 2 };
+state.me.plus = false; state.me.sections = { shop: true, plus: true, savings: true, stream: true, pro: true, split: true, duel: true, vay: true }; state.me.texts = { home_title: "", home_sub: "", notice: "", support: "vaynexo_support" }; state.me.vay = { xp: 620, name: "Jangchi", icon: "⚔️", level: 2 };
 const DEMO_QR = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" shape-rendering="crispEdges"><rect width="29" height="29" fill="#fff"/><path fill="#111" d="M2 2h7v7H2zM20 2h7v7h-7zM2 20h7v7H2zM11 2h2v2h-2zM14 5h3v2h-3zM11 9h4v2h-4zM17 11h3v3h-3zM11 14h2v3h-2zM15 16h3v2h-3zM20 14h5v2h-5zM12 20h3v3h-3zM17 21h4v2h-4zM22 19h3v3h-3zM11 25h5v2h-5zM22 25h3v2h-3z"/></svg>`;
 const demo: Json = {
   shop: null as Json, plus: null as Json, savings: [] as Json[], streamer: null as Json, proProfile: null as Json,
@@ -1049,6 +1066,12 @@ on("PUT", "/admin/premium/elo/:id", () => ({ ok: true }));
 on("GET", "/admin/premium/kyc", (_m, _b, q) => ({ totals: { pending: 1, verified: 12, rejected: 2, none: 400 },
   items: q.get("status") === "pending" ? [{ id: 2002, name: "Jasur", username: "jasur_pro", status: "pending", note: null, at: ago(40) }] : [{ id: 2001, name: "Sardor", username: "sardor_ml", status: q.get("status"), note: null, at: ago(3000) }] }));
 on("POST", "/admin/premium/kyc/:id", (_m, b) => ({ ok: true, status: b.action === "approve" ? "verified" : b.action === "reject" ? "rejected" : "none" }));
+
+on("GET", "/admin/catalog/routing", () => ({ providers: [{ id: 1, name: "API 1", active: true, kind: "yupay" }, { id: 2, name: "API 2", active: true, kind: "fazercards" }, { id: 3, name: "API 3", active: true, kind: "uzpinhub" }],
+  sections: [{ title: "Telegram (Premium, Stars)", games: [{ slug: "telegram-stars", name: "Telegram Stars", provider_id: 1, provider: "API 1", options: [{ provider_id: 1, name: "API 1", packages: 6, active: true }, { provider_id: 3, name: "API 3", packages: 4, active: true }] }] },
+    { title: "Mobile games", games: [{ slug: "ML", name: "Mobile Legends", provider_id: 1, provider: "API 1", options: [{ provider_id: 1, name: "API 1", packages: 14, active: true }, { provider_id: 2, name: "API 2", packages: 12, active: true }, { provider_id: 3, name: "API 3", packages: 9, active: true }] },
+      { slug: "PUBG", name: "PUBG Mobile", provider_id: 2, provider: "API 2", options: [{ provider_id: 2, name: "API 2", packages: 8, active: true }] }] }] }));
+on("POST", "/admin/catalog/routing/bulk", () => ({ changed: 2, skipped: 1 }));
 
 export async function mockRequest(method: string, url: string, body: unknown): Promise<unknown> {
   await new Promise((r) => setTimeout(r, 180)); // tarmoq kechikishi taqlidi

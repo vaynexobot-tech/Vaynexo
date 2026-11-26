@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { t } from "../i18n";
 import { copyText } from "../tg";
-import { BottomNav, Empty, Header, Icon, Loadable, som, useAction, useApp, useLoad } from "../ui";
+import { useSection, BottomNav, Empty, Header, Icon, Loadable, som, useAction, useApp, useLoad } from "../ui";
 
 interface Tier { tier: number; views: number; reward: string; done: boolean }
 interface Video { id: number; platform: string; url: string; status: string; views: number; likes: number; tier: number; reward: string; note: string | null; created_at: string }
@@ -29,6 +29,7 @@ const PLATFORMS = [
 
 export default function Partner() {
   const nav = useNavigate();
+  const secStream = useSection("stream"), secPro = useSection("pro"), secShop = useSection("shop");
   const st = useLoad(() => api.get<Overview>("/partner"));
   const [tab, setTab] = useState<"rewards" | "code" | "send" | "ideas" | "top" | "rules">("rewards");
   return (
@@ -42,10 +43,10 @@ export default function Partner() {
               <div className="arena-grid">
                 {([
                   ["🎬", t("Video yuborish"), t("Ko'rish uchun mukofot"), () => { setTab("send"); window.scrollTo({ top: 600, behavior: "smooth" }); }],
-                  ["🎥", t("Striminer paneli"), t("Efirda almaz va pul donati"), () => nav("/streamer")],
-                  ["🎮", t("Pro bo'lish"), t("O'yin joyini auksionda soting"), () => nav("/pro/my")],
-                  ["🏪", t("O'z do'koningni och"), t("Mijozlardan 3–6% komissiya"), () => nav("/shop")],
-                ] as [string, string, string, () => void][]).map(([i, a, b, go]) => (
+                  secStream && ["🎥", t("Striminer paneli"), t("Efirda almaz va pul donati"), () => nav("/streamer")],
+                  secPro && ["🎮", t("Pro bo'lish"), t("O'yin joyini auksionda soting"), () => nav("/pro/my")],
+                  secShop && ["🏪", t("O'z do'koningni och"), t("Mijozlardan 3–6% komissiya"), () => nav("/shop")],
+                ].filter(Boolean) as [string, string, string, () => void][]).map(([i, a, b, go]) => (
                   <button key={a} className="arena-tile mini" onClick={go}>
                     <span className="arena-ico">{i}</span><span className="arena-t" style={{ fontSize: 15 }}>{a}</span><span className="arena-s">{b}</span>
                   </button>

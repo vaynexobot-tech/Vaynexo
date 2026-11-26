@@ -173,3 +173,24 @@ async def test_delivery_eta_only_from_real_data(api):
             s.add(DonateOrder(user_id=5, package_id=pk.id, game="ML", title="86", player_id="1", price=1, status="done", attempts=1,
                               created_at=t0, finished_at=t0 + timedelta(seconds=sec)))
     assert (await api(5).get("/donate/games/ML")).json()["eta_seconds"] == 30
+
+
+async def test_api_routing_page_and_bulk(api):
+    from tests.conftest import set_balance
+
+    await set_balance(1, 0)
+    y, f = await _ml_two_providers()
+    # FazerCards paketlarini ML'ga bog'laymiz (2 API bitta o'yinda)
+    assert (await api(1).post("/admin/catalog/games/ML/link", {"from_slug": "fz-mobile-legends-global"})).status_code == 200
+    r = (await api(1).get("/admin/catalog/routing")).json()
+    ml = next(g for s in r["sections"] for g in s["games"] if g["slug"] == "ML")
+    assert ml["provider_id"] == y and {o["provider_id"] for o in ml["options"]} == {y, f}
+    # hammasini FazerCards'ga o'tkazish
+    res = (await api(1).post("/admin/catalog/routing/bulk", {"provider_id": f})).json()
+    assert res["changed"] == 1
+    async with SessionLocal() as s:
+        assert (await s.get(DonateGame, "ML")).provider_id == f
+    # foydalanuvchiga endi faqat FazerCards paketlari ko'rinadi
+    pk = (await api(1).get("/donate/packages?game=ML")).json()
+    assert {p["provider_id"] for p in pk} == {f}
+    assert (await api(5).get("/admin/catalog/routing")).status_code in (401, 403)

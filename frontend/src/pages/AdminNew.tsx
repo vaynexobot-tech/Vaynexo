@@ -501,10 +501,15 @@ export function BotAdmin({ onChange }: { onChange?: () => void }) {
 // ---------------------------------------------------------------- BO'LIMLAR (ochish / «Tez kunda»)
 interface SRow { key: string; value: number | string; label: string; group: string }
 const SECTION_HINT: Record<string, string> = {
+  shop_on: "Daromad → O'z do'koningni och (komissiya)", plus_on: "Oylik obuna, keshbek", savings_on: "Skin uchun pul yig'ish",
+  split_on: "Birgalikda to'lov va Orzu ro'yxati", stream_on: "Efirda almaz va pul donati", pro_on: "Pro bilan o'yna (auksion)",
+  duel_on: "Arena → Draft Jang", vay_on: "VAY daraja va keshbek",
   feature_market: "Akkaunt sotish va sotib olish (garant bilan)", feature_rent: "Akkauntni ijaraga berish va olish",
   feature_boost: "Rank boost buyurtmalari", feature_tg: "Premium, Stars, sovg'alar", feature_arena: "Turnir, viktorina, reyting",
   feature_partner: "Videolar va mukofot", feature_top: "Top xaridorlar reytingi", feature_ai: "AI yordamchi",
 };
+
+const PREMIUM_KEYS = ["shop_on", "plus_on", "savings_on", "split_on", "stream_on", "pro_on", "duel_on", "vay_on"];
 
 export function SectionsAdmin() {
   const { toast } = useApp();
@@ -517,7 +522,7 @@ export function SectionsAdmin() {
   return (
     <Loadable state={st}>
       {(rows) => {
-        const feats = rows.filter((r) => r.key.startsWith("feature_"));
+        const feats = rows.filter((r) => r.key.startsWith("feature_") || PREMIUM_KEYS.includes(r.key));
         return (
           <>
             <div className="mut xs">Yopilgan bo'lim foydalanuvchilarga «Tez kunda» bo'lib ko'rinadi. Siz (admin) yopiq bo'limga baribir kira olasiz.</div>
@@ -561,6 +566,7 @@ export const MORE: { title: string; items: MenuItem[] }[] = [
     { v: "boost", icon: "rocket", c: "y", label: "Boost", sub: "Rank boost buyurtmalari" },
     { v: "rent", icon: "bag", c: "g", label: "Ijara", sub: "E'lonlar va nizolar" },
     { v: "moderation", icon: "doc", c: "y", label: "E'lonlar tekshiruvi", sub: "Akkaunt savdosi" },
+    { v: "routing", icon: "send", c: "b", label: "API taqsimoti", sub: "Qaysi bo'lim (o'yin, Telegram) qaysi API orqali sotiladi" },
     { v: "packages", icon: "box", c: "m", label: "Qo'lda paketlar", sub: "API'siz paket qo'shish" },
   ] },
   { title: "Arena", items: [

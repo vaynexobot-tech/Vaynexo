@@ -43,7 +43,10 @@ async def add_points(session: AsyncSession, user_id: int, amount: int, reason: s
     )
     if res.scalar() is None:
         return False
-    await session.execute(update(User).where(User.id == user_id).values(points=User.points + amount))
+    vals = {"points": User.points + amount}
+    if amount > 0:
+        vals["vay_xp"] = User.vay_xp + amount  # Arena ballari ham VAY darajasiga hisoblanadi
+    await session.execute(update(User).where(User.id == user_id).values(**vals))
     return True
 
 

@@ -49,6 +49,7 @@ async def me(user: CurrentUser, session: SessionDep):
         "features": await app_settings.features(session),
         "shop": await _my_shop(session, user),
         "plus": await _plus_active(session, user.id),
+        "vay": await _vay_brief(session, user),
         "kyc_required": {"marketplace": await app_settings.get_value(session, "kyc_marketplace") == "on",
                          "rental": await app_settings.get_value(session, "kyc_rental") == "on"},
         "purchases_count": await session.scalar(
@@ -195,3 +196,10 @@ async def _plus_active(session, uid: int) -> bool:
     from app.services import plus
 
     return await plus.active(session, uid)
+
+
+async def _vay_brief(session, user) -> dict | None:
+    from app.services import vay
+
+    o = await vay.overview(session, user)
+    return {"xp": o["xp"], "name": o["name"], "icon": o["icon"], "level": o["level"]} if o["enabled"] else None

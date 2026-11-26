@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { t } from "../i18n";
 import { copyText } from "../tg";
@@ -27,6 +28,7 @@ const PLATFORMS = [
 ];
 
 export default function Partner() {
+  const nav = useNavigate();
   const st = useLoad(() => api.get<Overview>("/partner"));
   const [tab, setTab] = useState<"rewards" | "code" | "send" | "ideas" | "top" | "rules">("rewards");
   return (
@@ -52,6 +54,20 @@ export default function Partner() {
                 </div>
                 <div className="progress"><i style={{ width: Math.min(100, Math.round((d.stats.views / (d.tiers[3]?.views || 1)) * 100)) + "%", background: "var(--g)" }} /></div>
                 <div className="mut xs">{d.stats.to_official > 0 ? t("«Rasmiy hamkor»gacha {n} ko'rish qoldi", { n: fmtN(d.stats.to_official) }) : t("Siz «Rasmiy hamkor»siz!")}</div>
+              </div>
+              <div className="sec-title">💸 {t("Ko'proq daromad")}</div>
+              <div className="adm2-list">
+                {[
+                  ["🎥", t("Striminer paneli"), t("Efirda almaz va pul donati qabul qiling"), "/streamer"],
+                  ["🎮", t("Pro bo'lish"), t("O'yin joyingizni auksionda soting"), "/pro/my"],
+                  ["🏪", t("O'z do'koningni och"), t("Mijozlar xarididan 3–6% komissiya"), "/shop"],
+                ].map(([i, a, b, to]) => (
+                  <button key={to} className="adm2-it" onClick={() => nav(to)}>
+                    <span style={{ fontSize: 24, width: 34 }}>{i}</span>
+                    <div className="grow" style={{ textAlign: "left", minWidth: 0 }}><div className="b">{a}</div><div className="mut xs ell">{b}</div></div>
+                    <Icon name="right" size={17} className="mut" />
+                  </button>
+                ))}
               </div>
               <div className="tabs5">
                 {([["rewards", "Mukofotlar"], ["code", "Promo-kod"], ["send", "Yuborish"], ["ideas", "G'oyalar"], ["top", "Reyting"], ["rules", "Shartlar"]] as const).map(([v, l]) => (

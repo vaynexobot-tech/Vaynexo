@@ -152,6 +152,7 @@ export interface Me {
   ref_link: string | null;
   shop?: { name: string; tagline: string } | null;
   plus?: boolean;
+  vay?: { xp: number; name: string; icon: string; level: number } | null;
   ref_invited: number;
   ref_paid: number;
   ref_earned: number;

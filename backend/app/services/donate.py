@@ -116,6 +116,9 @@ async def _finish_success(session: AsyncSession, order: DonateOrder, ref: str | 
     from app.services import plus
 
     await plus.on_purchase(session, order.user_id, "donate", order.id, order.price)
+    from app.services import vay
+
+    await vay.on_purchase(session, order.user_id, "donate", order.id, order.price)
     if artifact:
         import json
 

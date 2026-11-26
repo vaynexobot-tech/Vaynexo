@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PremiumTiles } from "./Premium";
+import { PremiumTiles, VayStrip } from "./Premium";
 import { api, type DonateGameCard, type DonateGames, type Tournament } from "../api";
 import { t } from "../i18n";
 import { tgPhoto } from "../tg";
@@ -123,6 +123,8 @@ export default function Home() {
           </div>
           <button className="btn small ghost" onClick={() => nav("/wallet")}>+ {t("To'ldirish")}</button>
         </div>
+
+        <VayStrip />
 
         {me?.shop && (
           <div className="card row shop-banner">

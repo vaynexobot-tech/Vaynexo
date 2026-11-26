@@ -58,6 +58,7 @@ class User(TimestampMixin, Base):
     referrer_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))
     referral_paid: Mapped[bool] = mapped_column(Boolean, default=False)
     shop_id: Mapped[int | None] = mapped_column(BigInteger, index=True)  # qaysi do'kon orqali kelgan (birinchi marta)
+    vay_xp: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")  # VAY ball: umr bo'yi yig'ilgan (sarflanmaydi)
     seller_strikes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # muddatda ma'lumot bermagan bitimlar
     # Identifikatsiya: none | pending | verified | rejected
     kyc_status: Mapped[str] = mapped_column(String(16), default="none", server_default="none", index=True)

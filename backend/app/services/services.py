@@ -101,6 +101,9 @@ async def resolve_tg_order(session: AsyncSession, order_id: int, action: str, no
         from app.services import plus
 
         await plus.on_purchase(session, order.user_id, "tg", order.id, order.price)
+        from app.services import vay
+
+        await vay.on_purchase(session, order.user_id, "tg", order.id, order.price)
         out.user(order.user_id, f"✅ {order.title} bajarildi ({order.target_username}).")
     elif action == "refund":
         order.status = "refunded"

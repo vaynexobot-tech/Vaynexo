@@ -125,6 +125,16 @@ SCHEMA.update({
     "pro_on": Spec("choice", "on", "Pro bilan o'yna (auksion)", "Pro bilan o'yna", choices={"on": "Yoqilgan", "off": "O'chiq"}),
     "pro_fee": Spec("percent", 15, "Auksiondan platforma ulushi (%)", "Pro bilan o'yna", 0, 50),
     "pro_min_bid": Spec("money", 20_000, "Eng kam boshlang'ich narx (so'm)", "Pro bilan o'yna", 1_000, 100_000_000),
+    # VAY ball
+    "vay_on": Spec("choice", "on", "VAY ball tizimi", "VAY ball", choices={"on": "Yoqilgan", "off": "O'chiq"}),
+    "vay_per": Spec("money", 1_000, "Har necha so'm xaridga 1 VAY", "VAY ball", 100, 1_000_000),
+    "vay_th_2": Spec("money", 500, "2-daraja (Jangchi): VAY", "VAY ball", 1, 10_000_000),
+    "vay_th_3": Spec("money", 3_000, "3-daraja (Usta): VAY", "VAY ball", 1, 10_000_000),
+    "vay_th_4": Spec("money", 10_000, "4-daraja (Legenda): VAY", "VAY ball", 1, 10_000_000),
+    "vay_cb_1": Spec("percent", 0, "Rekrut: keshbek (%)", "VAY ball", 0, 20),
+    "vay_cb_2": Spec("percent", 1, "Jangchi: keshbek (%)", "VAY ball", 0, 20),
+    "vay_cb_3": Spec("percent", 1, "Usta: keshbek (%)", "VAY ball", 0, 20),
+    "vay_cb_4": Spec("percent", 2, "Legenda: keshbek (%)", "VAY ball", 0, 20),
     # Do'konlar
     "shop_on": Spec("choice", "on", "«O'z do'koningni och» bo'limi", "Do'konlar", choices={"on": "Yoqilgan", "off": "O'chiq"}),
     "shop_pct_1": Spec("percent", 3, "Bronza: komissiya (%)", "Do'konlar", 0, 30),

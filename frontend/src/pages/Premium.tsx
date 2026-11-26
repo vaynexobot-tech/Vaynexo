@@ -4,7 +4,7 @@ import { api, type Pkg } from "../api";
 import { t } from "../i18n";
 import { confirmDialog, openTg } from "../tg";
 import {
-  BottomNav, Copy, dateTime, Empty, Field, Header, Loadable, money, MoneyInput, Seg, Sheet, som, Toggle, useAction, useApp, useLoad,
+  BottomNav, Copy, dateTime, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Toggle, useAction, useApp, useLoad,
 } from "../ui";
 
 // ================================================================ umumiy
@@ -57,8 +57,6 @@ export function PremiumTiles() {
   const tiles = [
     { to: "/plus", icon: "💎", title: "VAYNEXO Plus", sub: me?.plus ? t("Faol · keshbek") : t("Har xariddan keshbek") },
     { to: "/savings", icon: "🏦", title: t("Skin jamg'armasi"), sub: t("Oz-ozdan yig'ib, bonus bilan ol") },
-    { to: "/pro", icon: "🎮", title: t("Pro bilan o'yna"), sub: t("Mashhur o'yinchi bilan o'yin") },
-    { to: "/streamer", icon: "🎥", title: t("Striminerlar"), sub: t("Efirda almaz donati") },
   ];
   return (
     <>
@@ -754,5 +752,70 @@ export function DoubleSignalCard() {
       </div>
       <Toggle on={on} onChange={(v) => run(async () => { await api.put("/signals/double", { on: v }); st.reload(); })} />
     </div>
+  );
+}
+
+// ================================================================ VAY ball
+interface VayData {
+  enabled: boolean; xp: number; per: number; level: number; name: string; icon: string; cashback: number; from: number;
+  next: { name: string; icon: string; need: number; at: number; cashback: number } | null;
+  levels: { name: string; icon: string; from: number; cashback: number }[];
+}
+
+/** Bosh sahifadagi VAY darajasi kartasi. */
+export function VayStrip() {
+  const { me } = useApp();
+  const nav = useNavigate();
+  if (!me?.vay) return null;
+  return (
+    <button className="card row click between" style={{ textAlign: "left", borderColor: "rgba(155,107,255,.45)" }} onClick={() => nav("/vay")}>
+      <div className="row"><span style={{ fontSize: 28 }}>{me.vay.icon}</span>
+        <div><div className="b">{me.vay.name} · {money(me.vay.xp)} VAY</div><div className="mut xs">{t("Xarid qiling — daraja va keshbek oshadi")}</div></div></div>
+      <Icon name="right" size={18} className="mut" />
+    </button>
+  );
+}
+
+export function VayPage() {
+  const st = useLoad(() => api.get<VayData>("/vay"));
+  return (
+    <>
+      <Header title="VAY" sub={t("Daraja va keshbek")} icon="gem" />
+      <div className="page">
+        <Loadable state={st}>
+          {(d) => !d.enabled ? <Empty icon="🏅" text={t("Tez kunda")} /> : (
+            <>
+              <div className="hero col" style={{ gap: 6, borderColor: "rgba(155,107,255,.5)" }}>
+                <div className="row between"><span className="badge v">{d.icon} {d.name}</span><span className="g b xs">{d.cashback}% {t("keshbek")}</span></div>
+                <div className="bb mono y" style={{ fontSize: 30 }}>{money(d.xp)} <span className="mut sm">VAY</span></div>
+                {d.next ? (
+                  <>
+                    <div className="progress big"><i style={{ width: Math.min(100, Math.round(((d.xp - d.from) / Math.max(1, d.next.at - d.from)) * 100)) + "%" }} /></div>
+                    <div className="mut xs">{t("{n} VAY dan keyin {name} — {p}% keshbek", { n: money(d.next.need), name: d.next.name, p: d.next.cashback })}</div>
+                  </>
+                ) : <div className="b">👑 {t("Eng yuqori daraja!")}</div>}
+              </div>
+              <div className="shop-levels">
+                {d.levels.map((l, i) => (
+                  <div key={l.name} className={"shop-lvl" + (d.level === i + 1 ? " on" : "")}>
+                    <span style={{ fontSize: 22 }}>{l.icon}</span><b>{l.cashback}%</b>
+                    <span className="mut xs">{l.name}</span><span className="mut xs">{i === 0 ? t("boshlang'ich") : t("{n} dan", { n: money(l.from) })}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="card col">
+                <div className="b">{t("VAYni qanday yig'asiz")}</div>
+                {[t("Donat va Telegram xizmatlari: har {n} so'm = 1 VAY", { n: money(d.per) }), t("Arena: viktorina, vazifa, turnir ballari = 1 VAY"),
+                  t("Daraja oshgani sari har xariddan hamyonga keshbek qaytadi (Plus keshbegiga qo'shiladi)")].map((x, i) => (
+                  <div key={i} className="row" style={{ alignItems: "flex-start" }}><span className="mono y b">{i + 1}</span><span className="sm">{x}</span></div>
+                ))}
+                <div className="mut xs">{t("VAY pulga almashtirilmaydi va sarflanmaydi — faqat darajangizni belgilaydi.")}</div>
+              </div>
+            </>
+          )}
+        </Loadable>
+      </div>
+      <BottomNav />
+    </>
   );
 }

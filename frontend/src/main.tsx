@@ -6,7 +6,7 @@ import { setLang, t } from "./i18n";
 import Admin from "./pages/Admin";
 import Partner from "./pages/Partner";
 import Shop from "./pages/Shop";
-import { PlusPage, ProList, ProMy, ProSlotPage, SavingsPage, StreamerPanel, StreamPage } from "./pages/Premium";
+import { VayPage, PlusPage, ProList, ProMy, ProSlotPage, SavingsPage, StreamerPanel, StreamPage } from "./pages/Premium";
 import { Arena, TournamentPage, Top } from "./pages/Arena";
 import { Boost, BoostOrderPage, BoostOrders } from "./pages/Boost";
 import { ChatPage, Chats } from "./pages/Chat";
@@ -39,7 +39,7 @@ function DeepLink() {
     const map: Record<string, string> = { listing: `/listing/${id}`, deal: `/deal/${id}`, chat: `/chat/${id}`, boost: `/boost/${id}`, tour: `/arena/${id}`, arena: `/arena/${id}`, rental: `/rental/${id}` };
     if (kind === "donate" && /^donate_[A-Za-z0-9-]{1,60}$/.test(p)) nav(`/donate/${p.slice(7)}`); // inline qidiruvdan
     else if (map[kind] && /^\d+$/.test(id)) nav(map[kind], { replace: false }); // yopiq bo'lim bo'lsa Gate bosh sahifaga qaytaradi
-    else if (["admin", "wallet", "booster", "rent", "partner", "arena", "shop", "plus", "savings", "pro", "streamer"].includes(kind) && !id) nav("/" + kind); // kanal tugmalari
+    else if (["admin", "wallet", "booster", "rent", "partner", "arena", "shop", "plus", "vay", "savings", "pro", "streamer"].includes(kind) && !id) nav("/" + kind); // kanal tugmalari
   }, [nav]);
   return null;
 }
@@ -114,6 +114,7 @@ function App() {
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/soon" element={<TradeSoon />} />
           <Route path="/shop" element={<Shop />} />
+          <Route path="/vay" element={<VayPage />} />
           <Route path="/plus" element={<PlusPage />} />
           <Route path="/savings" element={<SavingsPage />} />
           <Route path="/s/:slug" element={<StreamPage />} />

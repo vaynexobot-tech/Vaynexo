@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { VayStrip } from "./Premium";
 import { api, type Tournament } from "../api";
 import { t } from "../i18n";
 import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, Sheet, som, SponsorLine, useAction, useApp, useLoad } from "../ui";
@@ -71,6 +72,7 @@ function ArenaHub({ sum, onOpen }: { sum: Summary | null; onOpen: (v: View) => v
     <>
       <Header title={t("Arena")} sub={t("O'ynang, ball yig'ing, yuting")} back={false} icon="arena" right={<span className="pts-pill">🏅 {money(sum?.points ?? 0)}</span>} />
       <div className="page">
+        <VayStrip />
         <MlCard />
 
         <div className="card arena-today">
@@ -106,6 +108,12 @@ function ArenaHub({ sum, onOpen }: { sum: Summary | null; onOpen: (v: View) => v
             </button>
           ))}
         </div>
+
+        <button className="card row click" style={{ textAlign: "left", borderColor: "rgba(155,107,255,.5)" }} onClick={() => nav("/pro")}>
+          <span style={{ fontSize: 30 }}>🎮</span>
+          <div className="grow"><div className="b">{t("Pro bilan o'yna")}</div><div className="mut xs">{t("Mashhur o'yinchi bilan o'yin joyi — auksion")}</div></div>
+          <Icon name="right" size={18} />
+        </button>
 
         <button className="card row click" style={{ textAlign: "left", borderColor: "rgba(77,163,255,.35)" }} onClick={() => nav("/heroes")}>
           <span className="row" style={{ gap: 0 }}>{[109, 4, 9].map((id, k) => <span key={id} style={{ marginLeft: k ? -12 : 0 }}><HeroAva id={id} size={36} radius={18} /></span>)}</span>

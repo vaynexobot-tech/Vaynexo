@@ -9,11 +9,17 @@ from pydantic import BaseModel, Field
 from app.api.deps import AdminUser, CurrentUser, SessionDep, rate_limit
 from app.config import settings
 from app.queue import enqueue
-from app.services import plus, pro, savings, signals, stream
+from app.services import plus, pro, savings, signals, stream, vay
 from app.services.notify import Outbox
 
 router = APIRouter(tags=["premium"])
 public_router = APIRouter(tags=["premium"])  # vidjet (OBS) — Telegram avtorizatsiyasisiz, maxfiy token bilan
+
+
+# ================================================================ VAY ball
+@router.get("/vay")
+async def vay_get(user: CurrentUser, session: SessionDep):
+    return await vay.overview(session, user)
 
 
 # ================================================================ VAYNEXO Plus

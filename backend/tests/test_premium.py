@@ -240,3 +240,46 @@ async def test_pro_confirm_pays_and_antisnipe(api):
     assert r.json()["status"] == "done"
     assert await get_balance(73) == 42_500  # 15% platforma
     assert (await api(74).post(f"/pro/{sid}/confirm")).status_code == 409
+
+
+# ---------------------------------------------------------------- VAY ball
+async def test_vay_xp_levels_and_cashback(api, monkeypatch):
+    from dataclasses import replace
+
+    from app.services import app_settings as A
+
+    monkeypatch.setitem(A.SCHEMA, "vay_cb_2", replace(A.SCHEMA["vay_cb_2"], default=2))
+    await set_balance(80, 2_000_000)
+    pid = await make_package(300_000)
+    r = await api(80).get("/vay")
+    assert r.json()["name"] == "Rekrut" and r.json()["xp"] == 0
+    oid = (await api(80).post("/donate/orders", {"package_id": pid, **ML})).json()["id"]
+    bal = await get_balance(80)
+    await _complete(oid)
+    await _complete(oid)  # takror — ikki marta hisoblanmaydi
+    r = (await api(80).get("/vay")).json()
+    assert r["xp"] == 300 and r["name"] == "Rekrut"  # keshbek xariddan oldingi daraja bo'yicha: Rekrut 0%
+    assert await get_balance(80) == bal
+    # 500 VAYga yetgach → Jangchi, keyingi xariddan 2% keshbek
+    oid2 = (await api(80).post("/donate/orders", {"package_id": pid, **ML})).json()["id"]
+    await _complete(oid2)
+    assert (await api(80).get("/vay")).json()["name"] == "Jangchi"
+    bal = await get_balance(80)
+    oid3 = (await api(80).post("/donate/orders", {"package_id": pid, **ML})).json()["id"]
+    await _complete(oid3)
+    assert await get_balance(80) == bal - 300_000 + 6_000
+    assert (await api(80).get("/me")).json()["vay"]["name"] == "Jangchi"
+
+
+async def test_arena_points_give_vay_xp():
+    from app.services import arena
+
+    await set_balance(81, 0)
+    async with SessionLocal() as s, s.begin():
+        assert await arena.add_points(s, 81, 50, "test", "t:81:1")
+        assert await arena.add_points(s, 81, -20, "spend", "t:81:2")  # sarflash XP'ni kamaytirmaydi
+    async with SessionLocal() as s:
+        from app.models import User
+
+        u = await s.get(User, 81)
+        assert u.points == 30 and u.vay_xp == 50

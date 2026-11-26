@@ -387,6 +387,12 @@ class Tournament(TimestampMixin, Base):
     players_count: Mapped[int] = mapped_column(Integer, default=0)
     reminded: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # 30 daqiqa oldin eslatma
     format: Mapped[str] = mapped_column(String(8), default="solo", server_default="solo")  # solo | team (5v5 jamoalar)
+    # Homiy (brend turnirlari)
+    sponsor_name: Mapped[str] = mapped_column(String(64), default="", server_default="")
+    sponsor_logo: Mapped[str] = mapped_column(String(300), default="", server_default="")
+    sponsor_url: Mapped[str] = mapped_column(String(300), default="", server_default="")
+    sponsor_text: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    plus_only: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # faqat VAYNEXO Plus a'zolari
 
 
 class TournamentEntry(TimestampMixin, Base):
@@ -759,3 +765,138 @@ class ShopSale(TimestampMixin, Base):
     commission: Mapped[int] = mapped_column(BigInteger)
     pct: Mapped[int] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(12), default="paid", server_default="paid")
+
+
+# ---------------------------------------------------------------- signallar (ikki barobar almaz va h.k.)
+class AlertSub(TimestampMixin, Base):
+    __tablename__ = "alert_subs"
+
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16), primary_key=True)
+
+
+class SignalLog(TimestampMixin, Base):
+    __tablename__ = "signal_logs"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16), index=True)  # double | detect
+    text: Mapped[str] = mapped_column(Text, default="")
+    sent: Mapped[int] = mapped_column(Integer, default=0)
+    payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+
+# ---------------------------------------------------------------- VAYNEXO Plus
+class PlusSub(TimestampMixin, Base):
+    __tablename__ = "plus_subs"
+
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), primary_key=True)
+    until: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    months: Mapped[int] = mapped_column(Integer, default=0)
+    auto_renew: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    auto_package_id: Mapped[int | None] = mapped_column(BigInteger)
+    auto_player_id: Mapped[str] = mapped_column(String(64), default="", server_default="")
+    auto_zone_id: Mapped[str] = mapped_column(String(64), default="", server_default="")
+    auto_next_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cashback_total: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    notice: Mapped[str] = mapped_column(String(16), default="", server_default="")
+
+
+# ---------------------------------------------------------------- skin jamg'armasi
+class Saving(TimestampMixin, Base):
+    __tablename__ = "savings"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    package_id: Mapped[int] = mapped_column(BigInteger)
+    player_id: Mapped[str] = mapped_column(String(64), default="")
+    zone_id: Mapped[str] = mapped_column(String(64), default="")
+    target: Mapped[int] = mapped_column(BigInteger)
+    saved: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    deposits: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    weekly: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    next_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    buy_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    half_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # yarmiga yetgan payt (bonus sharti)
+    status: Mapped[str] = mapped_column(String(12), default="active", server_default="active", index=True)  # active|done|cancelled
+    order_id: Mapped[int | None] = mapped_column(BigInteger)
+    bonus: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+# ---------------------------------------------------------------- striminerlar
+class Streamer(TimestampMixin, Base):
+    __tablename__ = "streamers"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), unique=True)
+    slug: Mapped[str] = mapped_column(String(24), unique=True)
+    name: Mapped[str] = mapped_column(String(48))
+    about: Mapped[str] = mapped_column(String(160), default="", server_default="")
+    player_id: Mapped[str] = mapped_column(String(32))
+    zone_id: Mapped[str] = mapped_column(String(16))
+    widget_token: Mapped[str] = mapped_column(String(48), unique=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    total_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    total_packs: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")  # almaz paketlari summasi
+    total_money: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")  # striminerga tushgan pul
+
+
+class StreamDonation(TimestampMixin, Base):
+    __tablename__ = "stream_donations"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    streamer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("streamers.id"), index=True)
+    donor_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))
+    donor_name: Mapped[str] = mapped_column(String(48))
+    kind: Mapped[str] = mapped_column(String(8))  # pack | money | test
+    title: Mapped[str] = mapped_column(String(120), default="")
+    amount: Mapped[int] = mapped_column(BigInteger, default=0)
+    payout: Mapped[int] = mapped_column(BigInteger, default=0)
+    order_id: Mapped[int | None] = mapped_column(BigInteger)
+    message: Mapped[str] = mapped_column(String(200), default="")
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
+
+# ---------------------------------------------------------------- Pro bilan o'yna (auksion)
+class ProProfile(TimestampMixin, Base):
+    __tablename__ = "pro_profiles"
+
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), primary_key=True)
+    name: Mapped[str] = mapped_column(String(48))
+    bio: Mapped[str] = mapped_column(String(300), default="")
+    link: Mapped[str] = mapped_column(String(200), default="")
+    rank: Mapped[str] = mapped_column(String(32), default="")
+    status: Mapped[str] = mapped_column(String(12), default="pending", server_default="pending", index=True)  # pending|approved|rejected
+    note: Mapped[str] = mapped_column(String(200), default="", server_default="")
+
+
+class ProSlot(TimestampMixin, Base):
+    __tablename__ = "pro_slots"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    pro_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    details: Mapped[str] = mapped_column(String(500), default="")
+    play_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    min_bid: Mapped[int] = mapped_column(BigInteger)
+    step: Mapped[int] = mapped_column(BigInteger)
+    price: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    top_bid_id: Mapped[int | None] = mapped_column(BigInteger)
+    bids: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    winner_id: Mapped[int | None] = mapped_column(BigInteger)
+    # open | sold | done | disputed | expired | cancelled
+    status: Mapped[str] = mapped_column(String(12), default="open", server_default="open", index=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dispute: Mapped[str] = mapped_column(String(300), default="", server_default="")
+
+
+class ProBid(TimestampMixin, Base):
+    __tablename__ = "pro_bids"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    slot_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pro_slots.id"), index=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), index=True)
+    amount: Mapped[int] = mapped_column(BigInteger)
+    status: Mapped[str] = mapped_column(String(12), default="active", server_default="active")  # active|outbid|won|refunded

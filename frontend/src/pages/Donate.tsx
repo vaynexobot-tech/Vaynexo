@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api, type DonateGameCard, type DonateGameField, type DonateOrder, type Pkg } from "../api";
 import { t } from "../i18n";
 import { copyText } from "../tg";
+import { DoubleSignalCard } from "./Premium";
 import { BottomBar, Empty, Field, GameTile, Header, Loadable, money, som, Spinner, Status, useAction, useApp, useLoad } from "../ui";
 
 const DEFAULT_FIELDS: DonateGameField[] = [{ key: "player_id", label: "ID", placeholder: "12345678", pattern: "" }];
@@ -116,6 +117,7 @@ function DonateFlow({ game: g }: { game: DonateGameCard }) {
                 <div className="r sm">❌ {t("O'yinchi topilmadi. ID ni tekshiring.")}</div>
               </div>
             )}
+            {game === "ML" && <DoubleSignalCard />}
             {game === "ML" && <div className="card tight mut sm">ℹ️ {t("O'yinda chap yuqoridagi profil rasmingizni bosing — ID va Zone ID qavs ichida yozilgan: 12345678 (1234)")}</div>}
           </>
         )}

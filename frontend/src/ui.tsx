@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { ApiError, type Me } from "./api";
 import { t } from "./i18n";
-import { haptic, tg } from "./tg";
+import { haptic, openExternal, tg } from "./tg";
 
 // Rasmiy o'yin ikonkalari (App Store'dan): assets/games/<slug>.webp
 export const GAME_IMG: Record<string, string> = Object.fromEntries(
@@ -487,6 +487,23 @@ export function KycBanner({ area }: { area: "marketplace" | "rental" }) {
         <div className="mut xs">{area === "marketplace" ? t("Sotish va xarid uchun shaxsingizni tasdiqlang") : t("Ijara uchun shaxsingizni tasdiqlang")}</div>
       </div>
       {!pending && <button className="btn small" onClick={() => nav("/kyc")}>{t("O'tish")} ›</button>}
+    </div>
+  );
+}
+
+/** Turnir homiysi (brend): logo, nom, matn va havola. */
+export function SponsorLine({ s }: { s?: { name: string; logo: string; url: string; text: string } | null }) {
+  if (!s) return null;
+  const open = (e: React.MouseEvent) => { e.stopPropagation(); if (s.url) openExternal(s.url); };
+  return (
+    <div className="sponsor" onClick={open} role={s.url ? "link" : undefined}>
+      {s.logo ? <img src={s.logo} alt="" /> : <span className="sponsor-ic">🤝</span>}
+      <div className="grow" style={{ minWidth: 0 }}>
+        <div className="mut xs">{t("Homiy")}</div>
+        <div className="b ell">{s.name}</div>
+        {s.text && <div className="mut xs ell">{s.text}</div>}
+      </div>
+      {s.url && <Icon name="right" size={16} className="mut" />}
     </div>
   );
 }

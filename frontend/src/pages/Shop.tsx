@@ -75,9 +75,9 @@ function Create({ d, done }: { d: Overview; done: () => void }) {
       </div>
       <Levels levels={d.levels} />
       <div className="card col">
-        <Field label={t("Do'kon nomi")}><input value={name} maxLength={48} placeholder={t("Masalan: Aziz Gaming")} onChange={(e) => setName(e.target.value)} /></Field>
-        <Field label={t("Havola nomi (lotin harf, raqam, _)")}><input value={slug} maxLength={24} placeholder="aziz_gaming" onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))} /></Field>
-        <Field label={t("Qisqa tavsif")}><input value={tag} maxLength={120} placeholder={t("Eng arzon almaz — kanal obunachilariga")} onChange={(e) => setTag(e.target.value)} /></Field>
+        <Field label={t("Do'kon nomi")}><input className="input" value={name} maxLength={48} placeholder={t("Masalan: Aziz Gaming")} onChange={(e) => setName(e.target.value)} /></Field>
+        <Field label={t("Havola nomi (lotin harf, raqam, _)")}><input className="input" value={slug} maxLength={24} placeholder="aziz_gaming" onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))} /></Field>
+        <Field label={t("Qisqa tavsif")}><input className="input" value={tag} maxLength={120} placeholder={t("Eng arzon almaz — kanal obunachilariga")} onChange={(e) => setTag(e.target.value)} /></Field>
         <button className="btn full" disabled={busy || name.trim().length < 2 || slug.length < 3} onClick={go}>{t("Do'kon ochish")}</button>
       </div>
     </>
@@ -141,8 +141,8 @@ function MyShop({ d, reload }: { d: Overview; reload: () => void }) {
 
       {edit ? (
         <div className="card col">
-          <Field label={t("Do'kon nomi")}><input value={name} maxLength={48} onChange={(e) => setName(e.target.value)} /></Field>
-          <Field label={t("Qisqa tavsif")}><input value={tag} maxLength={120} onChange={(e) => setTag(e.target.value)} /></Field>
+          <Field label={t("Do'kon nomi")}><input className="input" value={name} maxLength={48} onChange={(e) => setName(e.target.value)} /></Field>
+          <Field label={t("Qisqa tavsif")}><input className="input" value={tag} maxLength={120} onChange={(e) => setTag(e.target.value)} /></Field>
           <button className="btn full" disabled={busy || name.trim().length < 2} onClick={save}>{t("Saqlash")}</button>
         </div>
       ) : <button className="btn ghost full" onClick={() => setEdit(true)}>{t("Nom va tavsifni o'zgartirish")}</button>}

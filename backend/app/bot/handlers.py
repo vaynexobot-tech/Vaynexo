@@ -82,11 +82,14 @@ async def ensure_user(tg_user, ref: int | None = None) -> User:
 
 DEEP_PAGES = {"admin": "Admin panel", "listing": "E'lonni ochish", "deal": "Bitimni ochish", "chat": "Chatni ochish",
               "boost": "Buyurtmani ochish", "rental": "Ijarani ochish", "arena": "Turnirni ochish", "wallet": "Hamyonni ochish",
-              "partner": "Hamkor", "shop": "Do'kon", "booster": "Booster", "rent": "Ijara", "history": "Tarix", "my-listings": "E'lonlarim"}
+              "partner": "Hamkor", "shop": "Do'kon", "plus": "VAYNEXO Plus", "savings": "Jamg'arma", "pro": "Pro bilan o'yna", "streamer": "Striminer paneli", "booster": "Booster", "rent": "Ijara", "history": "Tarix", "my-listings": "E'lonlarim"}
 
 
 def deep_link_path(arg: str | None) -> tuple[str, str] | None:
     """Kanal/guruh tugmasi: t.me/bot?start=listing_15 → (/listing/15, «E'lonni ochish»)."""
+    st = re.fullmatch(r"stream_([a-z0-9_]{3,24})", arg or "")
+    if st:
+        return f"/s/{st.group(1)}", "🎁 Donat yuborish"
     d = re.fullmatch(r"donate_([A-Za-z0-9-]{1,60})", arg or "")  # inline qidiruvdan: donate_ML, donate_pubg-mobile
     if d:
         return f"/donate/{d.group(1)}", "💎 Donat qilish"

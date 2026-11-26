@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { PremiumTiles } from "./Premium";
 import { api, type DonateGameCard, type DonateGames, type Tournament } from "../api";
 import { t } from "../i18n";
 import { tgPhoto } from "../tg";
-import { Art, BalancePill, BottomNav, GameTile, Icon, Loadable, money, som, useApp, useFeature, useLoad } from "../ui";
+import { Art, BalancePill, BottomNav, GameTile, Icon, Loadable, money, som, SponsorLine, useApp, useFeature, useLoad } from "../ui";
 
 export default function Home() {
   const nav = useNavigate();
@@ -57,6 +58,7 @@ export default function Home() {
               <span className="mono y bb">{money(tour.prize_fund)} UZS</span>
             </div>
             <div className="hf bb" style={{ fontSize: 20, margin: "12px 0 4px" }}>{tour.title}</div>
+            <SponsorLine s={tour.sponsor} />
             <div className="mut sm">{t("Sovrinli turnir — ro'yxatdan o'ting va ishtirok eting")}</div>
             <div className="divider" style={{ margin: "12px 0" }} />
             <div className="row between">
@@ -128,6 +130,8 @@ export default function Home() {
             <div><div className="b">{me.shop.name}</div><div className="mut xs">{me.shop.tagline || t("sizga tavsiya qilgan do'kon")}</div></div>
           </div>
         )}
+
+        <PremiumTiles />
 
         <div className="card click row between" onClick={() => nav("/shop")}>
           <div className="row"><span style={{ fontSize: 30 }}>🏪</span>

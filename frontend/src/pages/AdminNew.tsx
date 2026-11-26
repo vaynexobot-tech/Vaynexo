@@ -569,6 +569,10 @@ export const MORE: { title: string; items: MenuItem[] }[] = [
     { v: "arena", icon: "brain", c: "v", label: "Viktorina, ovoz, statistika", sub: "Rone Arena statistikasi" },
     { v: "partner", icon: "play", c: "g", label: "Hamkorlar", sub: "Videolar va kodlar" },
   ] },
+  { title: "Premium", items: [
+    { v: "signals", icon: "bell", c: "y", label: "Ikki barobar almaz signali", sub: "Obunachilarga darhol xabar" },
+    { v: "pro", icon: "trophy", c: "v", label: "Pro auksion", sub: "Pro arizalar va nizolar" },
+  ] },
   { title: "Xavfsizlik", items: [
     { v: "kyc", icon: "shield", c: "b", label: "Identifikatsiya (KYC)", sub: "Hujjat tekshiruvi" },
     { v: "disputes", icon: "flag", c: "r", label: "Nizolar", sub: "Savdo bitimlari bo'yicha" },

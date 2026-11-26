@@ -48,6 +48,7 @@ async def me(user: CurrentUser, session: SessionDep):
         "wallet_id": wallet_svc.format_wallet_id(wid),
         "features": await app_settings.features(session),
         "shop": await _my_shop(session, user),
+        "plus": await _plus_active(session, user.id),
         "kyc_required": {"marketplace": await app_settings.get_value(session, "kyc_marketplace") == "on",
                          "rental": await app_settings.get_value(session, "kyc_rental") == "on"},
         "purchases_count": await session.scalar(
@@ -188,3 +189,9 @@ async def _my_shop(session, user) -> dict | None:
 
     s = await session.get(Shop, user.shop_id)
     return {"name": s.name, "tagline": s.tagline} if s and s.active else None
+
+
+async def _plus_active(session, uid: int) -> bool:
+    from app.services import plus
+
+    return await plus.active(session, uid)

@@ -6,6 +6,7 @@ import { confirmDialog, openTg } from "../tg";
 import { HERO_BY_ID, HeroAva } from "../mlbb";
 import { BracketView, type BracketT } from "./Bracket";
 import { Chips, Copy, dateTime, Empty, Field, GameTile, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Status, Toggle, useAction, useApp, useLoad } from "../ui";
+import { ProAdmin, SignalAdmin } from "./Premium";
 import { BotAdmin, CatalogTab, SectionsAdmin, Dashboard, MORE, MORE_BY_V, MoreMenu, OrdersTab, useLinkCounts, type Dash } from "./AdminNew";
 
 type Tab = "stats" | "arena" | "analytics" | "audit" | "broadcast" | "promo" | "settings" | "rent" | "moderation" | "incoming" | "withdraw" | "disputes" | "donate" | "tg" | "boost" | "users" | "packages" | "tournaments" | "kyc" | "partner" | "matches";
@@ -101,7 +102,7 @@ export default function Admin() {
     window.scrollTo(0, 0);
   };
   const qn = dash.data?.queue.length ?? 0;
-  const body = sec ? (sec === "bot" ? <BotAdmin onChange={dash.reload} /> : sec === "sections" ? <SectionsAdmin /> : <Legacy tab={sec} />) : (
+  const body = sec ? (sec === "bot" ? <BotAdmin onChange={dash.reload} /> : sec === "sections" ? <SectionsAdmin /> : sec === "signals" ? <SignalAdmin /> : sec === "pro" ? <ProAdmin /> : <Legacy tab={sec} />) : (
     <>
       {main === "home" && <Dashboard st={dash} go={go} />}
       {main === "orders" && <OrdersTab go={go} />}
@@ -1023,7 +1024,7 @@ function Packages() {
   );
 }
 
-interface TourForm { id?: number; title: string; game: "ML" | "MC"; prize_fund: number | ""; entry_fee: number | ""; max_players: number; starts_at: string; rules: string; status: string; format?: string }
+interface TourForm { id?: number; title: string; game: "ML" | "MC"; prize_fund: number | ""; entry_fee: number | ""; max_players: number; starts_at: string; rules: string; status: string; format?: string; sponsor_name?: string; sponsor_logo?: string; sponsor_url?: string; sponsor_text?: string; plus_only?: boolean; sponsor?: { name: string; logo: string; url: string; text: string } | null }
 
 function Tournaments() {
   const { toast } = useApp();
@@ -1044,7 +1045,7 @@ function Tournaments() {
             <div className="row between"><span className="b">{x.title}</span><Status s={x.status} /></div>
             <div className="mut xs">{x.format === "team" ? "👥 Jamoaviy · " : ""}{x.players_count}/{x.max_players} · {som(Number(x.prize_fund))} · {dateTime(x.starts_at)}</div>
             <div className="row">
-              <button className="btn small ghost grow" onClick={() => setF({ ...x, starts_at: new Date(x.starts_at).toISOString().slice(0, 16) })}>Tahrirlash</button>
+              <button className="btn small ghost grow" onClick={() => setF({ ...x, starts_at: new Date(x.starts_at).toISOString().slice(0, 16), sponsor_name: x.sponsor?.name ?? "", sponsor_logo: x.sponsor?.logo ?? "", sponsor_url: x.sponsor?.url ?? "", sponsor_text: x.sponsor?.text ?? "" })}>Tahrirlash</button>
               <button className="btn small ghost grow" onClick={() => run(async () => { setEntriesFor(x.id); setEntries(await api.get(`/admin/tournaments/${x.id}/entries`)); })}>Ishtirokchilar</button>
               <button className="btn small ghost grow" onClick={() => openBk(x.id, x.title)}>Setka</button>
             </div>
@@ -1086,9 +1087,19 @@ function Tournaments() {
             <Field label="Ishtirokchilar soni"><Chips value={f.max_players} onChange={(v) => setF({ ...f, max_players: v })} options={[16, 32, 64, 128, 256].map((v) => ({ v, label: String(v) }))} /></Field>
             <Field label="Boshlanish"><input className="input" type="datetime-local" value={f.starts_at} onChange={(e) => setF({ ...f, starts_at: e.target.value })} /></Field>
             <Field label="Qoidalar"><textarea className="input" value={f.rules} onChange={(e) => setF({ ...f, rules: e.target.value })} /></Field>
+            <div className="card col" style={{ gap: 8 }}>
+              <div className="b">🤝 Homiy (brend turniri)</div>
+              <div className="mut xs">Kompaniya homiylik qilsa: nomi, logosi va havolasi turnir kartasida va bosh sahifada ko'rinadi.</div>
+              <Field label="Homiy nomi"><input className="input" value={f.sponsor_name ?? ""} placeholder="Masalan: Beeline" onChange={(e) => setF({ ...f, sponsor_name: e.target.value })} /></Field>
+              <Field label="Logo (https://...)"><input className="input" value={f.sponsor_logo ?? ""} onChange={(e) => setF({ ...f, sponsor_logo: e.target.value.trim() })} /></Field>
+              <Field label="Havola (https://...)"><input className="input" value={f.sponsor_url ?? ""} onChange={(e) => setF({ ...f, sponsor_url: e.target.value.trim() })} /></Field>
+              <Field label="Qisqa matn"><input className="input" value={f.sponsor_text ?? ""} maxLength={200} placeholder="Masalan: 10 GB internet sovg'a" onChange={(e) => setF({ ...f, sponsor_text: e.target.value })} /></Field>
+            </div>
+            <Field label="Kim qatnasha oladi"><Seg value={f.plus_only ? "plus" : "all"} onChange={(v) => setF({ ...f, plus_only: v === "plus" })} options={[{ v: "all", label: "Hamma" }, { v: "plus", label: "💎 Faqat Plus" }]} /></Field>
             <Field label="Holati"><Seg value={f.status} onChange={(s) => setF({ ...f, status: s })} options={[{ v: "soon", label: "Tez kunda" }, { v: "open", label: "Ochiq" }, { v: "running", label: "Davom" }, { v: "finished", label: "Tugagan" }]} /></Field>
             <button className="btn full" disabled={busy || !f.title || f.prize_fund === ""} onClick={() => run(async () => {
-              const body = { ...f, entry_fee: f.entry_fee || 0, starts_at: new Date(f.starts_at).toISOString() };
+              const { sponsor: _sp, ...rest } = f; void _sp;
+              const body = { ...rest, entry_fee: f.entry_fee || 0, starts_at: new Date(f.starts_at).toISOString(), sponsor_name: f.sponsor_name ?? "", sponsor_logo: f.sponsor_logo ?? "", sponsor_url: f.sponsor_url ?? "", sponsor_text: f.sponsor_text ?? "", plus_only: !!f.plus_only };
               if (f.id) await api.put(`/admin/tournaments/${f.id}`, body);
               else await api.post("/admin/tournaments", body);
               setF(null); st.reload();

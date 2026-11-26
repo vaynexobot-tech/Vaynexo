@@ -132,4 +132,6 @@ def boost(o: BoostOrder) -> dict:
 def tournament(t: Tournament, joined: bool = False) -> dict:
     return {"id": t.id, "title": t.title, "game": t.game, "prize_fund": t.prize_fund, "entry_fee": t.entry_fee,
             "max_players": t.max_players, "players_count": t.players_count, "starts_at": iso(t.starts_at),
-            "rules": t.rules, "status": t.status, "joined": joined, "format": t.format or "solo"}
+            "rules": t.rules, "status": t.status, "joined": joined, "format": t.format or "solo",
+            "sponsor": {"name": t.sponsor_name, "logo": t.sponsor_logo, "url": t.sponsor_url, "text": t.sponsor_text} if t.sponsor_name else None,
+            "plus_only": bool(t.plus_only)}

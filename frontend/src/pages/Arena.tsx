@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, type Tournament } from "../api";
 import { t } from "../i18n";
-import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, Sheet, som, useAction, useApp, useLoad } from "../ui";
+import { BottomBar, BottomNav, Chips, dateTime, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, Sheet, som, SponsorLine, useAction, useApp, useLoad } from "../ui";
 import { Risers } from "./Heroes";
 import { Search } from "./Search";
 import { BracketView, type BracketT } from "./Bracket";
@@ -159,7 +159,8 @@ function TourCard({ x, onClick }: { x: Tournament; onClick: () => void }) {
         <GameLogo game={x.game} size={46} />
         <div className="grow" style={{ minWidth: 0 }}>
           <div className="b ell">{x.title}</div>
-          <div className="mut xs">{x.format === "team" ? `👥 ${t("Jamoaviy")} · ` : ""}{x.game === "ML" ? "Mobile Legends" : "Magic Chess"} · {dateTime(x.starts_at)}</div>
+          <div className="mut xs">{x.plus_only ? "💎 Plus · " : ""}{x.format === "team" ? `👥 ${t("Jamoaviy")} · ` : ""}{x.game === "ML" ? "Mobile Legends" : "Magic Chess"} · {dateTime(x.starts_at)}</div>
+          {x.sponsor && <div className="y xs ell">🤝 {t("Homiy")}: {x.sponsor.name}</div>}
         </div>
         <span className={"pill-b " + badge[1]}>● {t(badge[0])}</span>
       </div>
@@ -539,7 +540,9 @@ export function TournamentPage() {
                   <div className="kv"><span>{t("Sovrin fondi")}</span><span className="y mono bb">{money(x.prize_fund)} UZS</span></div>
                   <div className="kv"><span>{t("Ishtirokchilar")}</span><span className="mono b">{x.players_count} / {x.max_players}</span></div>
                   <div className="kv"><span>{t("Boshlanish")}</span><span className="mono b">{dateTime(x.starts_at)}</span></div>
+                  <SponsorLine s={x.sponsor} />
                 </div>
+                {x.plus_only && <div className="card tight sm" style={{ borderColor: "rgba(255,214,10,.45)" }}>💎 {t("Faqat VAYNEXO Plus a'zolari uchun turnir")}{!me?.plus && <> · <a className="y b" onClick={() => nav("/plus")}>{t("Plus olish")}</a></>}</div>}
                 {isTeam && <div className="card tight sm">👥 {t("Jamoaviy turnir: jamoani sardor ro'yxatdan o'tkazadi, jamoada kamida 5 kishi bo'lishi kerak.")}</div>}
                 {x.rules && <div className="card"><div className="b" style={{ marginBottom: 6 }}>{t("Qoidalar")}</div><div className="pre sm mut">{x.rules}</div></div>}
                 {bk.data && bk.data.rounds.length > 0 && <><div className="sec-title">{t("Setka")}</div><BracketView b={bk.data} /></>}

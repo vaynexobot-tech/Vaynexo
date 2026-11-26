@@ -461,6 +461,11 @@ class TournamentIn(BaseModel):
     rules: str = Field("", max_length=5000)
     status: str = Field("open", pattern="^(soon|open|running|finished)$")
     format: str = Field("solo", pattern="^(solo|team)$")
+    sponsor_name: str = Field("", max_length=64)
+    sponsor_logo: str = Field("", max_length=300, pattern=r"^(https://\S+)?$")
+    sponsor_url: str = Field("", max_length=300, pattern=r"^(https://\S+)?$")
+    sponsor_text: str = Field("", max_length=200)
+    plus_only: bool = False
 
 
 @router.post("/tournaments")

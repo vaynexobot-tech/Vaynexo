@@ -101,6 +101,22 @@ for _k, (_p, _n, _g, _r) in MISSIONS.items():
 
 # ---------------------------------------------------------------- Hamkor dasturi
 SCHEMA.update({
+    # VAYNEXO Plus
+    "plus_on": Spec("choice", "on", "VAYNEXO Plus obunasi", "VAYNEXO Plus", choices={"on": "Yoqilgan", "off": "O'chiq"}),
+    "plus_price": Spec("money", 39_000, "Oylik narx (so'm)", "VAYNEXO Plus", 1_000, 10_000_000),
+    "plus_cashback": Spec("percent", 3, "Har xariddan keshbek (%)", "VAYNEXO Plus", 0, 20),
+    # Skin jamg'armasi
+    "savings_on": Spec("choice", "on", "Skin jamg'armasi", "Skin jamg'armasi", choices={"on": "Yoqilgan", "off": "O'chiq"}),
+    "savings_bonus": Spec("percent", 3, "Maqsadga yetib xarid qilganda bonus (%)", "Skin jamg'armasi", 0, 20),
+    "savings_min_days": Spec("money", 14, "Bonus uchun: yarmi kamida necha kun turishi kerak", "Skin jamg'armasi", 0, 180),
+    # Striminerlar
+    "stream_on": Spec("choice", "on", "Efirda donat (striminerlar)", "Striminerlar", choices={"on": "Yoqilgan", "off": "O'chiq"}),
+    "stream_fee": Spec("percent", 10, "Pul donatidan platforma ulushi (%)", "Striminerlar", 0, 50),
+    "stream_min": Spec("money", 5_000, "Eng kam pul donati (so'm)", "Striminerlar", 1_000, 10_000_000),
+    # Pro bilan o'yna
+    "pro_on": Spec("choice", "on", "Pro bilan o'yna (auksion)", "Pro bilan o'yna", choices={"on": "Yoqilgan", "off": "O'chiq"}),
+    "pro_fee": Spec("percent", 15, "Auksiondan platforma ulushi (%)", "Pro bilan o'yna", 0, 50),
+    "pro_min_bid": Spec("money", 20_000, "Eng kam boshlang'ich narx (so'm)", "Pro bilan o'yna", 1_000, 100_000_000),
     # Do'konlar
     "shop_on": Spec("choice", "on", "«O'z do'koningni och» bo'limi", "Do'konlar", choices={"on": "Yoqilgan", "off": "O'chiq"}),
     "shop_pct_1": Spec("percent", 3, "Bronza: komissiya (%)", "Do'konlar", 0, 30),

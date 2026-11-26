@@ -98,6 +98,9 @@ async def resolve_tg_order(session: AsyncSession, order_id: int, action: str, no
         order.status = "done"
         await wallet.add_ticket(session, order.user_id)
         await shops.on_sale(session, order.user_id, "tg", order.id, order.price)
+        from app.services import plus
+
+        await plus.on_purchase(session, order.user_id, "tg", order.id, order.price)
         out.user(order.user_id, f"✅ {order.title} bajarildi ({order.target_username}).")
     elif action == "refund":
         order.status = "refunded"
@@ -309,6 +312,11 @@ async def join_tournament(session: AsyncSession, t_id: int, user_id: int, data: 
         raise BadState("Ro'yxatdan o'tish yopilgan")
     if t.players_count >= t.max_players:
         raise BadState("Joylar tugagan")
+    if t.plus_only:
+        from app.services import plus
+
+        if not await plus.active(session, user_id):
+            raise BadState("Bu turnir faqat VAYNEXO Plus a'zolari uchun")
     if await session.scalar(select(TournamentEntry.id).where(TournamentEntry.tournament_id == t_id, TournamentEntry.user_id == user_id)):
         raise BadState("Siz allaqachon ro'yxatdasiz")
     team_id = None

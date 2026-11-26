@@ -596,3 +596,8 @@ button.adm2-it:active, .adm2-plain:active { background: rgba(255, 255, 255, 0.03
 .shop-lvl b { font-size: 16px; }
 .shop-lvl.on { border-color: var(--y); background: linear-gradient(160deg, rgba(255,214,10,.16), var(--card)); }
 .shop-banner { background: linear-gradient(135deg, rgba(29,233,182,.14), var(--card)); border-color: rgba(29,233,182,.35); }
+
+/* ---------------- Homiy ---------------- */
+.sponsor { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,.05); border: 1px solid var(--line); cursor: pointer; text-align: left; }
+.sponsor img { width: 38px; height: 38px; border-radius: 10px; object-fit: contain; background: #fff; flex-shrink: 0; }
+.sponsor-ic { font-size: 24px; width: 38px; text-align: center; }

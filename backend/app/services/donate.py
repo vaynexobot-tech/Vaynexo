@@ -113,6 +113,9 @@ async def _finish_success(session: AsyncSession, order: DonateOrder, ref: str | 
     order.error = None
     await wallet.add_ticket(session, order.user_id)
     await shops.on_sale(session, order.user_id, "donate", order.id, order.price)
+    from app.services import plus
+
+    await plus.on_purchase(session, order.user_id, "donate", order.id, order.price)
     if artifact:
         import json
 

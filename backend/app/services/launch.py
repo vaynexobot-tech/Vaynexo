@@ -18,6 +18,21 @@ COMING_SOON = "🚀 Tez kunda ochilamiz!\n\nYana biroz sabr qiling — VAYNEXO t
 _cache: list = [None, 0.0]
 
 
+async def text(key: str) -> str:
+    """Admin paneldan tahrirlanadigan matn (Sozlamalar → Matnlar). Baza ishlamasa — standart matn."""
+    from app.services import app_settings
+
+    try:
+        async with SessionLocal() as s:
+            return await app_settings.get_value(s, key) or app_settings.SCHEMA[key].default
+    except Exception:  # noqa: BLE001
+        return app_settings.SCHEMA[key].default
+
+
+async def soon_text() -> str:
+    return await text("text_soon")
+
+
 async def is_open() -> bool:
     if time.monotonic() - _cache[1] < 15:
         return bool(_cache[0])

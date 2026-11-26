@@ -70,8 +70,8 @@ export default function Home() {
         ) : (
           <div className="hero">
             <span className="badge g">● VAYNEXO</span>
-            <div className="hf bb" style={{ fontSize: 20, margin: "12px 0 4px" }}>{trade.length ? t("Donat, akkaunt va xizmatlar — bir joyda") : t("Donat — tez va ishonchli")}</div>
-            <div className="mut sm">{trade.length ? t("Har bir xarid garant bilan himoyalangan") : t("O'yinni tanlang, ID kiriting — qolganini biz bajaramiz")}</div>
+            <div className="hf bb" style={{ fontSize: 20, margin: "12px 0 4px" }}>{me?.texts?.home_title || (trade.length ? t("Donat, akkaunt va xizmatlar — bir joyda") : t("Donat — tez va ishonchli"))}</div>
+            <div className="mut sm">{me?.texts?.home_sub || (trade.length ? t("Har bir xarid garant bilan himoyalangan") : t("O'yinni tanlang, ID kiriting — qolganini biz bajaramiz"))}</div>
           </div>
         )}
 
@@ -118,6 +118,12 @@ export default function Home() {
             </>
           )}
         </Loadable>
+
+        {me?.texts?.notice && (
+          <div className="card row" style={{ borderColor: "rgba(255,214,10,.45)", background: "linear-gradient(135deg, rgba(255,214,10,.10), var(--card))" }}>
+            <span style={{ fontSize: 22 }}>📢</span><div className="sm pre" style={{ minWidth: 0 }}>{me.texts.notice}</div>
+          </div>
+        )}
 
         <div className="card row between">
           <div className="row">

@@ -108,7 +108,7 @@ async def start(message: Message, command: CommandObject):
 
     if not await launch.allowed(message.from_user.id):
         await ensure_user(message.from_user, None)  # ro'yxatga olamiz, ochilganda xabar berish mumkin
-        await message.answer(launch.COMING_SOON)
+        await message.answer(await launch.soon_text())
         return
     ref = None
     if command.args and command.args.startswith("ref_") and command.args[4:].isdigit():
@@ -133,21 +133,14 @@ async def start(message: Message, command: CommandObject):
     if deep and not (deep[0] == "/admin" and not is_admin(message.from_user.id)):
         await message.answer("👇 Ochish uchun tugmani bosing", reply_markup=open_app_kb(f"📲 {deep[1]}", deep[0]))
         return
-    await message.answer(
-        "Assalomu alaykum! 👋\n\nVAYNEXO — raqamli o'yin bozori:\n"
-        "💎 Almaz donat — MLBB, PUBG, Steam va boshqalar\n🛒 Akkaunt savdo va ijara (garant bilan)\n"
-        "🚀 Rank boost\n⭐️ Telegram Premium, Stars\n"
-        "🏆 Arena: turnirlar, «Qahramonni top» viktorinasi, haftaning qahramoni\n🎬 Hamkor: video qiling — mukofot oling\n\n"
-        "Ochish uchun pastdagi tugmani bosing 👇",
-        reply_markup=menu_kb(),
-    )
+    await message.answer(await launch.text("text_start"), reply_markup=menu_kb())
 
 
 async def _quick(message: Message, text: str, btn: str, path: str) -> None:
     from app.services import launch
 
     if not await launch.allowed(message.from_user.id):
-        await message.answer(launch.COMING_SOON)
+        await message.answer(await launch.soon_text())
         return
     await message.answer(text, reply_markup=open_app_kb(btn, path))
 
@@ -268,7 +261,7 @@ async def help_cmd(message: Message):
     from app.services import launch
 
     if not await launch.allowed(message.from_user.id):
-        await message.answer(launch.COMING_SOON)
+        await message.answer(await launch.soon_text())
         return
     await message.answer("Savollar bo'yicha: @vaynexo_support\nIlovani ochish:", reply_markup=open_app_kb())
 
@@ -609,7 +602,7 @@ async def admin_bank_forward(message: Message):
         if await launch.allowed(message.from_user.id):
             await message.answer("Ilovani ochish uchun tugmani bosing 👇", reply_markup=open_app_kb())
         else:
-            await message.answer(launch.COMING_SOON)
+            await message.answer(await launch.soon_text())
         return
     text = message.text or message.caption or ""
     amount = p2p.parse_bank_message(text)

@@ -1,7 +1,7 @@
 """Admin paneldan o'zgartiriladigan sozlamalar (bazada saqlanadi).
 
 Qiymat bazada bo'lmasa — boshlang'ich qiymat (yoki config/.env dagisi) ishlatiladi.
-Turlari: money (so'm), percent (%), choice (ro'yxatdan bittasi).
+Turlari: money (so'm), percent (%), choice (ro'yxatdan bittasi), text (admin tahrirlaydigan matn; hi — eng ko'p belgi).
 """
 
 from dataclasses import dataclass, field
@@ -16,7 +16,7 @@ from app.models import AppSetting
 
 @dataclass(frozen=True)
 class Spec:
-    kind: str  # money | percent | choice
+    kind: str  # money | percent | choice | text
     default: object  # None -> config dagi shu nomli qiymat
     label: str
     group: str
@@ -26,7 +26,19 @@ class Spec:
     show_if: tuple[str, str] | None = None  # admin panelda faqat boshqa sozlama shu qiymatda bo'lsa ko'rinadi
 
 
+START_TEXT = ("Assalomu alaykum! 👋\n\nVAYNEXO — o'yinchilar uchun raqamli bozor:\n💎 Almaz donat — MLBB, PUBG va boshqalar\n"
+              "⭐️ Telegram Premium va Stars\n🏆 Arena: turnirlar, viktorina, Draft Jang\n💰 Daromad: do'kon, striminer, Pro auksion\n\n"
+              "Ochish uchun pastdagi tugmani bosing 👇")
+SOON_TEXT = "🚀 Tez kunda ochilamiz!\n\nYana biroz sabr qiling — VAYNEXO tez orada hammaga ochiladi. Yangiliklardan xabardor bo'lib turing 😉"
+
 SCHEMA: dict[str, Spec] = {
+    # Matnlar (admin paneldan tahrirlanadi)
+    "text_start": Spec("text", START_TEXT, "Bot /start salomi", "Matnlar", 0, 2000),
+    "text_soon": Spec("text", SOON_TEXT, "Bot yopiq paytdagi xabar", "Matnlar", 0, 1000),
+    "text_home_title": Spec("text", "Donat, akkaunt va xizmatlar — bir joyda", "Bosh sahifa: sarlavha", "Matnlar", 0, 80),
+    "text_home_sub": Spec("text", "Har bir xarid garant bilan himoyalangan", "Bosh sahifa: izoh", "Matnlar", 0, 160),
+    "text_notice": Spec("text", "", "Bosh sahifadagi e'lon (bo'sh — ko'rinmaydi)", "Matnlar", 0, 300),
+    "text_support": Spec("text", "vaynexo_support", "Yordam: Telegram username (@ belgisiz)", "Matnlar", 0, 32),
     # Referal
     "referral_bonus": Spec("money", None, "Taklif bonusi (so'm). 0 — o'chiq", "Referal", 0, 10_000_000),
     "referral_min_topup": Spec("money", 10_000, "Bonus uchun do'stning eng kam to'ldirishi (so'm)", "Referal", 1_000),
@@ -219,6 +231,11 @@ def _default(key: str):
 
 
 def _parse(spec: Spec, raw):
+    if spec.kind == "text":
+        value = str(raw).replace("\r\n", "\n").strip()
+        if len(value) > spec.hi:
+            raise ValueError("long")
+        return value
     if spec.kind == "choice":
         value = str(raw)
         if value not in spec.choices:
@@ -258,7 +275,7 @@ async def set_value(session: AsyncSession, key: str, value) -> None:
         value = _parse(spec, value)
     except (TypeError, ValueError) as e:
         raise AppError("bad_setting", "Qiymat noto'g'ri") from e
-    if spec.kind != "choice" and not spec.lo <= value <= spec.hi:
+    if spec.kind not in ("choice", "text") and not spec.lo <= value <= spec.hi:
         raise AppError("bad_setting", f"Qiymat {spec.lo} dan {spec.hi} gacha bo'lishi kerak")
     row = await session.get(AppSetting, key)
     if row is None:

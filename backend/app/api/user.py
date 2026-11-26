@@ -50,6 +50,7 @@ async def me(user: CurrentUser, session: SessionDep):
         "shop": await _my_shop(session, user),
         "plus": await _plus_active(session, user.id),
         "vay": await _vay_brief(session, user),
+        "texts": {k[5:]: await app_settings.get_value(session, k) for k in ("text_home_title", "text_home_sub", "text_notice", "text_support")},
         "kyc_required": {"marketplace": await app_settings.get_value(session, "kyc_marketplace") == "on",
                          "rental": await app_settings.get_value(session, "kyc_rental") == "on",
                          "withdraw": await app_settings.get_value(session, "kyc_withdraw") == "on"},

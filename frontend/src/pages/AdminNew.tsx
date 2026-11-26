@@ -570,6 +570,7 @@ export const MORE: { title: string; items: MenuItem[] }[] = [
     { v: "partner", icon: "play", c: "g", label: "Hamkorlar", sub: "Videolar va kodlar" },
   ] },
   { title: "Premium", items: [
+    { v: "premium", icon: "gem", c: "y", label: "Premium boshqaruvi", sub: "Do'konlar, Plus, jamg'arma, striminer, Pro, birga to'lov, Draft" },
     { v: "signals", icon: "bell", c: "y", label: "Ikki barobar almaz signali", sub: "Obunachilarga darhol xabar" },
     { v: "pro", icon: "trophy", c: "v", label: "Pro auksion", sub: "Pro arizalar va nizolar" },
   ] },
@@ -577,7 +578,7 @@ export const MORE: { title: string; items: MenuItem[] }[] = [
     { v: "kyc", icon: "shield", c: "b", label: "Identifikatsiya (KYC)", sub: "Hujjat tekshiruvi" },
     { v: "disputes", icon: "flag", c: "r", label: "Nizolar", sub: "Savdo bitimlari bo'yicha" },
     { v: "audit", icon: "doc", c: "y", label: "Admin jurnali", sub: "Kim, qachon, nima qildi" },
-    { v: "settings", icon: "settings", c: "v", label: "Sozlamalar", sub: "Narx, foiz, limitlar, bo'limlar" },
+    { v: "settings", icon: "settings", c: "v", label: "Sozlamalar va matnlar", sub: "Narx, foiz, limit, bo'limlar, bot va bosh sahifa matnlari" },
   ] },
 ];
 export const MORE_BY_V: Record<string, MenuItem> = Object.fromEntries(MORE.flatMap((g) => g.items).map((x) => [x.v, x]));

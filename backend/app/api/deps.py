@@ -103,7 +103,7 @@ async def current_user(
     from app.services import launch
 
     if not await launch.allowed(uid):
-        raise AppError("coming_soon", launch.COMING_SOON, 403)
+        raise AppError("coming_soon", await launch.soon_text(), 403)
     if request.method != "GET":
         await rate_limit(f"u:{uid}", limit=30, window=10)
 

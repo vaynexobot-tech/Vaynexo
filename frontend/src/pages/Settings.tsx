@@ -6,6 +6,7 @@ import { openTg, tgPhoto } from "../tg";
 import { BottomBar, Chips, Copy, Empty, Field, GameLogo, Header, Icon, Loadable, money, Seg, som, Status, useAction, useApp, useLoad } from "../ui";
 
 export const SUPPORT = "vaynexo_support";
+const useSupport = () => useApp().me?.texts?.support || SUPPORT;
 
 export function Referral() {
   const { me } = useApp();
@@ -176,6 +177,7 @@ const FAQ: [string, string][] = [
 ];
 
 export function Help() {
+  const support = useSupport();
   const [open, setOpen] = useState<number | null>(0);
   const [text, setText] = useState("");
   const { toast } = useApp();
@@ -184,9 +186,9 @@ export function Help() {
     <>
       <Header title={t("Yordam va aloqa")} sub={t("Savollar va qo'llab-quvvatlash")} />
       <div className="page withbar">
-        <button className="card click row" style={{ color: "inherit", textAlign: "left" }} onClick={() => openTg(`https://t.me/${SUPPORT}`)}>
+        <button className="card click row" style={{ color: "inherit", textAlign: "left" }} onClick={() => openTg(`https://t.me/${support}`)}>
           <span className="y"><Icon name="chat" size={24} /></span>
-          <div className="grow"><div className="b">{t("Operator bilan chat")}</div><div className="mut xs">@{SUPPORT} · 24/7</div></div>
+          <div className="grow"><div className="b">{t("Operator bilan chat")}</div><div className="mut xs">@{support} · 24/7</div></div>
           <Icon name="right" />
         </button>
         <div className="mut xs mono">{t("KO'P SO'RALADIGAN SAVOLLAR")}</div>

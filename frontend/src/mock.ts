@@ -41,6 +41,8 @@ const state: Json = {
     vip_credit_days: 0, tournament_passes: 1, boost_coupon_percent: 0, badge: null, wallet_id: "VX 4821 7730",
   },
   settings: {
+    text_start: "Assalomu alaykum! 👋\n\nVAYNEXO — o'yinchilar uchun raqamli bozor.", text_soon: "🚀 Tez kunda ochilamiz!",
+    text_home_title: "Donat, akkaunt va xizmatlar — bir joyda", text_home_sub: "Har bir xarid garant bilan himoyalangan", text_notice: "", text_support: "vaynexo_support",
     referral_bonus: 1234, referral_min_topup: 10_000, vip_price_per_day: 5_000, rent_deposit_type: "percent", rent_deposit_percent: 100,
     rent_deposit_fixed: 50_000, rent_commission_percent: 10, boost_express_percent: 30, boost_hero_percent: 15, boost_lane_percent: 10,
     tg_price_mode: "fixed", tg_markup_percent: 15, stars_cost: 190, stars_price: 220,
@@ -541,6 +543,12 @@ on("POST", "/admin/catalog/games/:slug/link", () => ({ ok: true }));
 on("POST", "/admin/catalog/games/:slug/provider", () => ({ ok: true }));
 on("PATCH", "/admin/catalog/packages/:id", () => ({ ok: true }));
 const SPEC: [string, string, string, string, number, number, Json?][] = [
+  ["text_start", "text", "Bot /start salomi", "Matnlar", 0, 2000],
+  ["text_soon", "text", "Bot yopiq paytdagi xabar", "Matnlar", 0, 1000],
+  ["text_home_title", "text", "Bosh sahifa: sarlavha", "Matnlar", 0, 80],
+  ["text_home_sub", "text", "Bosh sahifa: izoh", "Matnlar", 0, 160],
+  ["text_notice", "text", "Bosh sahifadagi e'lon (bo'sh — ko'rinmaydi)", "Matnlar", 0, 300],
+  ["text_support", "text", "Yordam: Telegram username (@ belgisiz)", "Matnlar", 0, 32],
   ["referral_bonus", "money", "Taklif bonusi (so'm). 0 — o'chiq", "Referal", 0, 10_000_000],
   ["referral_min_topup", "money", "Bonus uchun do'stning eng kam to'ldirishi (so'm)", "Referal", 1000, 100_000_000],
   ["vip_price_per_day", "money", "VIP e'lon narxi (so'm / kun)", "Account savdo", 0, 10_000_000],
@@ -573,6 +581,7 @@ on("PUT", "/admin/settings", (_m, b) => {
   if (typeof b.value === "number" && !(b.value >= 0)) throw new MockError("bad_setting", "Qiymat 0 dan kam bo'lmasin");
   state.settings[b.key] = b.value;
   if (String(b.key).startsWith("feature_")) state.me.features[String(b.key).slice(8)] = b.value === "on";
+  if (String(b.key).startsWith("text_") && state.me.texts) state.me.texts[String(b.key).slice(5)] = b.value;
   return settingsRows();
 });
 on("GET", "/admin/listings", () => state.listings.filter((l: Json) => l.status === "moderation").map(full));
@@ -893,7 +902,7 @@ on("POST", "/ai/describe", (_m, b) => ({ title: `${b.rank || "Mythic"} akkaunt �
 
 // ---------------------------------------------------------------- Premium bo'limlar (demo)
 const LV4 = [["🥉", "Bronza", 3, 0], ["🥈", "Kumush", 4, 5_000_000], ["🥇", "Oltin", 5, 20_000_000], ["💎", "Brilliant", 6, 50_000_000]] as const;
-state.me.plus = false; state.me.vay = { xp: 620, name: "Jangchi", icon: "⚔️", level: 2 };
+state.me.plus = false; state.me.texts = { home_title: "", home_sub: "", notice: "", support: "vaynexo_support" }; state.me.vay = { xp: 620, name: "Jangchi", icon: "⚔️", level: 2 };
 const DEMO_QR = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" shape-rendering="crispEdges"><rect width="29" height="29" fill="#fff"/><path fill="#111" d="M2 2h7v7H2zM20 2h7v7h-7zM2 20h7v7H2zM11 2h2v2h-2zM14 5h3v2h-3zM11 9h4v2h-4zM17 11h3v3h-3zM11 14h2v3h-2zM15 16h3v2h-3zM20 14h5v2h-5zM12 20h3v3h-3zM17 21h4v2h-4zM22 19h3v3h-3zM11 25h5v2h-5zM22 25h3v2h-3z"/></svg>`;
 const demo: Json = {
   shop: null as Json, plus: null as Json, savings: [] as Json[], streamer: null as Json, proProfile: null as Json,
@@ -1016,6 +1025,30 @@ on("GET", "/meta", () => ({ week: "2026W48", available: true, points: 50, my_pic
   last: { winner: { id: 5, name: "Alice", delta: 2.4 }, my_hero: 109, correct: false } }));
 on("POST", "/meta/pick", (_m, b) => { demo.meta.pick = b.hero_id; return { ok: true }; });
 on("POST", "/arena/card", () => ({ ok: true }));
+
+// ---------------------------------------------------------------- admin: premium boshqaruvi va KYC (demo)
+on("GET", "/admin/premium/summary", () => ({ shops: 3, shop_sales: 37_200_000, shop_commission: 1_310_000, plus_active: 42, savings_active: 18, savings_locked: 2_140_000,
+  streamers: 5, stream_money: 860_000, pro_pending: 2, pro_open: 4, pro_disputes: 1, splits_open: 6, splits_locked: 410_000, duels: 57, kyc_pending: 3 }));
+on("GET", "/admin/premium/shops", () => [{ id: 1, name: "Sardor Gaming", slug: "sardor", tagline: "Eng arzon almaz", active: true, owner_id: 2001, owner: "@sardor_ml", sales: 24_300_000, commission: 1_090_000, orders: 61, customers: 140 },
+  { id: 2, name: "ML Uz Kanal", slug: "mluz", tagline: "", active: true, owner_id: 2002, owner: "@jasur_pro", sales: 9_800_000, commission: 220_000, orders: 33, customers: 80 }]);
+on("PUT", "/admin/premium/shops/:id", () => ({ ok: true }));
+on("GET", "/admin/premium/plus", () => [{ user_id: 2001, user: "@sardor_ml", until: new Date(Date.now() + 20 * 86400000).toISOString(), active: true, months: 3, auto_renew: true, cashback_total: 41_000 }]);
+on("POST", "/admin/premium/plus/:id/days", () => ({ ok: true }));
+on("GET", "/admin/premium/savings", () => [{ id: 1, user_id: 2002, user: "@jasur_pro", title: "706 almaz", target: 145_000, saved: 90_000, weekly: 20_000, status: "active" }]);
+on("POST", "/admin/premium/savings/:id/cancel", () => ({ ok: true }));
+on("GET", "/admin/premium/streamers", () => [{ id: 1, user_id: 2001, user: "@sardor_ml", name: "Sardor Live", slug: "sardor_live", active: true, count: 31, packs: 540_000, money: 230_000 }]);
+on("GET", "/admin/premium/streamers/:id/donations", () => [{ id: 3, name: "Jasur", kind: "money", title: "10 000 so'm", amount: 10_000, message: "Zo'r o'yin!", hidden: false, at: ago(20) }]);
+on("PUT", "/admin/premium/streamers/:id", () => ({ ok: true }));
+on("POST", "/admin/premium/stream-donations/:id/hide", () => ({ ok: true }));
+on("GET", "/admin/premium/pro/slots", () => [{ id: 1, title: "Men bilan 1 ta ranked o'yin", pro: "Aziz Pro", winner: null, price: 85_000, bids: 6, status: "open", ends_at: new Date(Date.now() + 5 * 3600000).toISOString(), play_at: new Date(Date.now() + 2 * 86400000).toISOString(), dispute: "" }]);
+on("POST", "/admin/premium/pro/slots/:id/cancel", () => ({ ok: true }));
+on("GET", "/admin/premium/splits", () => [{ id: 1, code: "demo1234", mode: "wish", title: "706 almaz", creator: "Aziz", target: 145_000, collected: 62_000, parts: 2, status: "open", expires_at: new Date(Date.now() + 15 * 3600000).toISOString() }]);
+on("POST", "/admin/premium/splits/:code/cancel", () => ({ ok: true }));
+on("GET", "/admin/premium/duels", () => [{ id: 1, code: "x", a: "Sardor", b: "Jasur", status: "done", a_score: 78, b_score: 64, winner: "Sardor", at: ago(60) }]);
+on("PUT", "/admin/premium/elo/:id", () => ({ ok: true }));
+on("GET", "/admin/premium/kyc", (_m, _b, q) => ({ totals: { pending: 1, verified: 12, rejected: 2, none: 400 },
+  items: q.get("status") === "pending" ? [{ id: 2002, name: "Jasur", username: "jasur_pro", status: "pending", note: null, at: ago(40) }] : [{ id: 2001, name: "Sardor", username: "sardor_ml", status: q.get("status"), note: null, at: ago(3000) }] }));
+on("POST", "/admin/premium/kyc/:id", (_m, b) => ({ ok: true, status: b.action === "approve" ? "verified" : b.action === "reject" ? "rejected" : "none" }));
 
 export async function mockRequest(method: string, url: string, body: unknown): Promise<unknown> {
   await new Promise((r) => setTimeout(r, 180)); // tarmoq kechikishi taqlidi

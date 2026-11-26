@@ -22,13 +22,15 @@ interface Form {
   price: number | "";
   description: string;
   media: Media[];
+  game_id: string;
+  zone_id: string;
 }
 
 export function Sell() {
   const editId = useParams().id;
   const nav = useNavigate();
   const { toast, fail, me } = useApp();
-  const [f, setF] = useState<Form>({ game: "ML", title: "", rank: "", server: "", collection_level: "", skins: "", heroes: "", price: "", description: "", media: [] });
+  const [f, setF] = useState<Form>({ game: "ML", title: "", rank: "", server: "", collection_level: "", skins: "", heroes: "", price: "", description: "", media: [], game_id: "", zone_id: "" });
   const [loading, setLoading] = useState(!!editId);
   const [uploading, setUploading] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -38,7 +40,7 @@ export function Sell() {
   useEffect(() => {
     if (!editId) return;
     api.get<ListingFull>(`/listings/${editId}`).then((l) => {
-      setF({ game: l.game, title: l.title, rank: l.rank, server: l.server, collection_level: l.collection_level, skins: l.skins, heroes: l.heroes, price: l.price, description: l.description, media: l.media });
+      setF({ game: l.game, title: l.title, rank: l.rank, server: l.server, collection_level: l.collection_level, skins: l.skins, heroes: l.heroes, price: l.price, description: l.description, media: l.media, game_id: "", zone_id: "" });
       setLoading(false);
     }).catch((e) => { fail(e); nav(-1); });
   }, [editId, fail, nav]);
@@ -65,7 +67,7 @@ export function Sell() {
 
 
 
-  const valid = f.title.trim().length >= 3 && typeof f.price === "number" && f.price >= 1000 && f.rank && uploading === 0;
+  const valid = f.title.trim().length >= 3 && typeof f.price === "number" && f.price >= 1000 && f.rank && uploading === 0 && f.media.filter((m) => m.type === "image").length >= 3 && (!!editId || (f.game_id.length >= 5 && !!f.zone_id));
 
   const submit = () => run(async () => {
     const body = { ...f, skins: f.skins || 0, heroes: f.heroes || 0 };
@@ -122,6 +124,15 @@ export function Sell() {
         <Field label={t("Tavsif")}>
           <textarea className="input" maxLength={3000} placeholder={t("Akkaunt haqida: skinlar, emblemalar, bog'langan pochta...")} value={f.description} onChange={(e) => set("description", e.target.value)} />
         </Field>
+        <div className="card col" style={{ gap: 8 }}>
+          <div className="b">🔒 {t("Akkaunt ID (e'londa ko'rinmaydi)")}</div>
+          <div className="mut xs">{t("Bir akkaunt ikki marta sotilmasligi va admin tekshirishi uchun. Faqat shifrlangan holda saqlanadi.")}{editId ? ` ${t("O'zgartirmasangiz, eskisi qoladi.")}` : ""}</div>
+          <div className="row" style={{ alignItems: "flex-end" }}>
+            <div className="grow"><Field label="MLBB User ID"><input className="input mono" inputMode="numeric" value={f.game_id} onChange={(e) => set("game_id", e.target.value.replace(/\D/g, "").slice(0, 20))} /></Field></div>
+            <div style={{ width: 110 }}><Field label="Zone ID"><input className="input mono" inputMode="numeric" value={f.zone_id} onChange={(e) => set("zone_id", e.target.value.replace(/\D/g, "").slice(0, 10))} /></Field></div>
+          </div>
+        </div>
+        <div className="mut xs">📸 {t("Kamida 3 ta rasm: profil (ID bilan), rank va skinlar/kolleksiya. Rasm qancha aniq bo'lsa, tezroq sotiladi.")}</div>
         <Field label={t("Rasm va video ({n}/{max})", { n: f.media.length, max: MAX_MEDIA })}>
           <div className="uploader">
             {f.media.map((m, i) => (

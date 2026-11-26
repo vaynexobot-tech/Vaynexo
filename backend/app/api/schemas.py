@@ -92,6 +92,7 @@ def deal(d: Deal, me: int, credentials: str | None = None) -> dict:
         "status": d.status, "role": "buyer" if d.buyer_id == me else ("seller" if d.seller_id == me else "admin"),
         "chat_id": d.chat_id, "buyer_id": d.buyer_id, "seller_id": d.seller_id, "credentials": credentials,
         "delivered_at": iso(d.delivered_at), "auto_release_at": iso(d.auto_release_at),
+        "deliver_by": iso(d.deliver_by), "hold_until": iso(d.hold_until),
         "dispute_reason": d.dispute_reason, "resolution": d.resolution, "created_at": iso(d.created_at),
     }
 

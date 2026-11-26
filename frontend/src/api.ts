@@ -186,12 +186,13 @@ export interface UserPublic { id: number; name: string; username: string | null;
 export interface ListingFull extends ListingCard {
   description: string; media: Media[]; views: number; reject_reason: string | null; seller: UserPublic;
   seller_stats?: { sales: number; positive_percent: number | null }; chat_id?: number | null; is_mine?: boolean; seller_verified?: boolean;
+  seller_strikes?: number; price_hint?: { median: number; level: "low" | "fair" | "high" } | null;
 }
 export interface Deal {
   id: number; listing: ListingCard; price: number; commission: number; status: string; role: "buyer" | "seller" | "admin";
   chat_id: number; buyer_id: number; seller_id: number; credentials: string | null; delivered_at: string | null;
   auto_release_at: string | null; dispute_reason: string | null; resolution: string | null; created_at: string;
-  reviewed?: boolean; seller_deliver_hours?: number;
+  reviewed?: boolean; seller_deliver_hours?: number; deliver_by?: string | null; hold_until?: string | null;
 }
 export interface Chat { id: number; listing: ListingCard; role: "buyer" | "seller"; buyer_id: number; seller_id: number; last_message_at: string }
 export interface Msg { id: number; sender_id: number | null; text: string; created_at: string }

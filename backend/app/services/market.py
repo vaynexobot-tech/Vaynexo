@@ -2,25 +2,30 @@
 
 Bitim holatlari:
   paid       — xaridor to'ladi, pul platformada; sotuvchi ma'lumotlarni yuborishi kerak
-  delivered  — sotuvchi login/parolni yubordi; xaridor tekshiradi (yoki N soatdan so'ng avto-tasdiq)
-  completed  — pul sotuvchiga o'tdi (komissiyasiz)
+  delivered  — sotuvchi login/parolni yubordi; xaridor tekshiradi (yoki N kundan so'ng avto-tasdiq)
+  holding    — xaridor tasdiqladi, lekin pul yana bir necha kun platformada ushlanadi: sotuvchi akkauntni
+               qaytarib olmaganiga ishonch hosil qilish uchun. Shu paytda ham nizo ochish mumkin
+  completed  — pul sotuvchiga o'tdi
   disputed   — nizo: admin hal qiladi
   refunded   — pul xaridorga qaytdi
 """
 
+import hashlib
+import re
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.errors import AppError, BadState, Forbidden, NotFound
-from app.models import Chat, Deal, Listing, Message, Review
+from app.models import Chat, Deal, Listing, Message, Review, User
 from app.security import decrypt, encrypt
 from app.services import wallet
 from app.services.notify import Outbox, fmt, webapp_button
 
-SELLER_DELIVER_HOURS = 12
+SELLER_DELIVER_HOURS = 12  # standart; haqiqiy qiymat — «deliver_hours» sozlamasi
+WARN_BEFORE = timedelta(hours=3)
 VERIFIED_SALES = 5  # shuncha muvaffaqiyatli savdodan keyin "Tasdiqlangan sotuvchi"  # sotuvchi shu vaqtda ma'lumot bermasa, xaridor bitimni bekor qila oladi
 MAX_MEDIA = 6
 GAMES = ("ML", "MC")
@@ -63,11 +68,44 @@ def validate_listing_data(data: dict) -> dict:
     }
 
 
+def account_fields(data: dict, required: bool) -> tuple[str, str] | None:
+    """Akkaunt ID (User ID + Zone ID) -> (xesh, shifrlangan). Xesh bir akkaunt ikki marta sotilmasligi uchun."""
+    gid, zid = str(data.get("game_id") or "").strip(), str(data.get("zone_id") or "").strip()
+    if not gid and not zid and not required:
+        return None
+    if not re.fullmatch(r"\d{5,20}", gid) or not re.fullmatch(r"\d{1,10}", zid):
+        raise AppError("bad_account_id", "Akkauntning MLBB User ID va Zone ID sini to'g'ri kiriting (e'londa ko'rsatilmaydi)")
+    raw = f"{data.get('game')}:{gid}:{zid}"
+    return hashlib.sha256(raw.encode()).hexdigest(), encrypt(raw)
+
+
+async def _check_listing(session: AsyncSession, seller_id: int, clean: dict, acc: tuple[str, str] | None, listing_id: int | None) -> None:
+    from app.services import app_settings
+
+    need = int(await app_settings.get_value(session, "market_min_photos"))
+    photos = sum(1 for m in clean["media"] if m["type"] == "image")
+    if photos < need:
+        raise AppError("few_photos", f"Kamida {need} ta rasm yuklang: profil (ID bilan), rank va skinlar/kolleksiya")
+    if acc:
+        q = select(Listing.id).where(Listing.account_key == acc[0], Listing.status.in_(("moderation", "active", "reserved")))
+        if listing_id:
+            q = q.where(Listing.id != listing_id)
+        if await session.scalar(q.limit(1)):
+            raise AppError("dup_account", "Bu akkaunt allaqachon sotuvga qo'yilgan", 409)
+
+
 async def create_listing(session: AsyncSession, seller_id: int, data: dict, out: Outbox) -> Listing:
+    from app.services import app_settings
     from app.services.account import require_kyc
 
     await require_kyc(session, seller_id, "marketplace")
-    listing = Listing(seller_id=seller_id, status="moderation", **validate_listing_data(data))
+    seller = await session.get(User, seller_id)
+    if seller.seller_strikes >= int(await app_settings.get_value(session, "strikes_block")):
+        raise AppError("seller_blocked", "Bitimlarda muddatni qayta-qayta buzganingiz uchun e'lon qo'sha olmaysiz. Support'ga yozing", 403)
+    clean = validate_listing_data(data)
+    acc = account_fields(data, required=await app_settings.get_value(session, "market_account_id") == "on")
+    await _check_listing(session, seller_id, clean, acc, None)
+    listing = Listing(seller_id=seller_id, status="moderation", account_key=acc[0] if acc else None, account_enc=acc[1] if acc else None, **clean)
     session.add(listing)
     await session.flush()
     out.admins(f"🆕 Yangi e'lon moderatsiyada: #{listing.id} · {listing.title} · {fmt(listing.price)}", webapp_button("Ko'rib chiqish", "/admin"), topic="elon")
@@ -80,8 +118,13 @@ async def update_listing(session: AsyncSession, seller_id: int, listing_id: int,
         raise NotFound("E'lon")
     if listing.status not in ("active", "moderation", "rejected", "closed"):
         raise BadState("Bitim jarayonidagi e'lonni tahrirlab bo'lmaydi")
-    for k, v in validate_listing_data(data).items():
+    clean = validate_listing_data(data)
+    acc = account_fields(data, required=False)
+    await _check_listing(session, seller_id, clean, acc, listing.id)
+    for k, v in clean.items():
         setattr(listing, k, v)
+    if acc:
+        listing.account_key, listing.account_enc = acc
     listing.status = "moderation"  # tahrirdan keyin qayta tekshiriladi
     listing.reject_reason = None
     return listing
@@ -135,10 +178,29 @@ async def get_chat_for(session: AsyncSession, chat_id: int, user_id: int, is_adm
     return chat
 
 
+_CONTACT_RES = (
+    re.compile(r"(https?://|www\.|t\.me/|\b[a-z0-9-]+\.(com|uz|ru|me|org|net|io)\b)", re.I),
+    re.compile(r"(?:\+?\d[\s\-().]?){9,}"),
+    re.compile(r"@[a-z0-9_]{4,}", re.I),
+    re.compile(r"\b(whats\s?app|watsap|vatsap|instagram|insta|lichka|lichkaga|karta\s*raqam|payme|uzcard|humo)\b", re.I),
+)
+
+
+def has_contact(text: str) -> bool:
+    """Telefon, havola, @nik, karta — garantdan tashqarida savdo qilishga urinish."""
+    return any(r.search(text) for r in _CONTACT_RES)
+
+
 async def send_message(session: AsyncSession, chat: Chat, sender_id: int | None, text: str, out: Outbox) -> Message:
     text = (text or "").strip()
     if not text or len(text) > 2000:
         raise AppError("bad_message", "Xabar 1–2000 belgi bo'lishi kerak")
+    if sender_id is not None:
+        from app.services import app_settings
+
+        if await app_settings.get_value(session, "chat_block_contacts") == "on" and has_contact(text):
+            raise AppError("contact_blocked", "Telefon, havola, @nik va karta raqamini yozib bo'lmaydi. Garantdan tashqarida savdo qilsangiz, "
+                                              "pulingiz himoyasiz qoladi — bitimni faqat VAYNEXO orqali qiling.")
     msg = Message(chat_id=chat.id, sender_id=sender_id, text=text)
     session.add(msg)
     chat.last_message_at = _now()
@@ -175,6 +237,7 @@ async def buy(session: AsyncSession, listing_id: int, buyer_id: int, out: Outbox
     await require_kyc(session, buyer_id, "marketplace")
     chat = await open_chat(session, listing_id, buyer_id)
     commission = listing.price * int(await app_settings.get_value(session, "garant_fee_percent")) // 100
+    hours = int(await app_settings.get_value(session, "deliver_hours"))
     deal = Deal(
         listing_id=listing.id,
         buyer_id=buyer_id,
@@ -184,16 +247,17 @@ async def buy(session: AsyncSession, listing_id: int, buyer_id: int, out: Outbox
         commission=commission,
         status="paid",
         listing=listing,
+        deliver_by=_now() + timedelta(hours=hours),
     )
     session.add(deal)
     await session.flush()
     await wallet.debit(session, buyer_id, listing.price, "deal_pay", f"deal:{deal.id}:pay", ref_type="deal", ref_id=deal.id)
     listing.status = "reserved"
-    await _system(session, chat.id, f"🔒 Xaridor {fmt(deal.price)} to'ladi. Pul VAYNEXO garantida. Sotuvchi akkaunt ma'lumotlarini yuborsin.")
+    await _system(session, chat.id, f"🔒 Xaridor {fmt(deal.price)} to'ladi. Pul VAYNEXO garantida. Sotuvchi {hours} soat ichida akkaunt ma'lumotlarini yuborishi kerak.")
     out.user(
         listing.seller_id,
         f"💰 Akkauntingiz sotib olindi: {listing.title}\nPul garantda: {fmt(deal.price)}.\n"
-        f"{SELLER_DELIVER_HOURS} soat ichida akkaunt ma'lumotlarini yuboring.",
+        f"{hours} soat ichida akkaunt ma'lumotlarini yuboring, aks holda bitim bekor bo'lib, pul xaridorga qaytadi va hisobingizga ogohlantirish yoziladi.",
         webapp_button("Bitimni ochish", f"/deal/{deal.id}"),
     )
     return deal
@@ -242,6 +306,33 @@ async def _complete(session: AsyncSession, deal: Deal, out: Outbox, note: str) -
     out.user(deal.buyer_id, f"✅ Bitim yakunlandi: {listing.title}. Sotuvchini baholashni unutmang!", webapp_button("Baholash", f"/deal/{deal.id}"))
 
 
+async def _seller_hold_days(session: AsyncSession, seller_id: int) -> int:
+    from app.services import app_settings
+
+    stats = await seller_stats(session, seller_id)
+    seller = await session.get(User, seller_id)
+    trusted = stats["sales"] >= VERIFIED_SALES and (seller.seller_strikes or 0) == 0
+    return int(await app_settings.get_value(session, "hold_days_verified" if trusted else "hold_days_new"))
+
+
+async def _confirm_or_hold(session: AsyncSession, deal: Deal, out: Outbox, note: str) -> None:
+    """Xaridor tasdiqladi (yoki muddat o'tdi): pul darhol emas, himoya muddatidan keyin sotuvchiga o'tadi."""
+    days = await _seller_hold_days(session, deal.seller_id)
+    if days <= 0:
+        await _complete(session, deal, out, note)
+        return
+    deal.status = "holding"
+    deal.confirmed_at = _now()
+    deal.hold_until = _now() + timedelta(days=days)
+    deal.auto_release_at = None
+    title = deal.listing.title
+    await _system(session, deal.chat_id, f"🛡 Akkaunt qabul qilindi ({note}). Pul {days} kun himoya muddatida: sotuvchi akkauntni qaytarib olmaganiga "
+                                         "ishonch hosil qilingach o'tadi. Shu muddatda muammo bo'lsa — «Nizo ochish».")
+    out.user(deal.seller_id, f"🛡 «{title}» qabul qilindi. {fmt(deal.price - deal.commission)} {days} kundan keyin hamyoningizga tushadi.")
+    out.user(deal.buyer_id, f"🛡 Akkaunt qabul qilindi: {title}. Birinchi navbatda login, parol va emailni o'zgartiring va eski bog'lanishlarni uzing. "
+                            f"{days} kun ichida akkaunt qaytarib olinsa — «Nizo ochish» ni bosing.", webapp_button("Bitimni ochish", f"/deal/{deal.id}"))
+
+
 async def _refund(session: AsyncSession, deal: Deal, out: Outbox, note: str, relist: bool) -> None:
     deal.status = "refunded"
     deal.finished_at = _now()
@@ -260,7 +351,7 @@ async def confirm(session: AsyncSession, deal_id: int, buyer_id: int, out: Outbo
         raise Forbidden()
     if deal.status != "delivered":
         raise BadState()
-    await _complete(session, deal, out, "xaridor tasdiqladi")
+    await _confirm_or_hold(session, deal, out, "xaridor tasdiqladi")
     return deal
 
 
@@ -271,8 +362,9 @@ async def cancel(session: AsyncSession, deal_id: int, user_id: int, out: Outbox)
         raise Forbidden()
     if deal.status != "paid":
         raise BadState("Ma'lumot yuborilgandan keyin bekor qilib bo'lmaydi — nizo oching")
-    if user_id == deal.buyer_id and _now() < deal.created_at + timedelta(hours=SELLER_DELIVER_HOURS):
-        raise BadState(f"Sotuvchiga {SELLER_DELIVER_HOURS} soat beriladi. Undan keyin bekor qilishingiz mumkin")
+    deadline = deal.deliver_by or deal.created_at + timedelta(hours=SELLER_DELIVER_HOURS)
+    if user_id == deal.buyer_id and _now() < deadline:
+        raise BadState("Sotuvchiga ma'lumot berish uchun muddat beriladi. Muddat tugagach pul avtomatik qaytadi")
     who = "sotuvchi bekor qildi" if user_id == deal.seller_id else "sotuvchi javob bermadi"
     await _refund(session, deal, out, who, relist=user_id == deal.buyer_id)
     return deal
@@ -282,7 +374,7 @@ async def open_dispute(session: AsyncSession, deal_id: int, user_id: int, reason
     deal = await lock_deal(session, deal_id)
     if user_id not in (deal.buyer_id, deal.seller_id):
         raise Forbidden()
-    if deal.status not in ("paid", "delivered"):
+    if deal.status not in ("paid", "delivered", "holding"):
         raise BadState()
     reason = (reason or "").strip()
     if len(reason) < 5:
@@ -290,6 +382,7 @@ async def open_dispute(session: AsyncSession, deal_id: int, user_id: int, reason
     deal.status = "disputed"
     deal.dispute_reason = reason[:2000]
     deal.auto_release_at = None
+    deal.hold_until = None
     await _system(session, deal.chat_id, "⚖️ Nizo ochildi. Pul muzlatildi, admin ikkala tomonni ko'rib chiqadi.")
     other = deal.seller_id if user_id == deal.buyer_id else deal.buyer_id
     out.user(other, f"⚖️ Bitim #{deal.id} bo'yicha nizo ochildi. Admin bog'lanadi.", webapp_button("Bitimni ochish", f"/deal/{deal.id}"))
@@ -321,14 +414,53 @@ async def auto_release(session: AsyncSession, out: Outbox, limit: int = 100) -> 
     for deal_id in ids:
         deal = await lock_deal(session, deal_id)
         if deal.status == "delivered" and deal.auto_release_at and deal.auto_release_at <= _now():
-            await _complete(session, deal, out, "avtomatik tasdiq")
+            await _confirm_or_hold(session, deal, out, "avtomatik tasdiq")
+            done += 1
+    held = list(await session.scalars(select(Deal.id).where(Deal.status == "holding", Deal.hold_until <= _now()).limit(limit)))
+    for deal_id in held:
+        deal = await lock_deal(session, deal_id)
+        if deal.status == "holding" and deal.hold_until and deal.hold_until <= _now():
+            await _complete(session, deal, out, "himoya muddati tugadi")
             done += 1
     return done
 
 
+async def deadline_tick(session: AsyncSession, out: Outbox, limit: int = 100) -> int:
+    """Sotuvchi muddatda ma'lumot bermasa — bitim avtomatik bekor, pul qaytadi, sotuvchiga ogohlantirish (strike).
+    Muddatga 3 soat qolganda sotuvchiga eslatma."""
+    from app.services import app_settings
+
+    now = _now()
+    n = 0
+    late = list(await session.scalars(select(Deal.id).where(Deal.status == "paid", Deal.deliver_by <= now).limit(limit)))
+    block = int(await app_settings.get_value(session, "strikes_block"))
+    for deal_id in late:
+        deal = await lock_deal(session, deal_id)
+        if deal.status != "paid" or not deal.deliver_by or deal.deliver_by > now:
+            continue
+        await _refund(session, deal, out, "sotuvchi muddatda ma'lumot bermadi", relist=True)
+        seller = await session.scalar(select(User).where(User.id == deal.seller_id).with_for_update().execution_options(populate_existing=True))
+        seller.seller_strikes = (seller.seller_strikes or 0) + 1
+        out.user(seller.id, f"⚠️ Muddat buzildi ({seller.seller_strikes}/{block}). {block} marta takrorlansa, yangi e'lon qo'sha olmaysiz va "
+                            "pul ushlab turish muddati uzayadi.")
+        if seller.seller_strikes >= block:
+            await session.execute(update(Listing).where(Listing.seller_id == seller.id, Listing.status == "active").values(status="closed"))
+            out.admins(f"🚫 Sotuvchi {seller.id} {seller.seller_strikes} marta muddatni buzdi — e'lonlari yopildi.", None, topic="nizo")
+        n += 1
+    warn = list(await session.scalars(select(Deal.id).where(
+        Deal.status == "paid", Deal.deliver_warned.is_(False), Deal.deliver_by <= now + WARN_BEFORE, Deal.deliver_by > now).limit(limit)))
+    for deal_id in warn:
+        deal = await lock_deal(session, deal_id)
+        if deal.status == "paid" and not deal.deliver_warned:
+            deal.deliver_warned = True
+            out.user(deal.seller_id, f"⏰ «{deal.listing.title}»: akkaunt ma'lumotini yuborishga 3 soatdan kam qoldi. Aks holda bitim bekor bo'ladi.",
+                     webapp_button("Bitimni ochish", f"/deal/{deal.id}"))
+    return n
+
+
 def credentials_for(deal: Deal, user_id: int, is_admin: bool = False) -> str | None:
     """Login/parolni faqat xaridor (va admin) ko'radi."""
-    if deal.status not in ("delivered", "completed", "disputed"):
+    if deal.status not in ("delivered", "holding", "completed", "disputed"):
         return None
     if user_id == deal.buyer_id or is_admin:
         return decrypt(deal.credentials_enc)
@@ -390,3 +522,17 @@ async def buy_vip(session: AsyncSession, seller_id: int, listing_id: int, days: 
     start = listing.vip_until if listing.vip_until and listing.vip_until > _now() else _now()
     listing.vip_until = start + timedelta(days=days)
     return listing
+
+
+# ------------------------------------------------------------------ narx ogohlantirishi
+async def price_hint(session: AsyncSession, item: Listing) -> dict | None:
+    """Shu o'yin va rank bo'yicha boshqa e'lonlar narxi mediana. Juda arzon e'lon — firibgarlik belgisi."""
+    rows = list(await session.scalars(
+        select(Listing.price).where(Listing.game == item.game, Listing.rank == item.rank, Listing.id != item.id,
+                                    Listing.status.in_(("active", "reserved", "sold"))).limit(200)))
+    if len(rows) < 3:
+        return None
+    rows.sort()
+    median = rows[len(rows) // 2]
+    ratio = item.price / median if median else 1
+    return {"median": median, "level": "low" if ratio < 0.4 else ("high" if ratio > 2.5 else "fair")}

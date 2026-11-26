@@ -58,6 +58,7 @@ class User(TimestampMixin, Base):
     referrer_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))
     referral_paid: Mapped[bool] = mapped_column(Boolean, default=False)
     shop_id: Mapped[int | None] = mapped_column(BigInteger, index=True)  # qaysi do'kon orqali kelgan (birinchi marta)
+    seller_strikes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # muddatda ma'lumot bermagan bitimlar
     # Identifikatsiya: none | pending | verified | rejected
     kyc_status: Mapped[str] = mapped_column(String(16), default="none", server_default="none", index=True)
     kyc_note: Mapped[str | None] = mapped_column(String(300))
@@ -264,6 +265,8 @@ class Listing(TimestampMixin, Base):
     vip_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # pullik: ro'yxat tepasida
     channel_msg_id: Mapped[int | None] = mapped_column(BigInteger)  # e'lonlar kanalidagi post
     channel_state: Mapped[str | None] = mapped_column(String(160))  # post qaysi holatda chiqarilgan
+    account_key: Mapped[str | None] = mapped_column(String(64), index=True)  # akkaunt ID'sining xeshi: bir akkaunt ikki marta sotilmasin
+    account_enc: Mapped[str | None] = mapped_column(Text)  # shifrlangan akkaunt ID (faqat admin tekshiruvi uchun)
 
     seller: Mapped[User] = relationship(lazy="selectin")
 
@@ -311,6 +314,10 @@ class Deal(TimestampMixin, Base):
     dispute_reason: Mapped[str | None] = mapped_column(Text)
     resolution: Mapped[str | None] = mapped_column(String(300))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deliver_by: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)  # sotuvchi shu vaqtgacha ma'lumot berishi kerak
+    deliver_warned: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    hold_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)  # tasdiqdan keyin pul shu vaqtgacha ushlanadi
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     listing: Mapped[Listing] = relationship(lazy="selectin")
 

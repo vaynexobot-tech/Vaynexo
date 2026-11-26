@@ -247,10 +247,16 @@ export function ListingDetail() {
                   </div>
                   {(l.seller_verified || (l.seller_stats?.sales ?? 0) >= 5) && <span className="pill-b g">✓ {t("Ishonchli")}</span>}
                 </div>
+                {l.price_hint?.level === "low" && !l.is_mine && (
+                  <div className="card tight sm" style={{ borderColor: "rgba(255,90,90,.5)" }}>⚠️ {t("Narx bozordagi o'rtacha ({m}) dan ancha past. Ehtiyot bo'ling: faqat VAYNEXO garanti orqali to'lang, chatda boshqa joyga o'tmang.", { m: som(l.price_hint.median) })}</div>
+                )}
+                {(l.seller_strikes ?? 0) > 0 && !l.is_mine && <div className="card tight sm y">⚠️ {t("Sotuvchi {n} marta akkaunt ma'lumotini muddatida bermagan", { n: l.seller_strikes ?? 0 })}</div>}
                 {l.description && <div className="card"><div className="b" style={{ marginBottom: 6 }}>{t("Tavsif")}</div><div className="pre sm" style={{ color: "#d6dbe8" }}>{l.description}</div></div>}
                 <div className="card col">
                   <div className="b">{t("Xavfsiz savdo")}</div>
                   {[t("Pul escrow'da saqlanadi — akkaunt topshirilgach sotuvchiga o'tadi"), t("Login va parol faqat to'lovdan keyin beriladi"),
+                    t("Sotuvchi muddatda bermasa, pulingiz avtomatik qaytadi"),
+                    t("Tasdiqlagandan keyin ham pul bir necha kun ushlanadi — akkaunt qaytarib olinsa, nizo ochasiz"),
                     t("Muammo bo'lsa nizo ochasiz — admin hal qiladi")].map((x) => (
                     <div key={x} className="row sm" style={{ alignItems: "flex-start" }}><span className="g"><Icon name="check" size={16} /></span><span>{x}</span></div>
                   ))}

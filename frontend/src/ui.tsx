@@ -406,7 +406,7 @@ export function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) =
 
 const STATUS: Record<string, [string, string]> = {
   processing: ["Bajarilmoqda", "y"], done: ["Bajarildi", "g"], completed: ["Yakunlandi", "g"], refunded: ["Qaytarildi", "r"],
-  review: ["Tekshirilmoqda", "y"], paid: ["To'langan", "b"], delivered: ["Ma'lumot berildi", "b"], disputed: ["Nizo", "r"],
+  review: ["Tekshirilmoqda", "y"], paid: ["To'langan", "b"], holding: ["Himoya muddati", "y"], delivered: ["Ma'lumot berildi", "b"], disputed: ["Nizo", "r"],
   pending: ["Kutilmoqda", "y"], rejected: ["Rad etildi", "r"], expired: ["Muddati o'tdi", "m"], cancelled: ["Bekor qilindi", "m"],
   moderation: ["Moderatsiya", "y"], active: ["Faol", "g"], reserved: ["Band", "b"], sold: ["Sotilgan", "m"], closed: ["Yopilgan", "m"],
   searching: ["Booster qidirilmoqda", "y"], accepted: ["Booster topildi", "b"], in_progress: ["Jarayonda", "b"], finished: ["Tasdiqlang", "y"],

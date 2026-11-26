@@ -57,7 +57,8 @@ async def isolate(monkeypatch):
 
     from app.services import app_settings as _A
 
-    for _k, _v in (("kyc_marketplace", "off"), ("kyc_rental", "off"), ("garant_fee_percent", 5)):
+    for _k, _v in (("kyc_marketplace", "off"), ("kyc_rental", "off"), ("garant_fee_percent", 5), ("hold_days_new", 0), ("hold_days_verified", 0),
+                   ("market_min_photos", 0), ("market_account_id", "off"), ("chat_block_contacts", "off")):
         monkeypatch.setitem(_A.SCHEMA, _k, _replace(_A.SCHEMA[_k], default=_v))
     deps._redis = None
     try:

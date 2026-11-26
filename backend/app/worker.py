@@ -114,6 +114,8 @@ async def cron_auto_release(ctx):
     async with SessionLocal() as session, session.begin():
         await market.auto_release(session, out)
     async with SessionLocal() as session, session.begin():
+        await market.deadline_tick(session, out)
+    async with SessionLocal() as session, session.begin():
         await svc.boost_auto_confirm(session, out)
     async with SessionLocal() as session, session.begin():
         await rental.tick(session, out)

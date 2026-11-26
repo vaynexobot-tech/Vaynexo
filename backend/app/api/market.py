@@ -6,6 +6,7 @@ from app.api import schemas as S
 from app.api.deps import CurrentUser, SessionDep, page_params
 from app.errors import NotFound
 from app.models import Chat, Deal, Favorite, Listing, Message, Review
+from app.services import app_settings
 from app.services import market as svc
 from app.services.notify import Outbox
 
@@ -107,6 +108,7 @@ async def listing_detail(listing_id: int, user: CurrentUser, session: SessionDep
     chat_id = await session.scalar(select(Chat.id).where(Chat.listing_id == listing_id, Chat.buyer_id == user.id))
     fav = bool(await _fav_ids(session, user.id, [listing_id]))
     return {**S.listing_full(item), "is_fav": fav, "seller_stats": stats, "seller_verified": stats["sales"] >= svc.VERIFIED_SALES,
+            "seller_strikes": item.seller.seller_strikes or 0, "price_hint": await svc.price_hint(session, item),
             "chat_id": chat_id, "is_mine": item.seller_id == user.id}
 
 
@@ -121,6 +123,8 @@ class ListingIn(BaseModel):
     price: int = Field(gt=0)
     description: str = Field("", max_length=3000)
     media: list[dict] = []
+    game_id: str = Field("", max_length=20)  # akkauntning MLBB User ID (e'londa ko'rsatilmaydi)
+    zone_id: str = Field("", max_length=10)
 
 
 @router.post("/listings")
@@ -226,7 +230,8 @@ async def deal_detail(deal_id: int, user: CurrentUser, session: SessionDep):
         raise NotFound("Bitim")
     reviewed = await session.scalar(select(Review.id).where(Review.deal_id == deal_id))
     return {**S.deal(d, user.id, svc.credentials_for(d, user.id, user.is_admin)), "reviewed": bool(reviewed),
-            "seller_deliver_hours": svc.SELLER_DELIVER_HOURS}
+            "seller_deliver_hours": int(await app_settings.get_value(session, "deliver_hours")),
+            "deliver_by": S.iso(d.deliver_by), "hold_until": S.iso(d.hold_until)}
 
 
 class DeliverIn(BaseModel):

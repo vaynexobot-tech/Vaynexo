@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type Deal } from "../api";
 import { t } from "../i18n";
@@ -31,6 +31,20 @@ export function Deals() {
   );
 }
 
+const CHECKS = [
+  "Akkauntga kirdim: rank, skinlar va qahramonlar e'londagiga mos",
+  "Parolni o'zgartirdim",
+  "Bog'langan emailni o'zimnikiga almashtirdim",
+  "Eski Facebook/Google/VK/Apple bog'lanishlarini uzdim",
+];
+
+function leftLabel(iso: string): string {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return t("tugadi");
+  const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
+  return h > 0 ? t("{h} soat {m} daq", { h, m }) : t("{m} daq", { m });
+}
+
 const TAGS = ["Tez javob", "Halol sotuvchi", "Akkaunt aniq", "Qulay narx"];
 
 export function DealPage() {
@@ -44,6 +58,9 @@ export function DealPage() {
   const [score, setScore] = useState(5);
   const [tags, setTags] = useState<string[]>([]);
   const [comment, setComment] = useState("");
+  const [checks, setChecks] = useState<Record<number, boolean>>({});
+  const [, tick] = useState(0);
+  useEffect(() => { const i = setInterval(() => tick((x) => x + 1), 30000); return () => clearInterval(i); }, []);
   const { busy, run } = useAction();
 
   const act = (path: string, body: unknown = {}, msg?: string) => run(async () => {
@@ -69,6 +86,8 @@ export function DealPage() {
                   {seller && <div className="kv"><span>{t("Sizga tushadi")}</span><span className="g mono">{som(d.price - d.commission)}</span></div>}
                   <div className="kv"><span>{t("Sana")}</span><span>{dateTime(d.created_at)}</span></div>
                   {d.auto_release_at && <div className="kv"><span>{t("Avto-tasdiq")}</span><span>{dateTime(d.auto_release_at)}</span></div>}
+                  {d.status === "paid" && d.deliver_by && <div className="kv"><span>{seller ? t("Yuborish muddati") : t("Sotuvchi muddati")}</span><span className="y b">{leftLabel(d.deliver_by)}</span></div>}
+                  {d.status === "holding" && d.hold_until && <div className="kv"><span>{t("Himoya tugaydi")}</span><span className="y b">{dateTime(d.hold_until)}</span></div>}
                 </div>
 
                 <Timeline status={d.status} />
@@ -82,13 +101,34 @@ export function DealPage() {
                   </div>
                 )}
                 {d.status === "paid" && buyer && (
-                  <div className="card tight sm mut">⏳ {t("Sotuvchi akkaunt ma'lumotlarini yuborishini kuting. {h} soat ichida yubormasa, bitimni bekor qilib pulingizni qaytarib olishingiz mumkin.", { h: d.seller_deliver_hours ?? 12 })}</div>
+                  <div className="card tight sm mut">⏳ {t("Sotuvchi akkaunt ma'lumotlarini yuborishini kuting. {h} soat ichida yubormasa, bitim avtomatik bekor bo'lib, pulingiz qaytadi.", { h: d.seller_deliver_hours ?? 12 })}</div>
                 )}
                 {d.credentials && (
                   <div className="card col">
                     <div className="b">🔐 {t("Akkaunt ma'lumotlari")}</div>
                     <Copy value={d.credentials} />
                     {d.status === "delivered" && <div className="mut xs">{t("Kirib, parol va pochtani o'zingiznikiga almashtiring. Hammasi joyida bo'lsa — «Tasdiqlash».")}</div>}
+                  </div>
+                )}
+                {d.status === "delivered" && buyer && (
+                  <div className="card col">
+                    <div className="b">✅ {t("Tekshiruv ro'yxati")}</div>
+                    <div className="mut xs">{t("Hammasini bajargandan keyin tasdiqlang — shundan keyin akkauntni sotuvchi qaytarib ololmaydi.")}</div>
+                    {CHECKS.map((c, i) => (
+                      <label key={c} className="row sm" style={{ alignItems: "flex-start", gap: 10 }}>
+                        <input type="checkbox" checked={!!checks[i]} onChange={(e) => setChecks((p) => ({ ...p, [i]: e.target.checked }))} style={{ marginTop: 3 }} />
+                        <span>{t(c)}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {d.status === "holding" && (
+                  <div className="card col" style={{ borderColor: "rgba(255,214,10,.4)" }}>
+                    <div className="b">🛡 {t("Himoya muddati")}</div>
+                    <div className="sm">{buyer
+                      ? t("Pul hali sotuvchiga o'tmagan. Agar sotuvchi akkauntni qaytarib olsa yoki muammo chiqsa — «Nizo ochish» ni bosing. Himoya muddati tugagach pul sotuvchiga o'tadi.")
+                      : t("Xaridor akkauntni qabul qildi. Himoya muddati tugagach, pul avtomatik hamyoningizga tushadi. Shu vaqtgacha akkauntga kirmang.")}</div>
+                    {d.hold_until && <div className="mut xs">{t("Tugaydi")}: {dateTime(d.hold_until)}</div>}
                   </div>
                 )}
                 {d.status === "disputed" && <div className="card tight sm">⚖️ {t("Nizo ochilgan. Admin ikkala tomonni ko'rib chiqadi.")}<div className="mut xs pre" style={{ marginTop: 4 }}>{d.dispute_reason}</div></div>}
@@ -100,11 +140,12 @@ export function DealPage() {
                 {d.status === "delivered" && buyer && (
                   <>
                     <button className="btn danger" onClick={() => setSheet("dispute")}>{t("Nizo")}</button>
-                    <button className="btn green grow" disabled={busy} onClick={async () => {
-                      if (await confirmDialog(t("Akkauntni tekshirdingizmi? Tasdiqlagach pul sotuvchiga o'tadi."))) act("confirm", {}, t("Bitim yakunlandi"));
-                    }}>{t("Tasdiqlash")}</button>
+                    <button className="btn green grow" disabled={busy || CHECKS.some((_, i) => !checks[i])} onClick={async () => {
+                      if (await confirmDialog(t("Akkauntni tekshirdingizmi? Tasdiqlagach pul himoya muddatidan keyin sotuvchiga o'tadi."))) act("confirm", {}, t("Akkaunt qabul qilindi"));
+                    }}>{CHECKS.some((_, i) => !checks[i]) ? t("Ro'yxatni to'ldiring") : t("Tasdiqlash")}</button>
                   </>
                 )}
+                {d.status === "holding" && buyer && <button className="btn danger full" onClick={() => setSheet("dispute")}>⚠️ {t("Akkaunt qaytarib olindi / muammo bor")}</button>}
                 {d.status === "paid" && (
                   <>
                     <button className="btn danger grow" disabled={busy} onClick={async () => {
@@ -148,9 +189,10 @@ function Timeline({ status }: { status: string }) {
   const steps = [
     { k: "paid", label: t("To'lov garantda") },
     { k: "delivered", label: t("Ma'lumot yuborildi") },
+    { k: "holding", label: t("Himoya") },
     { k: "completed", label: t("Yakunlandi") },
   ];
-  const idx = { paid: 0, delivered: 1, completed: 2, disputed: 1, refunded: -1 }[status] ?? 0;
+  const idx = { paid: 0, delivered: 1, holding: 2, completed: 3, disputed: 1, refunded: -1 }[status] ?? 0;
   return (
     <div className="steps">
       {steps.map((s, i) => (

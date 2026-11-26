@@ -101,6 +101,14 @@ for _k, (_p, _n, _g, _r) in MISSIONS.items():
 
 # ---------------------------------------------------------------- Hamkor dasturi
 SCHEMA.update({
+    # Akkaunt savdo: xavfsizlik
+    "hold_days_new": Spec("money", 7, "Yangi sotuvchi: tasdiqdan keyin pul necha kun ushlanadi (akkaunt qaytarib olinmasligi uchun)", "Account savdo", 0, 30),
+    "hold_days_verified": Spec("money", 2, "Tasdiqlangan sotuvchi: pul necha kun ushlanadi", "Account savdo", 0, 30),
+    "deliver_hours": Spec("money", 12, "Sotuvchi akkaunt ma'lumotini necha soatda berishi kerak (aks holda pul qaytadi)", "Account savdo", 1, 72),
+    "market_account_id": Spec("choice", "on", "E'lon uchun akkaunt ID majburiy (bir akkaunt ikki marta sotilmasin)", "Account savdo", choices={"on": "Majburiy", "off": "Ixtiyoriy"}),
+    "market_min_photos": Spec("money", 3, "E'longa kamida nechta rasm kerak", "Account savdo", 0, 6),
+    "strikes_block": Spec("money", 3, "Necha marta muddatni buzgan sotuvchi e'lon qo'sha olmaydi", "Account savdo", 1, 20),
+    "chat_block_contacts": Spec("choice", "on", "Chatda telefon, havola va karta yozishni to'sish (garantdan tashqari savdoga qarshi)", "Account savdo", choices={"on": "To'sish", "off": "Ruxsat"}),
     # VAYNEXO Plus
     "plus_on": Spec("choice", "on", "VAYNEXO Plus obunasi", "VAYNEXO Plus", choices={"on": "Yoqilgan", "off": "O'chiq"}),
     "plus_price": Spec("money", 39_000, "Oylik narx (so'm)", "VAYNEXO Plus", 1_000, 10_000_000),

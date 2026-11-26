@@ -91,6 +91,7 @@ export function ChatPage() {
     <>
       <Header title={c.listing.title} sub={c.role === "buyer" ? t("Sotuvchi bilan chat") : t("Xaridor bilan chat")} right={<span />} />
       <div className="page" style={{ paddingBottom: 100 }}>
+        <div className="card tight xs mut">🔒 {t("Telefon, havola va karta raqamini yozib bo'lmaydi. Garantdan tashqarida savdo qilsangiz, pulingiz himoyasiz qoladi.")}</div>
         <div className="card tight row click" onClick={() => nav(data.deal ? `/deal/${data.deal.id}` : `/listing/${c.listing.id}`)}>
           <GameLogo game={c.listing.game} size={36} />
           <div className="grow"><div className="b ell sm">{c.listing.title}</div><div className="y mono sm">{som(c.listing.price)}</div></div>

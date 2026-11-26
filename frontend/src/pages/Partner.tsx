@@ -38,23 +38,6 @@ export default function Partner() {
         <Loadable state={st}>
           {(d) => (
             <>
-              <div className="hero col" style={{ gap: 8, borderColor: "rgba(255,214,10,.45)" }}>
-                <div className="hf bb" style={{ fontSize: 20 }}>{t("Video qil — mukofot ol")}</div>
-                <div className="sm" style={{ color: "#d6dbe8" }}>{t("VAYNEXO haqida video joylang — ko'rishlar uchun mukofot oling.")}</div>
-                <span className="pill-y">{t("Eng kami: {v} ko'rish · {d} kun ichida", { v: fmtN(d.rules.min_views), d: d.rules.count_days })}</span>
-              </div>
-              <div className="card col">
-                <div className="row between">
-                  <div className="row" style={{ gap: 18 }}>
-                    <div><div className="hf bb" style={{ fontSize: 20 }}>{d.stats.sent}</div><div className="mut xs">{t("yuborilgan")}</div></div>
-                    <div><div className="hf bb" style={{ fontSize: 20 }}>{fmtN(d.stats.views)}</div><div className="mut xs">{t("jami ko'rish")}</div></div>
-                    <div><div className="hf bb" style={{ fontSize: 20 }}>{d.stats.pending}</div><div className="mut xs">{t("tekshiruvda")}</div></div>
-                  </div>
-                  <span className="pill-b y">{t("Hamkor")}</span>
-                </div>
-                <div className="progress"><i style={{ width: Math.min(100, Math.round((d.stats.views / (d.tiers[3]?.views || 1)) * 100)) + "%", background: "var(--g)" }} /></div>
-                <div className="mut xs">{d.stats.to_official > 0 ? t("«Rasmiy hamkor»gacha {n} ko'rish qoldi", { n: fmtN(d.stats.to_official) }) : t("Siz «Rasmiy hamkor»siz!")}</div>
-              </div>
               <div className="sec-title">💸 {t("Ko'proq daromad")}</div>
               <div className="arena-grid">
                 {([

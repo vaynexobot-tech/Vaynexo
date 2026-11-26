@@ -2,7 +2,7 @@ import { useState } from "react";
 import { api } from "../api";
 import { t } from "../i18n";
 import { openTg } from "../tg";
-import { BottomNav, Copy, Empty, Field, Header, Loadable, money, som, useAction, useApp, useLoad } from "../ui";
+import { BottomNav, Copy, KycBanner, Empty, Field, Header, Loadable, money, som, useAction, useApp, useLoad } from "../ui";
 
 interface Level { level: number; name: string; icon: string; pct: number; from: number; next: { name: string; icon: string; pct: number; need: number; at: number } | null }
 interface Overview {
@@ -109,6 +109,7 @@ function MyShop({ d, reload }: { d: Overview; reload: () => void }) {
         <div className="mut xs">{t("jami topilgan komissiya")} · {t("bugun")} +{money(st.today.earned)}</div>
       </div>
 
+      <KycBanner area="withdraw" />
       <div className="card col">
         <div className="mut xs">{t("Do'kon havolangiz")}</div>
         {link ? <Copy value={link} /> : <div className="mut sm">{t("Havola tez orada paydo bo'ladi")}</div>}

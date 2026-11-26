@@ -1387,4 +1387,5 @@ export const en: Record<string, string> = {
   "QR-kod: kanal, stream yoki do'koningiz rasmiga qo'ying. Skanerlagan odam sizning mijozingiz bo'ladi.": "QR code: place it in your channel, stream or shop image. Whoever scans it becomes your customer.",
   "Reklama rasmi botga yuborildi": "Promo image sent to the bot",
   "Reklama rasmini botga yubor": "Send promo image to the bot",
+  "Pul yechish uchun shaxsingizni tasdiqlang": "Verify your identity to withdraw money",
 };

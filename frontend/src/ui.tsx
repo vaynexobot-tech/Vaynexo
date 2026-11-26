@@ -474,7 +474,7 @@ export function MoneyInput({ value, onChange, placeholder }: { value: number | "
 }
 
 /** «Identifikatsiya majburiy» banneri (Account savdo / ijara). */
-export function KycBanner({ area }: { area: "marketplace" | "rental" }) {
+export function KycBanner({ area }: { area: "marketplace" | "rental" | "withdraw" }) {
   const { me } = useApp();
   const nav = useNavigate();
   if (!me || !me.kyc_required?.[area] || me.kyc_status === "verified") return null;
@@ -484,7 +484,7 @@ export function KycBanner({ area }: { area: "marketplace" | "rental" }) {
       <span className="y"><Icon name="lock" size={18} /></span>
       <div className="grow">
         <div className="y b sm">{pending ? t("Identifikatsiya tekshirilmoqda") : t("Identifikatsiya majburiy")}</div>
-        <div className="mut xs">{area === "marketplace" ? t("Sotish va xarid uchun shaxsingizni tasdiqlang") : t("Ijara uchun shaxsingizni tasdiqlang")}</div>
+        <div className="mut xs">{area === "marketplace" ? t("Sotish va xarid uchun shaxsingizni tasdiqlang") : area === "rental" ? t("Ijara uchun shaxsingizni tasdiqlang") : t("Pul yechish uchun shaxsingizni tasdiqlang")}</div>
       </div>
       {!pending && <button className="btn small" onClick={() => nav("/kyc")}>{t("O'tish")} ›</button>}
     </div>

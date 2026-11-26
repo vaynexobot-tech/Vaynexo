@@ -165,7 +165,7 @@ export interface Me {
   notify_tour: boolean;
   purchases_count: number;
   rent_count: number;
-  kyc_required?: { marketplace: boolean; rental: boolean };
+  kyc_required?: { marketplace: boolean; rental: boolean; withdraw?: boolean };
   points?: number;
   vip_credit_days?: number;
   tournament_passes?: number;

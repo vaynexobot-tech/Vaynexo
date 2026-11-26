@@ -118,3 +118,20 @@ async def test_qr_and_promo_card(api, monkeypatch):
     r = await api(10).post("/shop/card")
     assert r.status_code == 200 and sent[0][0] == 10 and "start=shop_kanalim" in sent[0][1]
     assert (await api(11).post("/shop/card")).status_code == 404  # do'koni yo'q
+
+
+async def test_withdraw_requires_kyc(api, monkeypatch):
+    from dataclasses import replace
+
+    from app.services import app_settings as A
+    from tests.conftest import give_earnings
+
+    monkeypatch.setitem(A.SCHEMA, "kyc_withdraw", replace(A.SCHEMA["kyc_withdraw"], default="on"))
+    await give_earnings(60, 100_000)
+    body = {"amount": 50_000, "card_number": "8600123412341234", "card_holder": "ALI VALI"}
+    r = await api(60).post("/wallet/withdraw", body)
+    assert r.status_code == 403 and r.json()["error"] == "kyc_required"
+    async with SessionLocal() as s, s.begin():
+        (await s.get(User, 60)).kyc_status = "verified"
+    assert (await api(60).post("/wallet/withdraw", body)).status_code == 200
+    assert (await api(60).get("/me")).json()["kyc_required"]["withdraw"] is True

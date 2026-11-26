@@ -38,6 +38,8 @@ SCHEMA: dict[str, Spec] = {
     # KYC
     "kyc_marketplace": Spec("choice", "on", "Account savdo uchun identifikatsiya", "Identifikatsiya (KYC)",
                             choices={"on": "Majburiy", "off": "Ixtiyoriy"}),
+    "kyc_withdraw": Spec("choice", "on", "Pul yechish uchun identifikatsiya (komissiya, savdo, striminer, Pro daromadi)", "Identifikatsiya (KYC)",
+                         choices={"on": "Majburiy", "off": "Ixtiyoriy"}),
     "kyc_rental": Spec("choice", "on", "Account ijara uchun identifikatsiya", "Identifikatsiya (KYC)",
                        choices={"on": "Majburiy", "off": "Ixtiyoriy"}),
     # Savdo

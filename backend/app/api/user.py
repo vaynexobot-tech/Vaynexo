@@ -51,7 +51,8 @@ async def me(user: CurrentUser, session: SessionDep):
         "plus": await _plus_active(session, user.id),
         "vay": await _vay_brief(session, user),
         "kyc_required": {"marketplace": await app_settings.get_value(session, "kyc_marketplace") == "on",
-                         "rental": await app_settings.get_value(session, "kyc_rental") == "on"},
+                         "rental": await app_settings.get_value(session, "kyc_rental") == "on",
+                         "withdraw": await app_settings.get_value(session, "kyc_withdraw") == "on"},
         "purchases_count": await session.scalar(
             select(func.count()).select_from(LedgerEntry).where(
                 LedgerEntry.user_id == user.id, LedgerEntry.amount < 0, LedgerEntry.kind.in_(SPEND_KINDS)

@@ -3,7 +3,7 @@ import { api, type Ledger, type PayCard, type Topup, type Withdrawal } from "../
 import { t } from "../i18n";
 import { confirmDialog } from "../tg";
 import {
-  BottomBar, Copy, dateTime, Empty, Field, Header, Icon, Loadable, money, MoneyInput, Seg, Sheet, som, Status, useAction, useApp, useLoad,
+  BottomBar, Copy, dateTime, Empty, Field, Header, Icon, KycBanner, Loadable, money, MoneyInput, Seg, Sheet, som, Status, useAction, useApp, useLoad,
 } from "../ui";
 
 interface WalletInfo {
@@ -50,7 +50,7 @@ export default function Wallet() {
         <Seg value={tab} onChange={setTab} options={[{ v: "topup", label: t("To'ldirish") }, ...(canWithdraw ? [{ v: "withdraw" as const, label: t("Yechish") }] : []), { v: "history", label: t("Tarix") }]} />
         <Loadable state={w}>
           {(d) =>
-            tab === "topup" ? <><TopupFlow info={d} onDone={w.reload} /><PromoBox onDone={w.reload} /></> : tab === "withdraw" && canWithdraw ? <WithdrawForm info={d} onDone={w.reload} /> : <LedgerList entries={d.entries} />
+            tab === "topup" ? <><TopupFlow info={d} onDone={w.reload} /><PromoBox onDone={w.reload} /></> : tab === "withdraw" && canWithdraw ? <><KycBanner area="withdraw" /><WithdrawForm info={d} onDone={w.reload} /></> : <LedgerList entries={d.entries} />
           }
         </Loadable>
       </div>

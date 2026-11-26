@@ -1400,4 +1400,5 @@ export const ru: Record<string, string> = {
   "QR-kod: kanal, stream yoki do'koningiz rasmiga qo'ying. Skanerlagan odam sizning mijozingiz bo'ladi.": "QR-код: разместите в канале, на стриме или картинке магазина. Кто отсканирует — станет вашим клиентом.",
   "Reklama rasmi botga yuborildi": "Рекламная картинка отправлена в бот",
   "Reklama rasmini botga yubor": "Отправить рекламную картинку в бот",
+  "Pul yechish uchun shaxsingizni tasdiqlang": "Для вывода денег подтвердите личность",
 };

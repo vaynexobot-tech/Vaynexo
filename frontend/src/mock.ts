@@ -37,7 +37,7 @@ const state: Json = {
     phone: null, ml_id: "84512937", bio: null, is_admin: true, sales: 2, positive_percent: 97, active_listings: 1,
     referral_bonus: 1234, referral_min_topup: 10_000, ref_link: "https://t.me/VaynexoBot?startapp=ref_1001", ref_invited: 3, ref_paid: 1, ref_earned: 1234,
     commission_percent: 5, kyc_status: "none", kyc_note: null, pin_set: false, bio_set: false, notify_chat: true, notify_tour: true,
-    purchases_count: 7, rent_count: 1, kyc_required: { marketplace: true, rental: true }, features: { market: false, rent: false, boost: false, tg: true, arena: true, partner: true, ai: false, top: true }, points: 1_240,
+    purchases_count: 7, rent_count: 1, kyc_required: { marketplace: true, rental: true, withdraw: true }, features: { market: false, rent: false, boost: false, tg: true, arena: true, partner: true, ai: false, top: true }, points: 1_240,
     vip_credit_days: 0, tournament_passes: 1, boost_coupon_percent: 0, badge: null, wallet_id: "VX 4821 7730",
   },
   settings: {

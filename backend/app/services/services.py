@@ -366,6 +366,9 @@ CARD_RE = re.compile(r"^\d{16}$")
 
 
 async def create_withdrawal(session: AsyncSession, user_id: int, amount: int, card: str, holder: str, out: Outbox) -> Withdrawal:
+    from app.services.account import require_kyc
+
+    await require_kyc(session, user_id, "withdraw")  # pul yechishdan oldin shaxs tasdiqlangan bo'lishi shart
     card = re.sub(r"\D", "", card or "")
     if not CARD_RE.match(card):
         raise AppError("bad_card", "Karta raqami 16 ta raqam bo'lishi kerak")
